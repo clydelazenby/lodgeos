@@ -1,0 +1,108 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=Spectral:wght@400;500;600&display=swap');
+/* Fraunces/Source Sans 3/Spectral are the new "ledger book" design
+   system (see tailwind.config.ts) — added alongside the original three
+   rather than replacing them, since most pages still use Cinzel/Crimson
+   Pro/JetBrains Mono and haven't been migrated. Once every page is
+   migrated, the first three font families here (and the deprecated
+   color/font keys in tailwind.config.ts) can be removed together. */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --gold: #C9A84C;
+  --gold-light: #E8C97A;
+  --gold-dark: #8B6914;
+  --navy: #0A0E1A;
+  --navy-mid: #111827;
+  --navy-light: #1C2640;
+  --navy-card: #141C2E;
+  --cream: #F5F0E8;
+  --cream-dim: #B8B0A0;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { background: var(--navy); color: var(--cream); font-family: 'Crimson Pro', Georgia, serif; }
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--navy); }
+::-webkit-scrollbar-thumb { background: rgba(201,168,76,0.3); }
+
+.gold-divider { height: 1px; background: linear-gradient(90deg, transparent, #C9A84C, transparent); }
+
+/* Form inputs */
+.lodge-input { width: 100%; background: var(--navy-card); border: 1px solid rgba(201,168,76,0.2); color: var(--cream); padding: 12px 16px; font-family: 'Crimson Pro', serif; font-size: 1rem; outline: none; transition: border-color 0.2s; border-radius: 4px; }
+.lodge-input:focus { border-color: var(--gold); }
+.lodge-input option { background: var(--navy-mid); }
+
+/* Buttons */
+.btn-gold { background: var(--gold); color: var(--navy); font-family: 'Cinzel', serif; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; padding: 14px 32px; border: none; cursor: pointer; transition: all 0.3s; display: inline-block; text-decoration: none; }
+.btn-gold:hover { background: var(--gold-light); transform: translateY(-1px); }
+.btn-outline { background: transparent; color: var(--gold); font-family: 'Cinzel', serif; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; padding: 14px 32px; border: 1px solid rgba(201,168,76,0.4); cursor: pointer; transition: all 0.3s; display: inline-block; text-decoration: none; }
+.btn-outline:hover { border-color: var(--gold); background: rgba(201,168,76,0.05); }
+
+/* Status pills */
+.pill { display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 0.58rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 9px; border-radius: 2px; }
+.pill-ea { background: rgba(74,127,165,0.2); color: #7BB8D4; border: 1px solid rgba(74,127,165,0.3); }
+.pill-fc { background: rgba(201,168,76,0.2); color: #C9A84C; border: 1px solid rgba(201,168,76,0.3); }
+.pill-mm { background: rgba(39,174,96,0.2); color: #5DBE85; border: 1px solid rgba(39,174,96,0.3); }
+.pill-paid { background: rgba(39,174,96,0.2); color: #5DBE85; border: 1px solid rgba(39,174,96,0.3); }
+.pill-due { background: rgba(201,168,76,0.2); color: #C9A84C; border: 1px solid rgba(201,168,76,0.3); }
+.pill-new { background: rgba(74,127,165,0.15); color: #7BB8D4; border: 1px solid rgba(74,127,165,0.3); }
+.pill-active { background: rgba(39,174,96,0.2); color: #5DBE85; border: 1px solid rgba(39,174,96,0.3); }
+.pill-trial { background: rgba(201,168,76,0.15); color: #C9A84C; border: 1px solid rgba(201,168,76,0.3); }
+.pill-canceled { background: rgba(192,57,43,0.2); color: #E74C3C; border: 1px solid rgba(192,57,43,0.3); }
+.pill-past-due { background: rgba(192,57,43,0.2); color: #E74C3C; border: 1px solid rgba(192,57,43,0.3); }
+
+/* Dashboard table */
+.dash-th { font-family: 'JetBrains Mono', monospace; font-size: 0.56rem; letter-spacing: 0.2em; color: var(--gold); text-transform: uppercase; text-align: left; padding: 0.7rem 1.4rem; border-bottom: 1px solid rgba(201,168,76,0.1); background: rgba(201,168,76,0.03); }
+.dash-td { padding: 0.9rem 1.4rem; border-bottom: 1px solid rgba(201,168,76,0.05); color: var(--cream); font-size: 0.92rem; }
+
+/* Cards */
+.data-box { background: var(--navy-card); border: 1px solid rgba(201,168,76,0.1); margin-bottom: 1.5rem; }
+.data-box-head { padding: 1rem 1.4rem; border-bottom: 1px solid rgba(201,168,76,0.1); font-family: 'Cinzel', serif; font-size: 0.88rem; color: var(--cream); display: flex; justify-content: space-between; align-items: center; }
+
+/* Animations */
+@keyframes fadeUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.animate-fade-up { animation: fadeUp 0.8s ease both; }
+.animate-fade-in { animation: fadeIn 0.5s ease both; }
+
+/* ============================================================
+   MOBILE RESPONSIVENESS — universal, not per-page
+   ============================================================
+   .data-box + <table> (dash-th/dash-td) is the shared pattern behind
+   nearly every admin page built tonight: Members, Petitions, Degrees,
+   Attendance, Communications sent-log, Care registry, Coverage,
+   super-admin roster. Fixing horizontal overflow HERE, once, covers
+   every one of those pages simultaneously rather than requiring a
+   media query duplicated into each page's own file (which is what the
+   Dues page did as a proof-of-concept earlier — this generalizes that
+   fix app-wide instead of repeating it by hand on every remaining page).
+
+   Approach: horizontal scroll on the table itself below 768px, rather
+   than trying to force a 6+ column table into a phone-width screen
+   (which would make every cell unreadably narrow). This is the same
+   honest, standard pattern used on the Dues page — a Secretary
+   scanning 40 rows wants a scannable table, not 40 stacked cards.
+   ============================================================ */
+@media (max-width: 767px) {
+  .data-box { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .data-box table { min-width: 560px; } /* forces genuine horizontal scroll rather than a table that just barely fits and clips its last column */
+  .dash-td, .dash-th { padding: 0.65rem 0.9rem; } /* tighter than desktop's 1.4rem, still readable, buys back real width */
+  .dash-td { font-size: 0.82rem; }
+
+  /* Generic stat-strip flex containers used across Dashboard/Dues/Reports
+     pages: force to 2-across instead of the desktop N-across-in-one-row.
+     Pages opt in by adding this class to their stat container — new
+     pages should use it going forward rather than inventing a new
+     per-page media query, same reasoning as the table fix above. */
+  .lodgeos-stat-strip > * { flex: 1 1 45% !important; }
+}
+
+@media (max-width: 480px) {
+  .data-box table { min-width: 480px; }
+  .dash-td, .dash-th { padding: 0.55rem 0.7rem; font-size: 0.78rem; }
+}
