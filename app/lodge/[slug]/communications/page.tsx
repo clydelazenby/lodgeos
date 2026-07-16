@@ -14,7 +14,11 @@ export default function LodgeCommunicationsPage() {
   const [sentSummary, setSentSummary] = useState('')
   const [sendError, setSendError] = useState('')
   const [form, setForm] = useState({ subject: '', body: '', recipient_group: 'all' })
+<<<<<<< HEAD
   const supabase = createClient()
+=======
+  const supabase = await createClient()
+>>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
 
   useEffect(() => {
     const load = async () => {
@@ -77,7 +81,11 @@ export default function LodgeCommunicationsPage() {
 
       {/* Compose */}
       <div style={{ background: '#141C2E', border: '1px solid rgba(201,168,76,0.15)', padding: '2rem', marginBottom: '2rem' }}>
+<<<<<<< HEAD
         <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1.1rem', color: '#C9A84C', marginBottom: '1.5rem' }}>✉ Compose Notice</div>
+=======
+        <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1rem', color: '#C9A84C', marginBottom: '1.5rem' }}>✉ Compose Notice</div>
+>>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
         {sent && (
           <div style={{ background: 'rgba(39,174,96,0.15)', border: '1px solid rgba(39,174,96,0.3)', color: '#5DBE85', padding: '10px 14px', borderRadius: '4px', marginBottom: '1rem', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.72rem', letterSpacing: '0.08em' }}>
             ✓ {sentSummary || 'NOTICE SENT'}

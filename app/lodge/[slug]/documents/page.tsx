@@ -1,7 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { format } from 'date-fns'
+<<<<<<< HEAD
 import { DocumentUploadButton, DocumentDownloadLink } from '@/components/lodge/DocumentUpload'
+=======
+>>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
 
 export default async function LodgeDocumentsPage({ params }: { params: { slug: string } }) {
   const supabase = await createClient()
@@ -23,7 +26,11 @@ export default async function LodgeDocumentsPage({ params }: { params: { slug: s
           <h1 style={{ fontFamily: 'Cinzel, serif', fontSize: '1.4rem', color: '#F5F0E8', marginBottom: '0.25rem' }}>Document Library</h1>
           <p style={{ fontFamily: 'Crimson Pro, serif', fontStyle: 'italic', color: '#B8B0A0' }}>Secure lodge documents with degree-based access control</p>
         </div>
+<<<<<<< HEAD
         <DocumentUploadButton tenantId={tenant.id} />
+=======
+        <button className="btn-gold" style={{ fontSize: '0.68rem' }}>+ Upload Document</button>
+>>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
       </div>
 
       {/* Default categories */}
@@ -54,7 +61,11 @@ export default async function LodgeDocumentsPage({ params }: { params: { slug: s
                   <td className="dash-td" style={{ fontSize: '0.82rem', color: '#B8B0A0' }}>{d.profiles ? `${d.profiles.first_name} ${d.profiles.last_name}` : '—'}</td>
                   <td className="dash-td" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.68rem', color: '#B8B0A0' }}>{format(new Date(d.created_at), 'MMM d, yyyy')}</td>
                   <td className="dash-td"><span className={`pill ${accessColor[d.access_level] ?? 'pill-new'}`}>{d.access_level === 'all' ? 'All Brothers' : `${d.access_level}+`}</span></td>
+<<<<<<< HEAD
                   <td className="dash-td"><DocumentDownloadLink documentId={d.id} /></td>
+=======
+                  <td className="dash-td"><a href={d.file_url} target="_blank" rel="noopener noreferrer" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.58rem', color: '#C9A84C', textDecoration: 'none', background: 'rgba(201,168,76,0.1)', border: '1px solid rgba(201,168,76,0.2)', padding: '4px 10px' }}>View</a></td>
+>>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
                 </tr>
               ))}
             </tbody>

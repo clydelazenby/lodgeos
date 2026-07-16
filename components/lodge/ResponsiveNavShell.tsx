@@ -38,7 +38,11 @@ export function ResponsiveNavShell({
           position: 'fixed', top: '12px', left: '12px', zIndex: 101,
           background: '#141C2E', border: '1px solid rgba(201,168,76,0.35)', color: '#C9A84C',
           width: '36px', height: '36px', borderRadius: '4px', cursor: 'pointer',
+<<<<<<< HEAD
           fontSize: '1.1rem', display: 'none', alignItems: 'center', justifyContent: 'center',
+=======
+          fontSize: '1rem', display: 'none', alignItems: 'center', justifyContent: 'center',
+>>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
         }}
       >
         {mobileOpen ? '✕' : '☰'}

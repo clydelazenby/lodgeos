@@ -4,7 +4,11 @@ import Link from 'next/link'
 import { format } from 'date-fns'
 
 export default async function PortalPage() {
+<<<<<<< HEAD
   const supabase = createClient()
+=======
+  const supabase = await createClient()
+>>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
@@ -64,7 +68,11 @@ export default async function PortalPage() {
         </div>
         <div style={{ background: '#141C2E', padding: '1.4rem' }}>
           <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.56rem', letterSpacing: '0.2em', color: '#C9A84C', textTransform: 'uppercase', marginBottom: '0.6rem' }}>Role</div>
+<<<<<<< HEAD
           <div style={{ fontFamily: 'Crimson Pro, serif', fontSize: '1.1rem', color: '#F5F0E8' }}>{(membership as any).lodge_role || 'Member'}</div>
+=======
+          <div style={{ fontFamily: 'Crimson Pro, serif', fontSize: '1rem', color: '#F5F0E8' }}>{(membership as any).lodge_role || 'Member'}</div>
+>>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
         </div>
       </div>
 

@@ -1,7 +1,11 @@
 import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
+<<<<<<< HEAD
 const FROM = process.env.EMAIL_FROM || 'onboarding@resend.dev'
+=======
+const FROM = process.env.EMAIL_FROM || 'noreply@lodgeos.com'
+>>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://lodgeos.com'
 
 // ── Welcome email when brother is invited ──

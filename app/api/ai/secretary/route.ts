@@ -30,10 +30,13 @@ export async function POST(request: Request) {
     if (!process.env.ANTHROPIC_API_KEY) {
       return NextResponse.json({ error: 'AI Secretary is not configured — ANTHROPIC_API_KEY is missing from the environment.' }, { status: 500 })
     }
+<<<<<<< HEAD
     console.log(
   'ANTHROPIC KEY EXISTS:',
   !!process.env.ANTHROPIC_API_KEY
 )
+=======
+>>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
 
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
     const supabase = await createClient()
@@ -41,16 +44,24 @@ export async function POST(request: Request) {
     let conversation: Anthropic.MessageParam[] = messages
 
     for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+<<<<<<< HEAD
       console.log('Calling Anthropic...')
       const response = await anthropic.messages.create({
         
+=======
+      const response = await anthropic.messages.create({
+>>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
         model: MODEL,
         max_tokens: 1024,
         system: SYSTEM_PROMPT,
         tools: SECRETARY_TOOLS,
         messages: conversation,
       })
+<<<<<<< HEAD
       console.log('Anthropic responded')
+=======
+
+>>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
       const toolUseBlocks = response.content.filter((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use')
 
       if (toolUseBlocks.length === 0) {

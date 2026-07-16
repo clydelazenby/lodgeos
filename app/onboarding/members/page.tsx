@@ -27,7 +27,11 @@ export default function MembersOnboardingPage() {
 
   const handleSave = async () => {
     setSaving(true)
+<<<<<<< HEAD
     const supabase = createClient()
+=======
+    const supabase = await createClient()
+>>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
     const filled = members.filter(m => m.email && m.firstName)
 
     // Insert as pending members (they'll get invited via email)
@@ -49,7 +53,11 @@ export default function MembersOnboardingPage() {
     <div>
       <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.62rem', letterSpacing: '0.3em', color: '#C9A84C', marginBottom: '0.75rem' }}>STEP 3 OF 5</div>
       <h1 style={{ fontFamily: 'Cinzel, serif', fontSize: '1.8rem', color: '#F5F0E8', marginBottom: '0.5rem' }}>Add your brothers</h1>
+<<<<<<< HEAD
       <p style={{ fontSize: '1.1rem', color: '#B8B0A0', fontStyle: 'italic', marginBottom: '2.5rem' }}>Add your lodge members here. They'll receive an email invitation to set up their portal access. You can always add more later.</p>
+=======
+      <p style={{ fontSize: '1rem', color: '#B8B0A0', fontStyle: 'italic', marginBottom: '2.5rem' }}>Add your lodge members here. They'll receive an email invitation to set up their portal access. You can always add more later.</p>
+>>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
 
       <div style={{ background: '#141C2E', border: '1px solid rgba(201,168,76,0.1)', marginBottom: '1rem', overflow: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '500px' }}>
@@ -75,7 +83,11 @@ export default function MembersOnboardingPage() {
                 </td>
                 <td style={{ padding: '6px' }}><input value={m.role} onChange={e => updateRow(i, 'role', e.target.value)} placeholder="Officer role" style={inputStyle} /></td>
                 <td style={{ padding: '6px', textAlign: 'center' }}>
+<<<<<<< HEAD
                   <button onClick={() => removeRow(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#E74C3C', fontSize: '1.1rem' }}>×</button>
+=======
+                  <button onClick={() => removeRow(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#E74C3C', fontSize: '1rem' }}>×</button>
+>>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
                 </td>
               </tr>
             ))}

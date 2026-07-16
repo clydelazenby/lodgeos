@@ -73,7 +73,11 @@ export default function HomePage() {
           ].map(({ icon, title, desc }) => (
             <div key={title} style={{ background: 'var(--navy-mid)', padding: '2.5rem 2rem' }}>
               <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>{icon}</div>
+<<<<<<< HEAD
               <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1.1rem', color: 'var(--gold)', marginBottom: '0.75rem' }}>{title}</div>
+=======
+              <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1rem', color: 'var(--gold)', marginBottom: '0.75rem' }}>{title}</div>
+>>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
               <p style={{ fontSize: '0.95rem', color: 'var(--cream-dim)', lineHeight: 1.7 }}>{desc}</p>
             </div>
           ))}
@@ -95,7 +99,11 @@ export default function HomePage() {
           ].map(({ step, title, desc }) => (
             <div key={step} style={{ textAlign: 'center' }}>
               <div style={{ fontFamily: 'Cinzel, serif', fontSize: '2.5rem', fontWeight: 900, color: 'rgba(201,168,76,0.3)', marginBottom: '1rem' }}>{step}</div>
+<<<<<<< HEAD
               <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1.1rem', color: 'var(--cream)', marginBottom: '0.75rem' }}>{title}</div>
+=======
+              <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1rem', color: 'var(--cream)', marginBottom: '0.75rem' }}>{title}</div>
+>>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
               <p style={{ fontSize: '0.92rem', color: 'var(--cream-dim)', lineHeight: 1.7 }}>{desc}</p>
             </div>
           ))}
@@ -107,7 +115,11 @@ export default function HomePage() {
         <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
           <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.62rem', letterSpacing: '0.3em', color: 'var(--gold)', marginBottom: '1rem' }}>SIMPLE PRICING</div>
           <h2 style={{ fontFamily: 'Cinzel, serif', fontSize: '2rem', color: 'var(--cream)', marginBottom: '1rem' }}>One price. Everything included.</h2>
+<<<<<<< HEAD
           <p style={{ fontSize: '1.1rem', color: 'var(--cream-dim)', fontStyle: 'italic' }}>14-day free trial on all plans. No credit card required.</p>
+=======
+          <p style={{ fontSize: '1rem', color: 'var(--cream-dim)', fontStyle: 'italic' }}>14-day free trial on all plans. No credit card required.</p>
+>>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1px', maxWidth: '900px', margin: '0 auto', background: 'rgba(201,168,76,0.1)' }}>
           {Object.entries(PLANS).map(([key, plan]) => (
@@ -116,7 +128,11 @@ export default function HomePage() {
                 <div style={{ position: 'absolute', top: '-1px', left: '50%', transform: 'translateX(-50%)', background: 'var(--gold)', color: 'var(--navy)', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.58rem', letterSpacing: '0.1em', padding: '4px 16px', textTransform: 'uppercase' }}>Most Popular</div>
               )}
               <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1.1rem', color: key === 'pro' ? 'var(--gold)' : 'var(--cream)', marginBottom: '1rem' }}>{plan.name}</div>
+<<<<<<< HEAD
               <div style={{ fontFamily: 'Cinzel, serif', fontSize: '2.5rem', fontWeight: 700, color: 'var(--cream)', marginBottom: '0.25rem' }}>${plan.price_monthly}<span style={{ fontSize: '1.1rem', color: 'var(--cream-dim)', fontFamily: 'Crimson Pro, serif', fontWeight: 400 }}>/mo</span></div>
+=======
+              <div style={{ fontFamily: 'Cinzel, serif', fontSize: '2.5rem', fontWeight: 700, color: 'var(--cream)', marginBottom: '0.25rem' }}>${plan.price_monthly}<span style={{ fontSize: '1rem', color: 'var(--cream-dim)', fontFamily: 'Crimson Pro, serif', fontWeight: 400 }}>/mo</span></div>
+>>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
               <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.62rem', color: 'var(--gold)', marginBottom: '1.5rem' }}>or ${plan.price_annual}/mo billed annually</div>
               <div className="gold-divider" style={{ marginBottom: '1.5rem' }} />
               {plan.features.map(f => (

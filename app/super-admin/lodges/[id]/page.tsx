@@ -109,7 +109,11 @@ export default function SuperAdminLodgeDetailPage() {
 
       {/* Identity & Contact */}
       <div style={sectionStyle}>
+<<<<<<< HEAD
         <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1.1rem', color: '#C9A84C', marginBottom: '1.25rem' }}>Identity &amp; Contact</div>
+=======
+        <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1rem', color: '#C9A84C', marginBottom: '1.25rem' }}>Identity &amp; Contact</div>
+>>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
           <div><label style={labelStyle}>Lodge Name</label><input value={form.name || ''} onChange={e => setForm((p: any) => ({ ...p, name: e.target.value }))} style={inputStyle} /></div>
           <div><label style={labelStyle}>Number</label><input value={form.number || ''} onChange={e => setForm((p: any) => ({ ...p, number: e.target.value }))} style={inputStyle} /></div>
@@ -125,7 +129,11 @@ export default function SuperAdminLodgeDetailPage() {
 
       {/* Public Site Content */}
       <div style={sectionStyle}>
+<<<<<<< HEAD
         <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1.1rem', color: '#C9A84C', marginBottom: '1.25rem' }}>Public Site Content</div>
+=======
+        <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1rem', color: '#C9A84C', marginBottom: '1.25rem' }}>Public Site Content</div>
+>>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div><label style={labelStyle}>About Text</label><textarea value={form.about_text || ''} onChange={e => setForm((p: any) => ({ ...p, about_text: e.target.value }))} rows={3} style={{ ...inputStyle, resize: 'vertical' }} /></div>
           <div><label style={labelStyle}>History Text</label><textarea value={form.history_text || ''} onChange={e => setForm((p: any) => ({ ...p, history_text: e.target.value }))} rows={3} style={{ ...inputStyle, resize: 'vertical' }} /></div>
@@ -139,7 +147,11 @@ export default function SuperAdminLodgeDetailPage() {
 
       {/* Dues & Billing */}
       <div style={sectionStyle}>
+<<<<<<< HEAD
         <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1.1rem', color: '#C9A84C', marginBottom: '1.25rem' }}>Dues &amp; Billing (Super Admin Override)</div>
+=======
+        <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1rem', color: '#C9A84C', marginBottom: '1.25rem' }}>Dues &amp; Billing (Super Admin Override)</div>
+>>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
           <div><label style={labelStyle}>Annual Dues ($)</label><input type="number" value={form.dues_amount || ''} onChange={e => setForm((p: any) => ({ ...p, dues_amount: parseFloat(e.target.value) }))} style={inputStyle} /></div>
           <div><label style={labelStyle}>Due Month</label>

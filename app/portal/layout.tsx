@@ -3,7 +3,11 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
+<<<<<<< HEAD
   const supabase = createClient()
+=======
+  const supabase = await createClient()
+>>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 

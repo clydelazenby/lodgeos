@@ -3,7 +3,10 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useParams } from 'next/navigation'
 import { format } from 'date-fns'
+<<<<<<< HEAD
 import { QrCheckinScanner } from '@/components/lodge/QrCheckinScanner'
+=======
+>>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
 
 type Status = 'present' | 'absent' | 'excused'
 
@@ -16,7 +19,11 @@ const STATUS_STYLE: Record<Status, { bg: string; border: string; text: string }>
 export default function LodgeAttendancePage() {
   const params = useParams()
   const slug = params.slug as string
+<<<<<<< HEAD
   const supabase = createClient()
+=======
+  const supabase = await createClient()
+>>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
 
   const [tenant, setTenant] = useState<any>(null)
   const [events, setEvents] = useState<any[]>([])
@@ -88,8 +95,11 @@ export default function LodgeAttendancePage() {
         <p style={{ fontFamily: 'Crimson Pro, serif', fontStyle: 'italic', color: '#B8B0A0' }}>Record who was present at a stated or special communication</p>
       </div>
 
+<<<<<<< HEAD
       {tenant && <QrCheckinScanner tenantId={tenant.id} />}
 
+=======
+>>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
       <div style={{ marginBottom: '2rem' }}>
         <label style={labelStyle}>Select Event</label>
         <select value={selectedEventId} onChange={e => setSelectedEventId(e.target.value)} style={selectStyle}>

@@ -17,7 +17,11 @@ import { format } from 'date-fns'
 export default function TransitionDigestPage() {
   const params = useParams()
   const slug = params.slug as string
+<<<<<<< HEAD
   const supabase = createClient()
+=======
+  const supabase = await createClient()
+>>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
 
   const [tenant, setTenant] = useState<any>(null)
   const [petitions, setPetitions] = useState<any[]>([])

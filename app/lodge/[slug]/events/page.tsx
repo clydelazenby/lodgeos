@@ -15,7 +15,11 @@ export default function LodgeEventsPage() {
   const [invitingId, setInvitingId] = useState<string | null>(null)
   const [inviteMsg, setInviteMsg] = useState<Record<string, string>>({})
   const [form, setForm] = useState({ title: '', event_date: '', event_time: '', location: '', description: '', dress_code: '', is_public: false, event_type: 'other' })
+<<<<<<< HEAD
   const supabase = createClient()
+=======
+  const supabase = await createClient()
+>>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
 
   const loadRsvpCounts = async (eventIds: string[], tenantId: string) => {
     if (eventIds.length === 0) return
@@ -94,7 +98,11 @@ export default function LodgeEventsPage() {
 
       {showForm && (
         <div style={{ background: '#141C2E', border: '1px solid rgba(201,168,76,0.15)', padding: '2rem', marginBottom: '2rem' }}>
+<<<<<<< HEAD
           <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1.1rem', color: '#C9A84C', marginBottom: '1.5rem' }}>New Event</div>
+=======
+          <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1rem', color: '#C9A84C', marginBottom: '1.5rem' }}>New Event</div>
+>>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
           <form onSubmit={handleSave} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
             <div style={{ gridColumn: '1 / -1' }}><label style={labelStyle}>Event Title *</label><input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="Stated Communication — April" style={inputStyle} required /></div>
             <div><label style={labelStyle}>Date *</label><input type="date" value={form.event_date} onChange={e => setForm(p => ({ ...p, event_date: e.target.value }))} style={inputStyle} required /></div>

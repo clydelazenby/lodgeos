@@ -31,7 +31,11 @@ export default function BrandPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+<<<<<<< HEAD
     const supabase = createClient()
+=======
+    const supabase = await createClient()
+>>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
     await supabase.from('tenants').update({
       primary_color: primary,
       secondary_color: secondary,
@@ -43,14 +47,22 @@ export default function BrandPage() {
     setLoading(false)
   }
 
+<<<<<<< HEAD
   const inputStyle = { width: '100%', background: '#141C2E', border: '1px solid rgba(201,168,76,0.2)', color: '#F5F0E8', padding: '11px 15px', fontFamily: 'Crimson Pro, serif', fontSize: '1.1rem', outline: 'none', borderRadius: '4px' }
+=======
+  const inputStyle = { width: '100%', background: '#141C2E', border: '1px solid rgba(201,168,76,0.2)', color: '#F5F0E8', padding: '11px 15px', fontFamily: 'Crimson Pro, serif', fontSize: '1rem', outline: 'none', borderRadius: '4px' }
+>>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
   const labelStyle = { fontFamily: 'JetBrains Mono, monospace', fontSize: '0.6rem', letterSpacing: '0.2em', color: '#C9A84C', textTransform: 'uppercase' as const, marginBottom: '6px', display: 'block' }
 
   return (
     <div>
       <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.62rem', letterSpacing: '0.3em', color: '#C9A84C', marginBottom: '0.75rem' }}>STEP 2 OF 5</div>
       <h1 style={{ fontFamily: 'Cinzel, serif', fontSize: '1.8rem', color: '#F5F0E8', marginBottom: '0.5rem' }}>Customize your branding</h1>
+<<<<<<< HEAD
       <p style={{ fontSize: '1.1rem', color: '#B8B0A0', fontStyle: 'italic', marginBottom: '2.5rem' }}>Choose your lodge colors and add some content for your public website.</p>
+=======
+      <p style={{ fontSize: '1rem', color: '#B8B0A0', fontStyle: 'italic', marginBottom: '2.5rem' }}>Choose your lodge colors and add some content for your public website.</p>
+>>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
 
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
@@ -89,7 +101,11 @@ export default function BrandPage() {
 
         {/* Preview */}
         <div style={{ background: secondary, border: '1px solid rgba(201,168,76,0.2)', padding: '1.5rem', borderRadius: '6px', textAlign: 'center' }}>
+<<<<<<< HEAD
           <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1.1rem', color: primary, letterSpacing: '0.15em', marginBottom: '4px' }}>YOUR LODGE NAME</div>
+=======
+          <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1rem', color: primary, letterSpacing: '0.15em', marginBottom: '4px' }}>YOUR LODGE NAME</div>
+>>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
           <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', letterSpacing: '0.2em' }}>F.∴ & A.∴M.∴</div>
           <div style={{ display: 'inline-block', marginTop: '12px', background: primary, color: secondary, fontFamily: 'Cinzel, serif', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.12em', padding: '8px 20px', textTransform: 'uppercase' }}>Button Preview</div>
         </div>
