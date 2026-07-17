@@ -36,7 +36,7 @@ const result = await supabase
   .eq('id', tenantId)
   .single()
 
-console.log('TENANT DETAIL RESULT', result)
+console.log('TENANT DETAIL RESULT', JSON.stringify(result, null, 2))
 
 const tenantData = result.data
 
