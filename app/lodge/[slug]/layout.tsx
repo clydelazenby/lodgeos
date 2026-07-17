@@ -13,14 +13,14 @@ export default async function LodgeAdminLayout({
   params: { slug: string }
 }) {
 const cookieStore = await cookies()
-const supabase = await createClient()
+
 const userId =
   cookieStore.get('lodgeos_user_id')?.value
 
 if (!userId) {
   redirect('/auth/login')
 }
-
+const supabase = await createClient()
   // Get tenant by slug
   const { data: tenant } = await supabase
     .from('tenants')

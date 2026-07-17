@@ -11,7 +11,13 @@ import { format } from 'date-fns'
 // }
 export default async function SuperAdminPage() {
   const supabase = await createClient()
+  console.log('SUPABASE URL', process.env.NEXT_PUBLIC_SUPABASE_URL)
 
+const tenantsTest = await supabase
+  .from('tenants')
+  .select('*')
+
+console.log('TENANTS TEST', tenantsTest)
   const [
     { count: totalLodges },
     { count: activeLodges },
