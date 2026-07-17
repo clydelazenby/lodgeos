@@ -30,7 +30,15 @@ export default function SuperAdminLodgeDetailPage() {
 
   useEffect(() => {
     const load = async () => {
-      const { data: t } = await supabase.from('tenants').select('*').eq('id', tenantId).single()
+      const result = await supabase
+  .from('tenants')
+  .select('*')
+  .eq('id', tenantId)
+  .single()
+
+console.log('TENANT DETAIL RESULT', result)
+
+const t = result.data
       if (!t) { setLoading(false); return }
       setTenant(t)
       setForm(t)
