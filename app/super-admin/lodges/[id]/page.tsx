@@ -20,8 +20,9 @@ export default function SuperAdminLodgeDetailPage() {
   const tenantId = Array.isArray(params.id)
   ? params.id[0]
   : String(params.id).replace(/"/g, '')
-  console.log('TENANT ID:', tenantId)
-  console.log('TENANT ID TYPE:', typeof tenantId)
+console.log('TENANT ID RAW:', params.id)
+console.log('TENANT ID JSON:', JSON.stringify(params.id))
+console.log('TENANT ID CLEAN:', tenantId)
   const supabase = createClient()
 
   const [tenant, setTenant] = useState<any>(null)
