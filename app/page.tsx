@@ -1,9 +1,5 @@
-import PublicLodgePage from './[slug]/page'
+import { redirect } from 'next/navigation'
 
-const LODGE_SLUG = 'psalms-of-job-1827'
-
-export default async function RootPage() {
-  return await PublicLodgePage({
-    params: { slug: LODGE_SLUG },
-  })
+export default function RootPage() {
+  redirect('/psalms-of-job-1827')
 }

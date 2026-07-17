@@ -46,13 +46,18 @@ export default async function PublicLodgePage({
   const h: any = React.createElement
   const supabase = createServiceClient()
 
-  const { data: tenant } = await supabase
-    .from('tenants')
-    .select('*')
-    .eq('slug', params.slug)
-    .single()
+const result = await supabase
+  .from('tenants')
+  .select('*')
+  .eq('slug', params.slug)
+  .single()
 
-  if (!tenant) notFound()
+console.log('SLUG', params.slug)
+console.log('RESULT', result)
+
+const tenant = result.data
+
+if (!tenant) notFound()
 
   const today = new Date().toISOString().split('T')[0]
 
