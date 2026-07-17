@@ -50,7 +50,7 @@ console.log('APP COOKIE ROLE:', appRole ?? 'NO APP ROLE')
     path.startsWith('/portal') ||
     path.startsWith('/onboarding')
 
-const hasAuth = Boolean(user || appUserId)
+const hasAuth = Boolean(appUserId)
 
 if (!hasAuth && isProtectedRoute) {
   const loginPath = path.startsWith('/onboarding')
@@ -63,8 +63,8 @@ if (!hasAuth && isProtectedRoute) {
 }
 
 if (path.startsWith('/super-admin')) {
-  const isSuperAdmin =
-    user !== null || appRole === 'super_admin'
+const isSuperAdmin =
+  appRole === 'super_admin'
 
   if (!isSuperAdmin) {
     console.log('MIDDLEWARE BLOCKED SUPER ADMIN')

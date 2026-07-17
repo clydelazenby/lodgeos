@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
       }
     }
   }
-
+console.log('COOKIES TO SET', cookiesToSet)
 const response = NextResponse.json({
   redirectTo,
 })
