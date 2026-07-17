@@ -37,7 +37,7 @@ export async function middleware(request: NextRequest) {
 
   const path = request.nextUrl.pathname
   const appUserId = request.cookies.get('lodgeos_user_id')?.value
-const appRole = request.cookies.get('lodgeos_role')?.value
+  const appRole =  request.cookies.get('lodgeos_role')?.value ?? ''
 
 console.log('APP COOKIE USER:', appUserId ?? 'NO APP COOKIE')
 console.log('APP COOKIE ROLE:', appRole ?? 'NO APP ROLE')
