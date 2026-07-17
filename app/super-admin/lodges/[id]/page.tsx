@@ -17,7 +17,11 @@ const TIER_OPTIONS = [
 export default function SuperAdminLodgeDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const tenantId = params.id as string
+  const tenantId = Array.isArray(params.id)
+  ? params.id[0]
+  : String(params.id).replace(/"/g, '')
+  console.log('TENANT ID:', tenantId)
+  console.log('TENANT ID TYPE:', typeof tenantId)
   const supabase = createClient()
 
   const [tenant, setTenant] = useState<any>(null)
