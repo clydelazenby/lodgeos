@@ -1,13 +1,20 @@
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+function getResend() {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('RESEND_API_KEY is not configured')
+  }
+
+  return new Resend(process.env.RESEND_API_KEY)
+}
 const FROM = process.env.EMAIL_FROM || 'onboarding@resend.dev'
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://lodgeos.com'
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://psalmslodge1827.com'
 
 // ── Welcome email when brother is invited ──
 export async function sendWelcomeEmail({
   to, firstName, lodgeName, lodgeSlug, loginUrl,
 }: { to: string; firstName: string; lodgeName: string; lodgeSlug: string; loginUrl: string }) {
+  const resend = getResend()
   return resend.emails.send({
     from: `${lodgeName} via LodgeOS <${FROM}>`,
     to,
@@ -50,7 +57,7 @@ export async function sendLodgeNoticeEmail({
     .split('\n')
     .map(line => line.trim().length ? `<p style="margin:0 0 14px;">${line}</p>` : '')
     .join('')
-
+  const resend = getResend()
   return resend.emails.send({
     from: `${lodgeName} via LodgeOS <${FROM}>`,
     to,
@@ -89,6 +96,7 @@ export async function sendEventInviteEmail({
   icsContent: string; rsvpToken: string
 }) {
   const rsvpBase = `${APP_URL}/api/rsvp/${rsvpToken}`
+  const resend = getResend()
   return resend.emails.send({
     from: `${lodgeName} via LodgeOS <${FROM}>`,
     to,
@@ -132,6 +140,7 @@ export async function sendDuesReminderEmail({
     ? `Action Required: ${lodgeName} dues ${year} past due`
     : `Reminder: ${lodgeName} annual dues ${year} — $${amount}`
 
+  const resend = getResend()
   return resend.emails.send({
     from: `${lodgeName} via LodgeOS <${FROM}>`,
     to,
@@ -165,6 +174,7 @@ export async function sendDuesReminderEmail({
 export async function sendPaymentReceiptEmail({
   to, firstName, lodgeName, amount, year, receiptUrl,
 }: { to: string; firstName: string; lodgeName: string; amount: number; year: number; receiptUrl?: string }) {
+  const resend = getResend()
   return resend.emails.send({
     from: `${lodgeName} via LodgeOS <${FROM}>`,
     to,
@@ -202,6 +212,7 @@ export async function sendPaymentReceiptEmail({
 export async function sendNewPetitionAlert({
   to, secretaryName, lodgeName, petitionerName, petitionerEmail, dashboardUrl,
 }: { to: string; secretaryName: string; lodgeName: string; petitionerName: string; petitionerEmail: string; dashboardUrl: string }) {
+  const resend = getResend()
   return resend.emails.send({
     from: `LodgeOS <${FROM}>`,
     to,
@@ -234,6 +245,7 @@ export async function sendNewPetitionAlert({
 export async function sendEventReminderEmail({
   to, firstName, lodgeName, eventTitle, eventDate, eventTime, location, dressCode, portalUrl,
 }: { to: string; firstName: string; lodgeName: string; eventTitle: string; eventDate: string; eventTime?: string; location?: string; dressCode?: string; portalUrl: string }) {
+ const resend = getResend()
   return resend.emails.send({
     from: `${lodgeName} via LodgeOS <${FROM}>`,
     to,

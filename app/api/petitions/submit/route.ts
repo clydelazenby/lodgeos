@@ -76,7 +76,7 @@ export async function POST(request: Request) {
           lodgeName: `${tenant.name} #${tenant.number}`,
           petitionerName: `${form.first_name} ${form.last_name}`,
           petitionerEmail: form.email,
-          dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://lodgeos.com'}/lodge/${slug}/petitions`,
+          dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://psalmslodge1827.com'}/lodge/${slug}/petitions`,
         })
         notified = true
       } catch (emailError) {

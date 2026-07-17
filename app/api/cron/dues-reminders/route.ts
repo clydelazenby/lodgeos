@@ -51,7 +51,7 @@ export async function POST(request: Request) {
 
   const supabase = createServiceClient() // no user session exists here — service role is correct, same as the Stripe webhook
   const today = new Date()
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://lodgeos.com'
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://psalmslodge1827.com'
 
   const { data: tenants } = await supabase
     .from('tenants')
