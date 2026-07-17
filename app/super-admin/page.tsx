@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { format } from 'date-fns'
 
@@ -10,11 +10,17 @@ import { format } from 'date-fns'
 //   )
 // }
 export default async function SuperAdminPage() {
-  const supabase = await createClient()
-  console.log(
-  'SUPABASE URL:',
+  const supabase = createServiceClient()
+console.log(
+  'PROD URL:',
   process.env.NEXT_PUBLIC_SUPABASE_URL
 )
+
+const test = await supabase
+  .from('tenants')
+  .select('id,name,slug')
+
+console.log('TENANTS TEST:', test)
 
 const tenantsCheck = await supabase
   .from('tenants')
