@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { AiSecretaryPanel } from '@/components/lodge/AiSecretaryPanel'
 import { ResponsiveNavShell } from '@/components/lodge/ResponsiveNavShell'
+import { cookies } from 'next/headers'
 
 export default async function LodgeAdminLayout({
   children,
@@ -11,9 +12,14 @@ export default async function LodgeAdminLayout({
   children: React.ReactNode
   params: { slug: string }
 }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/auth/login')
+const cookieStore = await cookies()
+const supabase = await createClient()
+const userId =
+  cookieStore.get('lodgeos_user_id')?.value
+
+if (!userId) {
+  redirect('/auth/login')
+}
 
   // Get tenant by slug
   const { data: tenant } = await supabase
@@ -29,11 +35,11 @@ export default async function LodgeAdminLayout({
     .from('tenant_members')
     .select('tenant_role, lodge_role')
     .eq('tenant_id', tenant.id)
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .single()
 
   // Allow super admins too
-  const { data: profile } = await supabase.from('profiles').select('platform_role, first_name').eq('id', user.id).single()
+  const { data: profile } = await supabase.from('profiles').select('platform_role, first_name').eq('id', userId).single()
 
   if (!membership && profile?.platform_role !== 'super_admin') {
     redirect('/auth/login')
