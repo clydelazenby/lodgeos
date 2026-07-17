@@ -2,10 +2,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useParams } from 'next/navigation'
-<<<<<<< HEAD
 import Link from 'next/link'
-=======
->>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
 
 export default function LodgeMembersPage() {
   const params = useParams()
@@ -17,11 +14,7 @@ export default function LodgeMembersPage() {
   const [inviteForm, setInviteForm] = useState({ firstName: '', lastName: '', email: '', degree: 'MM', lodgeRole: '', tenantRole: 'member' })
   const [inviting, setInviting] = useState(false)
   const [inviteMsg, setInviteMsg] = useState('')
-<<<<<<< HEAD
   const supabase = createClient()
-=======
-  const supabase = await createClient()
->>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
 
   useEffect(() => {
     const load = async () => {
@@ -30,11 +23,7 @@ export default function LodgeMembersPage() {
       setTenant(t)
       const { data: m } = await supabase
         .from('tenant_members')
-<<<<<<< HEAD
         .select('*, profiles(first_name, last_name, email, phone, avatar_url)')
-=======
-        .select('*, profiles(first_name, last_name, email, phone)')
->>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
         .eq('tenant_id', t.id)
         .order('created_at')
       setMembers(m ?? [])
@@ -57,11 +46,7 @@ export default function LodgeMembersPage() {
       setInviteMsg('✓ Invitation sent successfully.')
       setInviteForm({ firstName: '', lastName: '', email: '', degree: 'MM', lodgeRole: '', tenantRole: 'member' })
       // Refresh
-<<<<<<< HEAD
       const { data: m } = await supabase.from('tenant_members').select('*, profiles(first_name, last_name, email, phone, avatar_url)').eq('tenant_id', tenant.id).order('created_at')
-=======
-      const { data: m } = await supabase.from('tenant_members').select('*, profiles(first_name, last_name, email, phone)').eq('tenant_id', tenant.id).order('created_at')
->>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
       setMembers(m ?? [])
     } else {
       setInviteMsg(`Error: ${data.error}`)
@@ -111,11 +96,7 @@ export default function LodgeMembersPage() {
       {/* Invite form */}
       {showInvite && (
         <div style={{ background: '#141C2E', border: '1px solid rgba(201,168,76,0.15)', padding: '2rem', marginBottom: '2rem' }}>
-<<<<<<< HEAD
           <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1.1rem', color: '#C9A84C', marginBottom: '1.5rem' }}>Invite a Brother</div>
-=======
-          <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1rem', color: '#C9A84C', marginBottom: '1.5rem' }}>Invite a Brother</div>
->>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
           {inviteMsg && (
             <div style={{ background: inviteMsg.startsWith('✓') ? 'rgba(39,174,96,0.15)' : 'rgba(192,57,43,0.15)', border: `1px solid ${inviteMsg.startsWith('✓') ? 'rgba(39,174,96,0.3)' : 'rgba(192,57,43,0.3)'}`, color: inviteMsg.startsWith('✓') ? '#5DBE85' : '#E74C3C', padding: '10px 14px', borderRadius: '4px', marginBottom: '1rem', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.72rem' }}>
               {inviteMsg}
@@ -170,7 +151,6 @@ export default function LodgeMembersPage() {
                 return (
                   <tr key={m.id}>
                     <td className="dash-td">
-<<<<<<< HEAD
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <div style={{
                           width: '32px', height: '32px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0,
@@ -189,10 +169,6 @@ export default function LodgeMembersPage() {
                         <Link href={`/lodge/${slug}/members/${m.user_id}`} style={{ fontFamily: 'Cinzel, serif', fontSize: '0.85rem', color: '#C9A84C', textDecoration: 'none' }}>
                           Bro. {p?.first_name ?? '—'} {p?.last_name ?? ''}
                         </Link>
-=======
-                      <div style={{ fontFamily: 'Cinzel, serif', fontSize: '0.85rem' }}>
-                        Bro. {p?.first_name ?? '—'} {p?.last_name ?? ''}
->>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
                       </div>
                     </td>
                     <td className="dash-td" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.65rem', color: '#B8B0A0' }}>

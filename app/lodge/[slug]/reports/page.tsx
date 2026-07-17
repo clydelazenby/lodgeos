@@ -16,11 +16,7 @@ export default function LodgeReportsPage() {
   const [tbAnnouncement, setTbAnnouncement] = useState('')
   const [tbGenerating, setTbGenerating] = useState(false)
   const [tbError, setTbError] = useState('')
-<<<<<<< HEAD
   const supabase = createClient()
-=======
-  const supabase = await createClient()
->>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
 
   useEffect(() => {
     supabase.from('tenants').select('id, name').eq('slug', slug).single().then(({ data }) => setTenant(data))
@@ -89,11 +85,7 @@ export default function LodgeReportsPage() {
       </div>
 
       <div style={{ background: '#141C2E', border: '1px solid rgba(201,168,76,0.1)', padding: '2rem', marginBottom: '1.5rem' }}>
-<<<<<<< HEAD
         <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1.1rem', color: '#C9A84C', marginBottom: '0.5rem' }}>Grand Lodge Annual Return</div>
-=======
-        <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1rem', color: '#C9A84C', marginBottom: '0.5rem' }}>Grand Lodge Annual Return</div>
->>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
         <p style={{ color: '#B8B0A0', fontSize: '0.85rem', marginBottom: '1.25rem', lineHeight: 1.6 }}>
           Assembles membership counts, degrees conferred, petition outcomes, and dues collected for a
           selected year into a single PDF. This is a preparation aid, not a substitute for your
@@ -111,11 +103,7 @@ export default function LodgeReportsPage() {
       </div>
 
       <div style={{ background: '#141C2E', border: '1px solid rgba(201,168,76,0.1)', padding: '2rem' }}>
-<<<<<<< HEAD
         <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1.1rem', color: '#C9A84C', marginBottom: '0.5rem' }}>Monthly Trestleboard</div>
-=======
-        <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1rem', color: '#C9A84C', marginBottom: '0.5rem' }}>Monthly Trestleboard</div>
->>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
         <p style={{ color: '#B8B0A0', fontSize: '0.85rem', marginBottom: '1.25rem', lineHeight: 1.6 }}>
           A PDF newsletter assembled from this month's calendar and any member birthdays on record.
           Add a short note from the Secretary if you'd like one included.

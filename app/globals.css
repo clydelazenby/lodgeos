@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=Spectral:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap');
-=======
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=Spectral:wght@400;500;600&display=swap');
->>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
 /* Fraunces/Source Sans 3/Spectral are the new "ledger book" design
    system (see tailwind.config.ts) — added alongside the original three
    rather than replacing them, since most pages still use Cinzel/Crimson
@@ -110,7 +106,6 @@ body { background: var(--navy); color: var(--cream); font-family: 'Crimson Pro',
   .data-box table { min-width: 480px; }
   .dash-td, .dash-th { padding: 0.55rem 0.7rem; font-size: 0.78rem; }
 }
-<<<<<<< HEAD
 
 /* ============================================================
    LODGE ROOM — floor plan mobile handling
@@ -227,5 +222,3 @@ body { background: var(--navy); color: var(--cream); font-family: 'Crimson Pro',
     padding: 1rem !important;
   }
 }
-=======
->>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d

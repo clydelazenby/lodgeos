@@ -10,11 +10,7 @@ export default function LodgeSettingsPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [form, setForm] = useState<any>({})
-<<<<<<< HEAD
   const supabase = createClient()
-=======
-  const supabase = await createClient()
->>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
 
   useEffect(() => {
     supabase.from('tenants').select('*').eq('slug', slug).single().then(({ data }) => {
@@ -30,17 +26,10 @@ export default function LodgeSettingsPage() {
     setSaving(false)
   }
 
-<<<<<<< HEAD
   const inputStyle = { width: '100%', background: '#0A0E1A', border: '1px solid rgba(201,168,76,0.2)', color: '#F5F0E8', padding: '11px 15px', fontFamily: 'Crimson Pro, serif', fontSize: '1.1rem', outline: 'none', borderRadius: '4px', transition: 'border-color 0.2s' }
   const labelStyle = { fontFamily: 'JetBrains Mono, monospace', fontSize: '0.6rem', letterSpacing: '0.2em', color: '#C9A84C', textTransform: 'uppercase' as const, marginBottom: '6px', display: 'block' }
   const sectionStyle = { background: '#141C2E', border: '1px solid rgba(201,168,76,0.1)', padding: '2rem', marginBottom: '1.5rem' }
   const sectionTitle = { fontFamily: 'Cinzel, serif', fontSize: '1.1rem', color: '#F5F0E8', marginBottom: '1.5rem', paddingBottom: '0.75rem', borderBottom: '1px solid rgba(201,168,76,0.1)' }
-=======
-  const inputStyle = { width: '100%', background: '#0A0E1A', border: '1px solid rgba(201,168,76,0.2)', color: '#F5F0E8', padding: '11px 15px', fontFamily: 'Crimson Pro, serif', fontSize: '1rem', outline: 'none', borderRadius: '4px', transition: 'border-color 0.2s' }
-  const labelStyle = { fontFamily: 'JetBrains Mono, monospace', fontSize: '0.6rem', letterSpacing: '0.2em', color: '#C9A84C', textTransform: 'uppercase' as const, marginBottom: '6px', display: 'block' }
-  const sectionStyle = { background: '#141C2E', border: '1px solid rgba(201,168,76,0.1)', padding: '2rem', marginBottom: '1.5rem' }
-  const sectionTitle = { fontFamily: 'Cinzel, serif', fontSize: '1rem', color: '#F5F0E8', marginBottom: '1.5rem', paddingBottom: '0.75rem', borderBottom: '1px solid rgba(201,168,76,0.1)' }
->>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
 
   if (!tenant) return <div style={{ padding: '2rem', color: '#B8B0A0', fontStyle: 'italic' }}>Loading...</div>
 

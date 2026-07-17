@@ -28,11 +28,7 @@ export default function PublicPetitionPage() {
     setLoading(false)
   }
 
-<<<<<<< HEAD
   const inputStyle = { width: '100%', background: '#141C2E', border: '1px solid rgba(201,168,76,0.2)', color: '#F5F0E8', padding: '11px 15px', fontFamily: 'Crimson Pro, serif', fontSize: '1.1rem', outline: 'none', borderRadius: '4px', transition: 'border-color 0.2s' }
-=======
-  const inputStyle = { width: '100%', background: '#141C2E', border: '1px solid rgba(201,168,76,0.2)', color: '#F5F0E8', padding: '11px 15px', fontFamily: 'Crimson Pro, serif', fontSize: '1rem', outline: 'none', borderRadius: '4px', transition: 'border-color 0.2s' }
->>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
   const labelStyle = { fontFamily: 'JetBrains Mono, monospace', fontSize: '0.6rem', letterSpacing: '0.2em', color: '#C9A84C', textTransform: 'uppercase' as const, marginBottom: '6px', display: 'block' }
 
   if (submitted) {
@@ -80,13 +76,9 @@ export default function PublicPetitionPage() {
               <option value="no">No</option>
             </select>
           </div>
-<<<<<<< HEAD
           
           <div>
             
-=======
-          <div>
->>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
             <label style={labelStyle}>Why do you wish to become a Freemason? *</label>
             <textarea value={form.reason} onChange={e => setForm(p => ({ ...p, reason: e.target.value }))} rows={4} placeholder="In your own words..." style={{ ...inputStyle, resize: 'vertical' }} required />
           </div>

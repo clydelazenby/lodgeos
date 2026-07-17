@@ -15,11 +15,7 @@ export default function SignupPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
-<<<<<<< HEAD
     const supabase = createClient()
-=======
-    const supabase = await createClient()
->>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
     const { error: err } = await supabase.auth.signUp({
       email: account.email,
       password: account.password,
@@ -32,11 +28,7 @@ export default function SignupPage() {
     router.push('/onboarding/setup')
   }
 
-<<<<<<< HEAD
   const inputStyle = { width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(201,168,76,0.2)', color: '#F5F0E8', padding: '12px 16px', fontFamily: 'Crimson Pro, serif', fontSize: '1.1rem', outline: 'none', borderRadius: '4px', transition: 'border-color 0.2s' }
-=======
-  const inputStyle = { width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(201,168,76,0.2)', color: '#F5F0E8', padding: '12px 16px', fontFamily: 'Crimson Pro, serif', fontSize: '1rem', outline: 'none', borderRadius: '4px', transition: 'border-color 0.2s' }
->>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
   const labelStyle = { fontFamily: 'JetBrains Mono, monospace', fontSize: '0.62rem', letterSpacing: '0.2em', color: '#C9A84C', textTransform: 'uppercase' as const, marginBottom: '6px', display: 'block' }
 
   return (

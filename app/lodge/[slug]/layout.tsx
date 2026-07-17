@@ -46,12 +46,9 @@ export default async function LodgeAdminLayout({
   const base = `/lodge/${params.slug}`
   const navItems = [
     { label: 'Dashboard', href: `${base}/dashboard` },
-<<<<<<< HEAD
     { label: 'Lodge Room', href: `${base}/lodge-room` },
     { label: 'Meeting Mode', href: `${base}/meeting` },
     { label: 'Analytics', href: `${base}/analytics` },
-=======
->>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
     { label: 'Members', href: `${base}/members` },
     { label: 'Dues', href: `${base}/dues` },
     { label: 'Petitions', href: `${base}/petitions` },

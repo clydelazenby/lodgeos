@@ -6,11 +6,7 @@ export default function PortalDuesPage() {
   const [membership, setMembership] = useState<any>(null)
   const [payments, setPayments] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
-<<<<<<< HEAD
   const supabase = createClient()
-=======
-  const supabase = await createClient()
->>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
 
   useEffect(() => {
     const load = async () => {
@@ -79,11 +75,7 @@ export default function PortalDuesPage() {
           <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1.1rem', color: '#F5F0E8', marginBottom: '0.5rem' }}>
             {new Date().getFullYear()} dues outstanding
           </div>
-<<<<<<< HEAD
           <p style={{ fontSize: '1.1rem', color: '#B8B0A0', fontStyle: 'italic', marginBottom: '1.5rem' }}>
-=======
-          <p style={{ fontSize: '1rem', color: '#B8B0A0', fontStyle: 'italic', marginBottom: '1.5rem' }}>
->>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
             Pay your annual dues to maintain good standing in {tenant?.name} #{tenant?.number}.
           </p>
           <div style={{ fontFamily: 'Cinzel, serif', fontSize: '2.5rem', fontWeight: 700, color: '#C9A84C', marginBottom: '1.5rem' }}>${tenant?.dues_amount}</div>

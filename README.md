@@ -108,7 +108,6 @@ schema and must be run **in order, after** schema.sql, via Supabase →
    `profiles.date_of_birth`, optional, used by the trestleboard
    generator's birthday section. Existing members will show no birthday
    until this is entered manually or self-reported.
-<<<<<<< HEAD
 6. `lib/migrations/007_file_storage.sql` — creates the `avatars`
    (public) and `documents` (private) Supabase Storage buckets with
    RLS, and adds `documents.storage_path`/`mime_type`. Wires up
@@ -125,8 +124,6 @@ schema and must be run **in order, after** schema.sql, via Supabase →
    before changing this — the security design specifically prevents a
    screenshotted QR from being replayed at a meeting the person didn't
    attend.
-=======
->>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
 
 If provisioning a brand new database, it's equally valid to fold all
 three migrations' changes directly into `schema.sql` and skip running

@@ -7,11 +7,7 @@ export async function GET(request: Request) {
   const next = searchParams.get('next') ?? '/portal'
 
   if (code) {
-<<<<<<< HEAD
     const supabase = createClient()
-=======
-    const supabase = await createClient()
->>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
       // Check if lodge admin or brother

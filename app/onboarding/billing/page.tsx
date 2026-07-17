@@ -37,11 +37,7 @@ export default function BillingOnboardingPage() {
     <div>
       <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.62rem', letterSpacing: '0.3em', color: '#C9A84C', marginBottom: '0.75rem' }}>STEP 4 OF 5</div>
       <h1 style={{ fontFamily: 'Cinzel, serif', fontSize: '1.8rem', color: '#F5F0E8', marginBottom: '0.5rem' }}>Choose your plan</h1>
-<<<<<<< HEAD
       <p style={{ fontSize: '1.1rem', color: '#B8B0A0', fontStyle: 'italic', marginBottom: '2rem' }}>14-day free trial on all plans. No charge until your trial ends. Cancel anytime.</p>
-=======
-      <p style={{ fontSize: '1rem', color: '#B8B0A0', fontStyle: 'italic', marginBottom: '2rem' }}>14-day free trial on all plans. No charge until your trial ends. Cancel anytime.</p>
->>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
 
       {/* Billing toggle */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '2rem', background: '#141C2E', padding: '6px', borderRadius: '6px', width: 'fit-content' }}>
@@ -58,11 +54,7 @@ export default function BillingOnboardingPage() {
           <div key={key} onClick={() => setSelectedPlan(key)}
             style={{ background: selectedPlan === key ? '#1C2640' : '#141C2E', padding: '1.5rem', cursor: 'pointer', border: selectedPlan === key ? '2px solid #C9A84C' : '2px solid transparent', position: 'relative', transition: 'all 0.2s' }}>
             {key === 'pro' && <div style={{ position: 'absolute', top: '-1px', right: '12px', background: '#C9A84C', color: '#0A0E1A', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.52rem', letterSpacing: '0.08em', padding: '3px 10px', textTransform: 'uppercase' }}>Popular</div>}
-<<<<<<< HEAD
             <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1.1rem', color: selectedPlan === key ? '#C9A84C' : '#F5F0E8', marginBottom: '0.5rem' }}>{plan.name}</div>
-=======
-            <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1rem', color: selectedPlan === key ? '#C9A84C' : '#F5F0E8', marginBottom: '0.5rem' }}>{plan.name}</div>
->>>>>>> cf585ed7f3e904382177b4c602f41a0ed7d0ca4d
             <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1.8rem', fontWeight: 700, color: '#F5F0E8', lineHeight: 1 }}>
               ${billing === 'annual' ? plan.price_annual : plan.price_monthly}
               <span style={{ fontFamily: 'Crimson Pro, serif', fontSize: '0.9rem', color: '#B8B0A0', fontWeight: 400 }}>/mo</span>
