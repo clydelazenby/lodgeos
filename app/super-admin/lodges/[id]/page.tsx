@@ -1,4 +1,6 @@
 'use client'
+
+
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useParams, useRouter } from 'next/navigation'
@@ -35,38 +37,23 @@ console.log('TENANT ID CLEAN:', tenantId)
 
   useEffect(() => {
     const load = async () => {
-const result = await supabase
-  .from('tenants')
-  .select('*')
+const response = await fetch(
+  `/api/super-admin/lodge/${tenantId}`
+)
 
-console.log('ALL TENANTS', result)
+const result = await response.json()
 
-const tenantData =
-  result.data?.find(
-    (t: any) => t.id === tenantId
-  )
+console.log('LODGE API RESULT', result)
 
-if (!tenantData) {
+if (!response.ok) {
   setLoading(false)
   return
 }
 
-setTenant(tenantData)
-setForm(tenantData)
-
-const membersResult = await supabase
-  .from('tenant_members')
-  .select('*, profiles(first_name, last_name, email)')
-  .eq('tenant_id', tenantId)
-  .order('created_at')
-
-console.log('MEMBERS RESULT', membersResult)
-
-setMembers(membersResult.data ?? [])
-      setLoading(false)
-    }
-    load()
-  }, [tenantId])
+setTenant(result.tenant)
+setForm(result.tenant)
+setMembers(result.members ?? [])
+setLoading(false)
 
   const saveTenant = async () => {
     setSaving(true)
