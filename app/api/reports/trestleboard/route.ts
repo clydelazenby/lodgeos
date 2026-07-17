@@ -71,9 +71,14 @@ export async function POST(request: Request) {
       generatedAt: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
     }
 
-    const pdfBuffer = await renderToBuffer(React.createElement(TrestleboardDocument, { data: reportData }))
+    const pdfBuffer = await renderToBuffer(
+  React.createElement(
+    TrestleboardDocument as any,
+    { data: reportData }
+  ) as any
+)
 
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(new Uint8Array(pdfBuffer), {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${tenant.name.replace(/\s+/g, '-')}-Trestleboard-${monthLabel.replace(/\s+/g, '-')}.pdf"`,

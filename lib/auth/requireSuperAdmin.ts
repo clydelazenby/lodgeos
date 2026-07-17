@@ -23,7 +23,7 @@ export type SuperAdminAuthResult =
  * not redundant.
  */
 export async function requireSuperAdmin(): Promise<SuperAdminAuthResult> {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {

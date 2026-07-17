@@ -98,9 +98,14 @@ export async function POST(request: Request) {
       conferralDetail,
     }
 
-    const pdfBuffer = await renderToBuffer(React.createElement(AnnualReturnDocument, { data: reportData }))
+    const pdfBuffer = await renderToBuffer(
+  React.createElement(
+    AnnualReturnDocument as any,
+    { data: reportData }
+  ) as any
+)
 
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(new Uint8Array(pdfBuffer), {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${tenant.name.replace(/\s+/g, '-')}-Annual-Return-${year}.pdf"`,

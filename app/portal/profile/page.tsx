@@ -5,7 +5,7 @@ import { AvatarUpload } from '@/components/lodge/AvatarUpload'
 import { MemberQrCode } from '@/components/lodge/MemberQrCode'
 
 export default async function PortalProfilePage() {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 

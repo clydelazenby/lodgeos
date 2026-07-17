@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { format } from 'date-fns'
 
 export default async function PortalPage() {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
