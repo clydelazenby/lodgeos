@@ -35,7 +35,14 @@ export default function SuperAdminLodgeDetailPage() {
   .select('*')
   .eq('id', tenantId)
   .single()
+const t = result.data
 
+if (!t) {
+  setLoading(false)
+  return
+}
+
+setTenant(t)
 console.log('TENANT DETAIL RESULT', result)
 
 const t = result.data
