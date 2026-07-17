@@ -47,7 +47,8 @@ export async function POST(request: Request) {
         model: MODEL,
         max_tokens: 1024,
         system: SYSTEM_PROMPT,
-        tools: SECRETARY_TOOLS,
+        tools: [...SECRETARY_TOOLS],
+
         messages: conversation,
       })
       console.log('Anthropic responded')
