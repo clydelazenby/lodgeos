@@ -38,6 +38,8 @@ console.log('TENANT ID CLEAN:', tenantId)
 const result = await supabase
   .from('tenants')
   .select('*')
+  .eq('id', tenantId)
+  .single()
       console.log('ALL TENANTS', result)
 console.log('TENANT DETAIL RESULT', JSON.stringify(result, null, 2))
 
@@ -51,12 +53,15 @@ if (!tenantData) {
 setTenant(tenantData)
 setForm(tenantData)
 
-      const { data: m } = await supabase
-        .from('tenant_members')
-        .select('*, profiles(first_name, last_name, email)')
-        .eq('tenant_id', tenantId)
-        .order('created_at')
-      setMembers(m ?? [])
+const membersResult = await supabase
+  .from('tenant_members')
+  .select('*, profiles(first_name, last_name, email)')
+  .eq('tenant_id', tenantId)
+  .order('created_at')
+
+console.log('MEMBERS RESULT', membersResult)
+
+setMembers(membersResult.data ?? [])
       setLoading(false)
     }
     load()
