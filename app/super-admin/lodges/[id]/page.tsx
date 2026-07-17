@@ -38,12 +38,13 @@ console.log('TENANT ID CLEAN:', tenantId)
 const result = await supabase
   .from('tenants')
   .select('*')
-  .eq('id', tenantId)
-  .single()
-      console.log('ALL TENANTS', result)
-console.log('TENANT DETAIL RESULT', JSON.stringify(result, null, 2))
 
-const tenantData = result.data
+console.log('ALL TENANTS', result)
+
+const tenantData =
+  result.data?.find(
+    (t: any) => t.id === tenantId
+  )
 
 if (!tenantData) {
   setLoading(false)
