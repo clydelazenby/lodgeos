@@ -1,7 +1,8 @@
 
 
 import { createClient } from '@/lib/supabase/server'
-import { getTenantBySlug } from '@/lib/supabase/queries'
+import { getTenantBySlug, getSessionUser, getProfile, getMembership } from '@/lib/supabase/queries'
+import { can } from '@/lib/auth/permissions'
 import { notFound } from 'next/navigation'
 import { MemberProfileTabs } from '@/components/lodge/MemberProfileTabs'
 
@@ -21,10 +22,26 @@ export default async function MemberDetailPage({ params }: { params: { slug: str
 
   if (!membership) notFound()
 
-  const [{ data: attendanceHistory }, { data: paymentHistory }, { data: degreeHistory }] = await Promise.all([
+  // Who is looking, and may he levy a charge? The 'finance' capability
+  // already covers the Treasurer and the Worshipful Master; this only
+  // decides whether to render the form. /api/dues/charges re-checks it
+  // and is the authority.
+  const viewer = await getSessionUser()
+  const [viewerProfile, viewerMembership] = await Promise.all([
+    viewer ? getProfile(viewer.id) : Promise.resolve(null),
+    viewer ? getMembership(tenant.id, viewer.id) : Promise.resolve(null),
+  ])
+  const canCharge = can(
+    (viewerMembership as any)?.tenant_role ?? null,
+    'finance',
+    viewerProfile?.platform_role === 'super_admin'
+  )
+
+  const [{ data: attendanceHistory }, { data: paymentHistory }, { data: degreeHistory }, { data: charges }] = await Promise.all([
     supabase.from('attendance').select('status, lodge_events(id, title, event_date)').eq('tenant_id', tenant.id).eq('member_id', params.memberId).order('lodge_events(event_date)', { ascending: false }),
     supabase.from('payments').select('*').eq('tenant_id', tenant.id).eq('member_id', params.memberId).eq('status', 'succeeded').order('created_at', { ascending: false }),
     supabase.from('degree_progress').select('*').eq('tenant_id', tenant.id).eq('member_id', params.memberId).order('degree'),
+    supabase.from('member_charges').select('*').eq('tenant_id', tenant.id).eq('member_id', params.memberId).order('created_at', { ascending: false }),
   ])
 
   return (
@@ -35,6 +52,8 @@ export default async function MemberDetailPage({ params }: { params: { slug: str
       attendanceHistory={attendanceHistory ?? []}
       paymentHistory={paymentHistory ?? []}
       degreeHistory={degreeHistory ?? []}
+      charges={charges ?? []}
+      canCharge={canCharge}
     />
   )
 }

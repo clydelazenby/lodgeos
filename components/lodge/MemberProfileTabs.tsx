@@ -5,15 +5,20 @@ import { format } from 'date-fns'
 import { T, pillTone } from '@/lib/designTokens'
 import { AvatarUpload } from '@/components/lodge/AvatarUpload'
 import { MemberQrCode } from '@/components/lodge/MemberQrCode'
+import { MemberChargeForm } from '@/components/lodge/MemberChargeForm'
 
 const TABS = ['Overview', 'Attendance', 'Dues', 'History', 'Notes'] as const
 type Tab = typeof TABS[number]
 
 export function MemberProfileTabs({
   slug, tenant, membership, attendanceHistory, paymentHistory, degreeHistory,
+  charges = [], canCharge = false,
 }: {
   slug: string; tenant: any; membership: any
   attendanceHistory: any[]; paymentHistory: any[]; degreeHistory: any[]
+  charges?: any[]
+  /** Finance tier — Treasurer, Worshipful Master, Secretary, admin. */
+  canCharge?: boolean
 }) {
   const [tab, setTab] = useState<Tab>('Overview')
   const [notes, setNotes] = useState(membership.notes ?? '')
@@ -25,6 +30,12 @@ export function MemberProfileTabs({
   const attendedCount = attendanceHistory.filter(a => a.status === 'present').length
   const attendanceRate = attendanceHistory.length ? Math.round((attendedCount / attendanceHistory.length) * 100) : null
   const totalPaid = paymentHistory.reduce((sum, pay) => sum + Number(pay.amount), 0)
+  // status is 'outstanding' | 'paid' | 'waived' (migration 014) — a
+  // waived charge is settled as far as the brother is concerned, so
+  // only 'outstanding' counts toward what he owes.
+  const outstanding = charges
+    .filter((c: any) => c.status === 'outstanding')
+    .reduce((sum: number, c: any) => sum + Number(c.amount), 0)
 
   const saveNotes = async () => {
     setSavingNotes(true)
@@ -131,6 +142,43 @@ export function MemberProfileTabs({
             <div><div style={labelStyle}>Total Paid (all time)</div><div style={{ fontFamily: T.display, fontSize: '1.4rem', color: T.success }}>${totalPaid.toLocaleString()}</div></div>
             <Link href={`/lodge/${slug}/dues`} style={{ fontFamily: T.mono, fontSize: '10.5px', color: T.gold, textDecoration: 'none' }}>Full Dues Ledger →</Link>
           </div>
+          {/* Charges owed, and the means to add one. The Dues page has
+              had this for the whole lodge; from a brother's own record
+              an officer had to leave, find that page and pick him out
+              of a dropdown. */}
+          <div style={{ ...sectionStyle, marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginBottom: charges.length ? '0.8rem' : 0 }}>
+              <div style={labelStyle}>
+                Charges{outstanding > 0 ? ` — $${outstanding.toLocaleString()} outstanding` : ''}
+              </div>
+              {canCharge && (
+                <MemberChargeForm
+                  tenantId={tenant.id}
+                  memberId={membership.user_id}
+                  memberName={`${p?.first_name ?? ''} ${p?.last_name ?? ''}`.trim() || 'this brother'}
+                />
+              )}
+            </div>
+            {charges.length === 0 ? (
+              <div style={{ padding: '1rem 0', textAlign: 'center', color: T.inkFainter, fontStyle: 'italic', fontSize: '0.85rem' }}>
+                No charges against this brother.
+              </div>
+            ) : charges.map((c: any, i: number) => (
+              <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', padding: '0.7rem 0', borderBottom: i < charges.length - 1 ? `1px solid ${T.border}` : 'none' }}>
+                <div>
+                  <div style={{ fontFamily: T.body, fontSize: '0.85rem', color: T.ink }}>{c.reason}</div>
+                  <div style={{ fontFamily: T.mono, fontSize: '10.5px', color: T.inkFaint }}>
+                    {format(new Date(c.created_at), 'MMM d, yyyy')} · {String(c.charge_type ?? 'other').replace(/_/g, ' ')}
+                  </div>
+                </div>
+                <div style={{ fontFamily: T.display, fontSize: '0.95rem', color: c.status === 'outstanding' ? T.gold : T.inkFaint, whiteSpace: 'nowrap' }}>
+                  ${Number(c.amount).toLocaleString()}
+                  {c.status !== 'outstanding' ? ` · ${c.status}` : ''}
+                </div>
+              </div>
+            ))}
+          </div>
+
           <div style={sectionStyle}>
             <div style={labelStyle}>Payment History</div>
             {paymentHistory.length === 0 ? (

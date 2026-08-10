@@ -245,7 +245,13 @@ textarea:user-invalid + .lodgeos-field-hint::after {
 
   /* Stat figures are sized for a desktop column; at full width on a
      phone they read as oversized without this. */
-  .lodgeos-app-main { padding: 1rem !important; }
+  .lodgeos-app-main {
+    padding: 1rem !important;
+    /* Room for the fixed "Ask the Secretary" button, which is 20px off
+       the bottom and was covering the last card on the page — on the
+       Lodge Room that is the Stations Filled count. */
+    padding-bottom: 5.5rem !important;
+  }
 
   /* Quick actions are the exception to the one-column rule: they are
      small, equal-weight, icon-led targets, and six of them stacked
@@ -386,13 +392,32 @@ textarea:user-invalid + .lodgeos-field-hint::after {
      regardless of container or media query. Without it the box stayed
      landscape while the chairs shrank, which fixed the horizontal
      crowding and left the vertical crowding untouched — measured as 2
-     overlapping pairs at a 336px plan. */
+     overlapping pairs at a 336px plan.
+
+     3/4 is the SAFE floor, kept for the narrowest phones. It is also
+     taller than the chairs need on a normal one, which is what made
+     the room read as stretched — a column of small circles with bands
+     of dead space above and below. The rule below shortens it wherever
+     there is measured room to do so. */
   .lodgeos-room-plan { aspect-ratio: 3 / 4 !important; min-width: 0 !important; }
   .lodgeos-room-chair-wrap { width: 48px !important; }
   .lodgeos-room-chair-circle { width: 38px !important; height: 38px !important; }
   .lodgeos-room-chair-name { display: none !important; }
   .lodgeos-room-label-full { display: none !important; }
   .lodgeos-room-label-short { display: block !important; font-size: 9px !important; }
+}
+
+/* Shorter plan wherever the chairs still fit without colliding.
+   MEASURED, not guessed: with the mobile chair box (48px wide, 53px
+   tall including its label) placed at the LAYOUT percentages, a square
+   plan is clean at a 336px width but produces two overlapping pairs at
+   300px and four at 260px — so 1/1 would have looked better on the
+   phone I was handed and broken on a smaller one. 4/5 is clean down to
+   a 280px plan, which is a 340px container once the card's 12px of
+   padding either side is taken off. Below that the 3/4 floor above
+   still applies. */
+@container lodgeroom (min-width: 340px) and (max-width: 560px) {
+  .lodgeos-room-plan { aspect-ratio: 4 / 5 !important; }
 }
 
 /* Stack the floor plan and its side panel much earlier than 767px.
