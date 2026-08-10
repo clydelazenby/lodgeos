@@ -136,7 +136,7 @@ export default function LodgeEventsPage() {
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexShrink: 0 }}>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1.3rem', color: counts?.yes ? '#5DBE85' : '#6B6355', lineHeight: 1 }}>
+                  <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1.3rem', color: counts?.yes ? '#5DBE85' : '#918879', lineHeight: 1 }}>
                     {counts?.yes ?? 0}
                   </div>
                   <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.55rem', letterSpacing: '0.1em', color: '#B8B0A0' }}>ATTENDING</div>

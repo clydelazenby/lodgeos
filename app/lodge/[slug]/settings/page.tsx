@@ -58,7 +58,7 @@ export default function LodgeSettingsPage() {
           <p style={{ fontFamily: 'Crimson Pro, serif', fontStyle: 'italic', color: '#B8B0A0' }}>Manage your lodge configuration — no code required</p>
         </div>
         {saved && <div style={{ background: 'rgba(39,174,96,0.15)', border: '1px solid rgba(39,174,96,0.3)', color: '#5DBE85', padding: '8px 16px', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.65rem', letterSpacing: '0.1em' }}>✓ SAVED</div>}
-        {saveError && <div style={{ background: 'rgba(231,76,60,0.15)', border: '1px solid rgba(231,76,60,0.3)', color: '#E74C3C', padding: '8px 16px', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.65rem', letterSpacing: '0.1em' }}>✕ NOT SAVED — {saveError}</div>}
+        {saveError && <div style={{ background: 'rgba(231,76,60,0.15)', border: '1px solid rgba(231,76,60,0.3)', color: '#EC5B4B', padding: '8px 16px', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.65rem', letterSpacing: '0.1em' }}>✕ NOT SAVED — {saveError}</div>}
       </div>
 
       {/* Lodge Identity */}

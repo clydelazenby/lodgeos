@@ -63,7 +63,7 @@ export default function SignupPage() {
               <label style={labelStyle}>Password</label>
               <input type="password" value={account.password} onChange={e => setAccount(p => ({ ...p, password: e.target.value }))} placeholder="At least 8 characters" style={inputStyle} minLength={8} required />
             </div>
-            {error && <div style={{ background: 'rgba(192,57,43,0.15)', border: '1px solid rgba(192,57,43,0.3)', color: '#E74C3C', padding: '10px 14px', fontSize: '0.9rem', borderRadius: '4px' }}>{error}</div>}
+            {error && <div style={{ background: 'rgba(192,57,43,0.15)', border: '1px solid rgba(192,57,43,0.3)', color: '#EC5B4B', padding: '10px 14px', fontSize: '0.9rem', borderRadius: '4px' }}>{error}</div>}
             <button type="submit" disabled={loading} className="btn-gold" style={{ width: '100%', opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer', marginTop: '0.5rem' }}>
               {loading ? 'Creating account...' : 'Create Account & Continue →'}
             </button>

@@ -219,7 +219,7 @@ export function DocumentUploadButton({ tenantId }: { tenantId: string }) {
               <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
             </div>
 
-            {error && <div style={{ color: '#E74C3C', fontSize: '0.78rem' }}>{error}</div>}
+            {error && <div style={{ color: '#EC5B4B', fontSize: '0.78rem' }}>{error}</div>}
             {progress && !error && (
               <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.62rem', color: '#C9A84C', letterSpacing: '0.08em' }}>
                 {progress}
@@ -294,7 +294,7 @@ export function DocumentPlayer({
         >
           {loading ? '…' : '▶ Play'}
         </button>
-        {error && <div style={{ color: '#E74C3C', fontSize: '0.6rem', marginTop: 4 }}>{error}</div>}
+        {error && <div style={{ color: '#EC5B4B', fontSize: '0.6rem', marginTop: 4 }}>{error}</div>}
       </span>
     )
   }
@@ -356,7 +356,7 @@ export function DocumentDownloadLink({ documentId, label = 'View' }: { documentI
       >
         {loading ? '...' : label}
       </button>
-      {error && <div style={{ color: '#E74C3C', fontSize: '0.6rem', marginTop: '4px' }}>{error}</div>}
+      {error && <div style={{ color: '#EC5B4B', fontSize: '0.6rem', marginTop: '4px' }}>{error}</div>}
     </span>
   )
 }
@@ -404,7 +404,7 @@ export function DocumentDeleteButton({
         title="Delete document"
         aria-label={`Delete ${documentName}`}
         style={{
-          fontFamily: 'JetBrains Mono, monospace', fontSize: '0.58rem', color: '#E74C3C',
+          fontFamily: 'JetBrains Mono, monospace', fontSize: '0.58rem', color: '#EC5B4B',
           background: 'transparent', border: '1px solid rgba(231,76,60,0.25)',
           padding: '4px 10px', cursor: 'pointer', marginLeft: '6px',
         }}

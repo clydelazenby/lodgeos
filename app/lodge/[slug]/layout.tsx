@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { AiSecretaryPanel } from '@/components/lodge/AiSecretaryPanel'
 import { ResponsiveNavShell } from '@/components/lodge/ResponsiveNavShell'
 import { cookies } from 'next/headers'
+import { can, type Capability } from '@/lib/auth/permissions'
 
 export default async function LodgeAdminLayout({
   children,
@@ -83,14 +84,18 @@ export default async function LodgeAdminLayout({
    * Nothing was removed; every one of the seventeen pages is still
    * reachable and no URL changed.
    */
-  const navEntries = [
+  const viewerRole = (membership as any)?.tenant_role ?? null
+  const viewerIsSuperAdmin = profile?.platform_role === 'super_admin'
+  const allow = (c: Capability) => can(viewerRole, c, viewerIsSuperAdmin)
+
+  const allNavEntries: ({ label: string; href: string; need?: Capability } | { label: string; need?: Capability; items: { label: string; href: string; need?: Capability }[] })[] = [
     { label: 'Dashboard', href: `${base}/dashboard` },
     {
       label: 'Meetings',
       items: [
         { label: 'Lodge Room', href: `${base}/lodge-room` },
-        { label: 'Meeting Mode', href: `${base}/meeting` },
-        { label: 'Attendance', href: `${base}/attendance` },
+        { label: 'Meeting Mode', href: `${base}/meeting`, need: 'meetings' },
+        { label: 'Attendance', href: `${base}/attendance`, need: 'meetings' },
         { label: 'Events', href: `${base}/events` },
       ],
     },
@@ -98,30 +103,48 @@ export default async function LodgeAdminLayout({
       label: 'Brothers',
       items: [
         { label: 'Members', href: `${base}/members` },
-        { label: 'Degrees', href: `${base}/degrees` },
-        { label: 'Petitions', href: `${base}/petitions` },
-        { label: 'Care', href: `${base}/care` },
-        { label: 'Coverage', href: `${base}/bench` },
+        { label: 'Degrees', href: `${base}/degrees`, need: 'meetings' },
+        { label: 'Petitions', href: `${base}/petitions`, need: 'roster' },
+        { label: 'Care', href: `${base}/care`, need: 'insight' },
+        { label: 'Coverage', href: `${base}/bench`, need: 'insight' },
       ],
     },
-    { label: 'Dues', href: `${base}/dues` },
+    { label: 'Dues', href: `${base}/dues`, need: 'finance' },
     {
       label: 'Records',
       items: [
         { label: 'Documents', href: `${base}/documents` },
-        { label: 'Communications', href: `${base}/communications` },
-        { label: 'Analytics', href: `${base}/analytics` },
-        { label: 'Reports', href: `${base}/reports` },
+        { label: 'Communications', href: `${base}/communications`, need: 'communications' },
+        { label: 'Analytics', href: `${base}/analytics`, need: 'insight' },
+        { label: 'Reports', href: `${base}/reports`, need: 'insight' },
       ],
     },
     {
       label: 'Lodge',
       items: [
-        { label: 'Settings', href: `${base}/settings` },
-        { label: 'Transition', href: `${base}/transition` },
+        { label: 'Settings', href: `${base}/settings`, need: 'settings' },
+        { label: 'Transition', href: `${base}/transition`, need: 'settings' },
       ],
     },
   ]
+
+  /**
+   * Drop what this officer cannot use, and drop a section that ends up
+   * empty — a "Lodge" heading that opens onto nothing is worse than no
+   * heading. Entries with no `need` are open to every officer tier.
+   *
+   * This is presentation only. Every route behind these links re-checks
+   * the tier server-side; see lib/auth/permissions.ts.
+   */
+  const navEntries = allNavEntries
+    .map((entry) => {
+      if (!('items' in entry)) return entry
+      const items = entry.items.filter((i) => !i.need || allow(i.need))
+      return items.length ? { ...entry, items } : null
+    })
+    .filter((entry): entry is NonNullable<typeof entry> =>
+      entry !== null && (!('href' in entry) || !entry.need || allow(entry.need))
+    )
 
   return (
     <div style={{ minHeight: '100vh', background: '#0A0E1A' }}>

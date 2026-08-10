@@ -104,7 +104,7 @@ export default function SuperAdminLodgeDetailPage() {
       const sectionStyle = { background: '#141C2E', border: '1px solid rgba(201,168,76,0.1)', padding: '2rem', marginBottom: '1.5rem' }
 
       if (loading) return <div style={{ padding: '2rem', color: '#B8B0A0', fontStyle: 'italic' }}>Loading...</div>
-      if (!tenant) return <div style={{ padding: '2rem', color: '#E74C3C' }}>Lodge not found.</div>
+      if (!tenant) return <div style={{ padding: '2rem', color: '#EC5B4B' }}>Lodge not found.</div>
 
       return (
         <div>
@@ -181,7 +181,7 @@ export default function SuperAdminLodgeDetailPage() {
             <button onClick={saveTenant} disabled={saving} className="btn-gold" style={{ fontSize: '0.7rem', opacity: saving ? 0.7 : 1 }}>
               {saving ? 'Saving...' : 'Save All Changes'}
             </button>
-            {saveMsg && <span style={{ color: saveMsg.startsWith('Failed') ? '#E74C3C' : '#5DBE85', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.7rem' }}>{saveMsg}</span>}
+            {saveMsg && <span style={{ color: saveMsg.startsWith('Failed') ? '#EC5B4B' : '#5DBE85', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.7rem' }}>{saveMsg}</span>}
           </div>
 
           {/* Roster & Roles */}

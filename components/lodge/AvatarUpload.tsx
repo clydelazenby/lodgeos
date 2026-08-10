@@ -73,7 +73,7 @@ export function AvatarUpload({ currentUrl, initials }: { currentUrl: string | nu
           />
         </label>
         <div style={{ color: '#B8B0A0', fontSize: '0.72rem', marginTop: '6px' }}>JPEG, PNG, or WebP · up to 5MB</div>
-        {error && <div style={{ color: '#E74C3C', fontSize: '0.72rem', marginTop: '4px' }}>{error}</div>}
+        {error && <div style={{ color: '#EC5B4B', fontSize: '0.72rem', marginTop: '4px' }}>{error}</div>}
       </div>
     </div>
   )

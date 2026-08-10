@@ -99,7 +99,7 @@ export default function LodgeReportsPage() {
             {generating ? 'Generating…' : 'Generate & Download PDF'}
           </button>
         </div>
-        {error && <div style={{ color: '#E74C3C', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.7rem', marginTop: '10px' }}>{error}</div>}
+        {error && <div style={{ color: '#EC5B4B', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.7rem', marginTop: '10px' }}>{error}</div>}
       </div>
 
       <div style={{ background: '#141C2E', border: '1px solid rgba(201,168,76,0.1)', padding: '2rem' }}>
@@ -126,7 +126,7 @@ export default function LodgeReportsPage() {
         <button onClick={generateTrestleboard} disabled={tbGenerating || !tenant} className="btn-gold" style={{ fontSize: '0.7rem', opacity: tbGenerating || !tenant ? 0.6 : 1 }}>
           {tbGenerating ? 'Generating…' : 'Generate & Download PDF'}
         </button>
-        {tbError && <div style={{ color: '#E74C3C', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.7rem', marginTop: '10px' }}>{tbError}</div>}
+        {tbError && <div style={{ color: '#EC5B4B', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.7rem', marginTop: '10px' }}>{tbError}</div>}
       </div>
     </div>
   )

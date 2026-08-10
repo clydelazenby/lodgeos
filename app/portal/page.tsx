@@ -42,7 +42,7 @@ export default async function PortalPage() {
       {duesDue && (
         <div style={{ background: 'rgba(192,57,43,0.12)', border: '1px solid rgba(192,57,43,0.3)', padding: '1.25rem 1.5rem', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <div style={{ fontFamily: 'Cinzel, serif', fontSize: '0.9rem', color: '#E74C3C', marginBottom: '0.25rem' }}>Annual Dues Outstanding</div>
+            <div style={{ fontFamily: 'Cinzel, serif', fontSize: '0.9rem', color: '#EC5B4B', marginBottom: '0.25rem' }}>Annual Dues Outstanding</div>
             <p style={{ fontSize: '0.9rem', color: '#B8B0A0', margin: 0 }}>Your {new Date().getFullYear()} dues of <strong style={{ color: '#F5F0E8' }}>${tenant.dues_amount}</strong> are due. Pay now to maintain good standing.</p>
           </div>
           <Link href="/portal/dues" className="btn-gold" style={{ fontSize: '0.68rem', whiteSpace: 'nowrap' }}>Pay Dues Now →</Link>
@@ -61,7 +61,7 @@ export default async function PortalPage() {
         </div>
         <div style={{ background: '#141C2E', padding: '1.4rem' }}>
           <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.56rem', letterSpacing: '0.2em', color: '#C9A84C', textTransform: 'uppercase', marginBottom: '0.6rem' }}>Amount Due</div>
-          <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1.6rem', fontWeight: 700, color: duesDue ? '#E74C3C' : '#5DBE85' }}>{duesDue ? `$${tenant.dues_amount}` : '$0'}</div>
+          <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1.6rem', fontWeight: 700, color: duesDue ? '#EC5B4B' : '#5DBE85' }}>{duesDue ? `$${tenant.dues_amount}` : '$0'}</div>
         </div>
         <div style={{ background: '#141C2E', padding: '1.4rem' }}>
           <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.56rem', letterSpacing: '0.2em', color: '#C9A84C', textTransform: 'uppercase', marginBottom: '0.6rem' }}>Role</div>

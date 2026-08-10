@@ -26,7 +26,7 @@ const ACTION_LABEL: Record<string, string> = {
 const ACTION_STYLE: Record<string, React.CSSProperties> = {
   under_review: { background: 'transparent', border: '1px solid #C9A84C', color: '#C9A84C' },
   approved: { background: '#5DBE85', border: '1px solid #5DBE85', color: '#0A0E1A' },
-  denied: { background: 'transparent', border: '1px solid #E74C3C', color: '#E74C3C' },
+  denied: { background: 'transparent', border: '1px solid #EC5B4B', color: '#EC5B4B' },
 }
 
 export function PetitionRowActions({
@@ -87,7 +87,7 @@ export function PetitionRowActions({
           </button>
         ))}
       </div>
-      {error && <div style={{ color: '#E74C3C', fontSize: '0.58rem', fontFamily: 'JetBrains Mono, monospace' }}>{error}</div>}
+      {error && <div style={{ color: '#EC5B4B', fontSize: '0.58rem', fontFamily: 'JetBrains Mono, monospace' }}>{error}</div>}
     </div>
   )
 }

@@ -88,7 +88,7 @@ export default function TransitionDigestPage() {
       </div>
 
       {totalOpenItems > 0 && (
-        <div style={{ background: 'rgba(231,76,60,0.08)', border: '1px solid rgba(231,76,60,0.25)', padding: '14px 18px', marginBottom: '1.5rem', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem', color: '#E74C3C' }}>
+        <div style={{ background: 'rgba(231,76,60,0.08)', border: '1px solid rgba(231,76,60,0.25)', padding: '14px 18px', marginBottom: '1.5rem', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem', color: '#EC5B4B' }}>
           {totalOpenItems} item{totalOpenItems !== 1 ? 's' : ''} need attention across petitions, care check-ins, and candidate progress
         </div>
       )}
@@ -110,7 +110,7 @@ export default function TransitionDigestPage() {
         {careOverdue.map((c, i) => (
           <div key={i} style={itemStyle}>
             <span>{c.person_name}</span>
-            <span style={{ color: '#E74C3C', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.7rem' }}>{c.care_type}</span>
+            <span style={{ color: '#EC5B4B', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.7rem' }}>{c.care_type}</span>
           </div>
         ))}
       </div>

@@ -33,7 +33,12 @@ export const T = {
   // Text
   ink: '#F5F0E8',         // primary text — warm off-white, not pure white, matching the reference's slightly cream body text
   inkFaint: '#B8B0A0',    // secondary text, timestamps, labels
-  inkFainter: '#6B6355',  // tertiary, placeholder-level text
+  // Lightened from #6B6355, which scored 2.87:1 against the card
+  // background — far under WCAG AA's 4.5:1 for body text, and this is
+  // not decoration: it renders timestamps, empty states, "no email on
+  // file" and helper copy. #918879 measures 4.86:1 on cards and 5.50:1
+  // on the page background while staying the same warm grey.
+  inkFainter: '#918879',  // tertiary, placeholder-level text
 
   // Gold — the one accent, matching tenant.primary_color default exactly.
   // Used for icon badges, active nav states, primary buttons, headings.
@@ -47,7 +52,9 @@ export const T = {
   // over from the vellum system rather than abandoned with it.
   success: '#5DBE85',
   successDim: 'rgba(93,190,133,0.12)',
-  danger: '#E74C3C',
+  // Nudged from #E74C3C, which was 4.45:1 on cards — just under AA.
+  // #EC5B4B reads identically and measures 4.99:1.
+  danger: '#EC5B4B',
   dangerDim: 'rgba(231,76,60,0.12)',
   info: '#7BB8D4',
   infoDim: 'rgba(123,184,212,0.12)',
@@ -62,7 +69,19 @@ export const T = {
   // a clean sans for body/UI text, and a monospace for figures/labels
   // where precision matters (dates, counts, timers).
   display: "'Cinzel', Georgia, serif",
-  body: "'Inter', -apple-system, system-ui, sans-serif",
+  // Crimson Pro, NOT Inter.
+  //
+  // T.body was Inter while globals.css sets `body { font-family:
+  // 'Crimson Pro' }` and 25 other files hardcode Crimson Pro inline.
+  // Only seven files read this token — Dashboard, Lodge Room, Meeting
+  // Mode, Analytics and their components — so those four tabs rendered
+  // in a sans-serif while every other tab in the same app rendered in a
+  // serif. Moving between tabs visibly changed the typeface.
+  //
+  // Crimson Pro wins because it is what the base stylesheet, the sign-in
+  // screen and the public lodge site already use: the odd one out was
+  // this token, not the other 25 files.
+  body: "'Crimson Pro', Georgia, serif",
   mono: "'JetBrains Mono', monospace",
 
   radius: '10px', // the reference's cards read as softly, consistently rounded — not sharp, not pill-shaped

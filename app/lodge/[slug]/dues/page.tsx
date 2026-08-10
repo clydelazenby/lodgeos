@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
-import { getTenantBySlug } from '@/lib/supabase/queries'
+import { getTenantBySlug, getSessionUser, getProfile, getMembership } from '@/lib/supabase/queries'
+import { can } from '@/lib/auth/permissions'
 import { notFound } from 'next/navigation'
 import { format } from 'date-fns'
 import { T } from '@/lib/designTokens'
@@ -39,6 +40,20 @@ export default async function LodgeDuesPage({ params }: { params: { slug: string
   const supabase = await createClient()
   const tenant = await getTenantBySlug(params.slug)
   if (!tenant) notFound()
+
+  // Read-only for officers the finance routes would reject. Presentation
+  // only — /api/dues/rate, /api/dues/charges and /api/dues/remind each
+  // re-check the tier server-side.
+  const viewer = await getSessionUser()
+  const [viewerProfile, viewerMembership] = await Promise.all([
+    viewer ? getProfile(viewer.id) : Promise.resolve(null),
+    viewer ? getMembership(tenant.id, viewer.id) : Promise.resolve(null),
+  ])
+  const canManageFinance = can(
+    (viewerMembership as any)?.tenant_role ?? null,
+    'finance',
+    viewerProfile?.platform_role === 'super_admin'
+  )
 
   const [{ data: members }, { data: payments }, { data: charges }] = await Promise.all([
     supabase.from('tenant_members').select('*, profiles(first_name, last_name, email)').eq('tenant_id', tenant.id).eq('is_active', true).order('created_at'),
@@ -87,7 +102,7 @@ export default async function LodgeDuesPage({ params }: { params: { slug: string
             {paid.length} paid · {due.length} outstanding · {exempt.length} exempt
           </p>
         </div>
-        <DuesReminderButton tenantId={tenant.id} dueCount={due.length} />
+        {canManageFinance && <DuesReminderButton tenantId={tenant.id} dueCount={due.length} />}
       </div>
 
       {/* Three figures, not six. Collected and Outstanding are the
@@ -115,7 +130,13 @@ export default async function LodgeDuesPage({ params }: { params: { slug: string
             <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.56rem', letterSpacing: '0.2em', color: T.gold, textTransform: 'uppercase', marginBottom: '0.5rem' }}>
               Annual Rate
             </div>
-            <DuesRateEditor tenantId={tenant.id} current={rate} />
+            {canManageFinance ? (
+              <DuesRateEditor tenantId={tenant.id} current={rate} />
+            ) : (
+              <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1.7rem', fontWeight: 700, color: T.ink, lineHeight: 1 }}>
+                {money(rate)}
+              </div>
+            )}
           </div>
         </div>
 
@@ -179,11 +200,13 @@ export default async function LodgeDuesPage({ params }: { params: { slug: string
         )}
       </div>
 
-      <ChargesPanel
-        tenantId={tenant.id}
-        members={(members ?? []).map((m: any) => ({ user_id: m.user_id, profiles: m.profiles }))}
-        charges={(charges ?? []) as any}
-      />
+      {canManageFinance && (
+        <ChargesPanel
+          tenantId={tenant.id}
+          members={(members ?? []).map((m: any) => ({ user_id: m.user_id, profiles: m.profiles }))}
+          charges={(charges ?? []) as any}
+        />
+      )}
 
       <div className="data-box">
         <div className="data-box-head">Recent Payments</div>

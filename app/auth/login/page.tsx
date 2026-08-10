@@ -245,7 +245,7 @@ style: {
                   style: {
                     background: 'rgba(192,57,43,0.15)',
                     border: '1px solid rgba(192,57,43,0.3)',
-                    color: '#E74C3C',
+                    color: '#EC5B4B',
                     padding: '10px 14px',
                     fontSize: '0.9rem',
                     borderRadius: '4px',

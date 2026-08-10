@@ -138,7 +138,7 @@ export default function LodgeMembersPage() {
         <div style={{ background: '#141C2E', border: '1px solid rgba(201,168,76,0.15)', padding: '2rem', marginBottom: '2rem' }}>
           <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1.1rem', color: '#C9A84C', marginBottom: '1.5rem' }}>Invite a Brother</div>
           {inviteMsg && (
-            <div style={{ background: inviteMsg.startsWith('✓') ? 'rgba(39,174,96,0.15)' : 'rgba(192,57,43,0.15)', border: `1px solid ${inviteMsg.startsWith('✓') ? 'rgba(39,174,96,0.3)' : 'rgba(192,57,43,0.3)'}`, color: inviteMsg.startsWith('✓') ? '#5DBE85' : '#E74C3C', padding: '10px 14px', borderRadius: '4px', marginBottom: '1rem', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.72rem' }}>
+            <div style={{ background: inviteMsg.startsWith('✓') ? 'rgba(39,174,96,0.15)' : 'rgba(192,57,43,0.15)', border: `1px solid ${inviteMsg.startsWith('✓') ? 'rgba(39,174,96,0.3)' : 'rgba(192,57,43,0.3)'}`, color: inviteMsg.startsWith('✓') ? '#5DBE85' : '#EC5B4B', padding: '10px 14px', borderRadius: '4px', marginBottom: '1rem', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.72rem' }}>
               {inviteMsg}
             </div>
           )}
@@ -248,7 +248,7 @@ export default function LodgeMembersPage() {
                         style={{
                           fontFamily: 'JetBrains Mono, monospace', fontSize: '0.58rem',
                           background: 'transparent', border: '1px solid rgba(231,76,60,0.25)',
-                          color: '#E74C3C', padding: '4px 10px', borderRadius: '3px', cursor: 'pointer',
+                          color: '#EC5B4B', padding: '4px 10px', borderRadius: '3px', cursor: 'pointer',
                         }}
                       >
                         Remove
@@ -285,7 +285,7 @@ export default function LodgeMembersPage() {
               analytics will not change. If they return, invite them again and their history
               reattaches.
             </p>
-            <p style={{ fontSize: '0.92rem', color: '#6B6355', fontStyle: 'italic', margin: 0 }}>
+            <p style={{ fontSize: '0.92rem', color: '#918879', fontStyle: 'italic', margin: 0 }}>
               To suspend a brother temporarily instead, set their status to Inactive rather than
               removing them.
             </p>

@@ -114,7 +114,7 @@ export function AiSecretaryPanel({ tenantId }: { tenantId: string }) {
           </div>
         )}
         {error && (
-          <div style={{ alignSelf: 'flex-start', color: '#E74C3C', fontSize: '0.75rem', fontFamily: 'JetBrains Mono, monospace', background: 'rgba(231,76,60,0.08)', border: '1px solid rgba(231,76,60,0.2)', padding: '8px 12px', borderRadius: '6px' }}>
+          <div style={{ alignSelf: 'flex-start', color: '#EC5B4B', fontSize: '0.75rem', fontFamily: 'JetBrains Mono, monospace', background: 'rgba(231,76,60,0.08)', border: '1px solid rgba(231,76,60,0.2)', padding: '8px 12px', borderRadius: '6px' }}>
             {error}
           </div>
         )}

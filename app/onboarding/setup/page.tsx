@@ -127,7 +127,7 @@ export default function SetupPage() {
           </div>
         </div>
 
-        {error && <div style={{ background: 'rgba(192,57,43,0.15)', border: '1px solid rgba(192,57,43,0.3)', color: '#E74C3C', padding: '10px 14px', fontSize: '0.9rem', borderRadius: '4px' }}>{error}</div>}
+        {error && <div style={{ background: 'rgba(192,57,43,0.15)', border: '1px solid rgba(192,57,43,0.3)', color: '#EC5B4B', padding: '10px 14px', fontSize: '0.9rem', borderRadius: '4px' }}>{error}</div>}
 
         <button type="submit" disabled={loading} className="btn-gold" style={{ marginTop: '0.5rem', opacity: loading ? 0.7 : 1 }}>
           {loading ? 'Saving...' : 'Continue to Branding →'}

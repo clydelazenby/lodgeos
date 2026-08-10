@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useParams } from 'next/navigation'
 
 const CARE_TYPE_LABEL: Record<string, string> = { sickness: 'Sickness', distress: 'Distress', widow: 'Widow', other: 'Other' }
-const CARE_TYPE_COLOR: Record<string, string> = { sickness: '#E74C3C', distress: '#C9A84C', widow: '#7BB8D4', other: '#B8B0A0' }
+const CARE_TYPE_COLOR: Record<string, string> = { sickness: '#EC5B4B', distress: '#C9A84C', widow: '#7BB8D4', other: '#B8B0A0' }
 
 function daysSince(dateStr: string | null): number | null {
   if (!dateStr) return null
@@ -147,7 +147,7 @@ export default function CareRegistryPage() {
                   {entry.assignee && <div style={{ color: '#7BB8D4', fontSize: '0.72rem', marginTop: '6px', fontFamily: 'JetBrains Mono, monospace' }}>Assigned: {entry.assignee.first_name} {entry.assignee.last_name}</div>}
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.68rem', color: overdue && entry.status !== 'resolved' ? '#E74C3C' : '#5DBE85', marginBottom: '8px' }}>
+                  <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.68rem', color: overdue && entry.status !== 'resolved' ? '#EC5B4B' : '#5DBE85', marginBottom: '8px' }}>
                     {daysSinceCheckin === null ? 'Never checked in' : `${daysSinceCheckin}d since last check-in`}
                     {overdue && entry.status !== 'resolved' && ' — overdue'}
                   </div>

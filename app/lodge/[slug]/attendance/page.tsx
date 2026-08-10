@@ -125,7 +125,7 @@ export default function LodgeAttendancePage() {
               </button>
             </div>
           </div>
-          {saveMsg && <div style={{ color: saveMsg.startsWith('Failed') ? '#E74C3C' : '#5DBE85', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.68rem', marginBottom: '1rem' }}>{saveMsg}</div>}
+          {saveMsg && <div style={{ color: saveMsg.startsWith('Failed') ? '#EC5B4B' : '#5DBE85', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.68rem', marginBottom: '1rem' }}>{saveMsg}</div>}
 
           <div className="data-box">
             <div className="data-box-head">{selectedEvent?.title}</div>
@@ -148,7 +148,7 @@ export default function LodgeAttendancePage() {
                               style={{
                                 background: status === s ? STATUS_STYLE[s].bg : 'transparent',
                                 border: `1px solid ${status === s ? STATUS_STYLE[s].border : 'rgba(184,176,160,0.2)'}`,
-                                color: status === s ? STATUS_STYLE[s].text : '#6B6355',
+                                color: status === s ? STATUS_STYLE[s].text : '#918879',
                                 padding: '4px 10px', borderRadius: '3px', cursor: 'pointer',
                                 fontFamily: 'JetBrains Mono, monospace', fontSize: '0.58rem', letterSpacing: '0.05em', textTransform: 'capitalize',
                               }}

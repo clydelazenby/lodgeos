@@ -75,7 +75,7 @@ export default function MembersOnboardingPage() {
                 </td>
                 <td style={{ padding: '6px' }}><input value={m.role} onChange={e => updateRow(i, 'role', e.target.value)} placeholder="Officer role" style={inputStyle} /></td>
                 <td style={{ padding: '6px', textAlign: 'center' }}>
-                  <button onClick={() => removeRow(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#E74C3C', fontSize: '1.1rem' }}>×</button>
+                  <button onClick={() => removeRow(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#EC5B4B', fontSize: '1.1rem' }}>×</button>
                 </td>
               </tr>
             ))}

@@ -174,7 +174,7 @@ export function ResponsiveNavShell({
         <div style={{ marginTop: '2rem', padding: '0 1.4rem' }}>
           <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.56rem', color: 'rgba(201,168,76,0.4)', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Platform</div>
           {superAdminHref && (
-            <Link href={superAdminHref} style={{ display: 'block', padding: '0.5rem 0', fontFamily: 'Cinzel, serif', fontSize: '0.68rem', color: '#E74C3C', textDecoration: 'none', letterSpacing: '0.05em' }}>Super Admin ↗</Link>
+            <Link href={superAdminHref} style={{ display: 'block', padding: '0.5rem 0', fontFamily: 'Cinzel, serif', fontSize: '0.68rem', color: '#EC5B4B', textDecoration: 'none', letterSpacing: '0.05em' }}>Super Admin ↗</Link>
           )}
           <Link href={homeHref} style={{ display: 'block', padding: '0.5rem 0', fontFamily: 'Cinzel, serif', fontSize: '0.68rem', color: '#B8B0A0', textDecoration: 'none', letterSpacing: '0.05em' }}>← LodgeOS Home</Link>
         </div>

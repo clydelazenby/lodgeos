@@ -15,7 +15,7 @@ export async function GET(request: Request, { params }: { params: { token: strin
     <body style="margin:0;background:#0A0E1A;color:#F5F0E8;font-family:Georgia,serif;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;box-sizing:border-box;">
       <div style="max-width:420px;text-align:center;">
         <div style="font-family:Arial,sans-serif;font-size:18px;font-weight:700;color:#C9A84C;letter-spacing:0.2em;margin-bottom:24px;">LODGEOS</div>
-        <h1 style="font-size:20px;color:${tone === 'ok' ? '#5DBE85' : '#E74C3C'};margin-bottom:12px;">${title}</h1>
+        <h1 style="font-size:20px;color:${tone === 'ok' ? '#5DBE85' : '#EC5B4B'};margin-bottom:12px;">${title}</h1>
         <p style="color:#B8B0A0;font-size:14px;line-height:1.6;">${message}</p>
       </div>
     </body></html>`,

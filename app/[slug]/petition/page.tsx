@@ -86,7 +86,7 @@ export default function PublicPetitionPage() {
             <label style={labelStyle}>Were you referred by a Brother? (optional)</label>
             <input value={form.referred_by} onChange={e => setForm(p => ({ ...p, referred_by: e.target.value }))} placeholder="Brother's name" style={inputStyle} />
           </div>
-          {error && <div style={{ background: 'rgba(192,57,43,0.15)', border: '1px solid rgba(192,57,43,0.3)', color: '#E74C3C', padding: '10px 14px', fontSize: '0.9rem', borderRadius: '4px' }}>{error}</div>}
+          {error && <div style={{ background: 'rgba(192,57,43,0.15)', border: '1px solid rgba(192,57,43,0.3)', color: '#EC5B4B', padding: '10px 14px', fontSize: '0.9rem', borderRadius: '4px' }}>{error}</div>}
           <button type="submit" disabled={loading} className="btn-gold" style={{ width: '100%', opacity: loading ? 0.7 : 1 }}>
             {loading ? 'Submitting...' : 'Submit Petition'}
           </button>
