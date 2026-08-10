@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { format } from 'date-fns'
 import { DocumentDownloadLink } from '@/components/lodge/DocumentUpload'
 import { meetsDegree, degreeLabel, degreeShortLabel } from '@/lib/degrees'
+import { completion, nextStep, DEGREE_TITLE } from '@/lib/curriculum'
 
 /**
  * The lodge library, as a brother sees it.
@@ -38,17 +39,50 @@ export default async function PortalDocumentsPage() {
   const myDegree = (membership as any).degree
   const isSuperAdmin = profile?.platform_role === 'super_admin'
 
-  const { data: allDocs } = await supabase
-    .from('documents')
-    .select('*')
-    .eq('tenant_id', (membership as any).tenant_id)
-    .order('created_at', { ascending: false })
+  const [{ data: allDocs }, { data: steps }, { data: myProgress }] = await Promise.all([
+    supabase
+      .from('documents')
+      .select('*')
+      .eq('tenant_id', (membership as any).tenant_id)
+      .order('created_at', { ascending: false }),
+    // His own degree's work, in order. RLS lets any member read the
+    // steps — a candidate must be able to see what he is working
+    // toward — while the documents behind them keep their degree floor.
+    supabase
+      .from('curriculum_steps')
+      .select('id, degree, title, description, sort_order, document_id, required')
+      .eq('tenant_id', (membership as any).tenant_id)
+      .eq('degree', myDegree)
+      .order('sort_order'),
+    supabase
+      .from('curriculum_progress')
+      .select('step_id, completed_on, signed_off_by_name, notes')
+      .eq('tenant_id', (membership as any).tenant_id)
+      .eq('member_id', user.id),
+  ])
 
   const visible = (allDocs ?? []).filter((d: any) =>
     isSuperAdmin || meetsDegree(myDegree, d.access_level)
   )
 
   const hiddenCount = (allDocs?.length ?? 0) - visible.length
+
+  /**
+   * WHERE HE IS, which he could not previously find out.
+   *
+   * The portal showed a flat library and left the candidate to work out
+   * the order himself. The lodge knew the order all along; it simply
+   * had nowhere to write it down.
+   *
+   * Only shown while there IS a curriculum for his degree — a Master
+   * Mason of thirty years does not want a checklist, and an empty one
+   * would read as a demand rather than a guide.
+   */
+  const mySteps = (steps ?? []) as any[]
+  const done = new Set((myProgress ?? []).map((p: any) => p.step_id))
+  const progressStats = completion(mySteps as any, done)
+  const myNext = nextStep(mySteps as any, done)
+  const docById = new Map(visible.map((d: any) => [d.id, d]))
 
   // Grouped by the lodge's own categories, so a long library reads as
   // sections rather than one undifferentiated list.
@@ -68,6 +102,73 @@ export default async function PortalDocumentsPage() {
           Everything open to a {degreeLabel(myDegree)}.
         </p>
       </div>
+
+      {/* YOUR OWN WORK, IN ORDER.
+          The library is alphabetical furniture; this is the answer to
+          "what do I do next", which the lodge always knew and had
+          nowhere to write down. Absent for a brother with no curriculum
+          — a Master Mason of thirty years does not want a checklist. */}
+      {mySteps.length > 0 && (
+        <div className="data-box">
+          <div className="data-box-head">
+            <span>Your {DEGREE_TITLE[myDegree as keyof typeof DEGREE_TITLE] ?? myDegree} Work</span>
+            <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.58rem', color: '#B8B0A0' }}>
+              {progressStats.done}/{progressStats.total}
+            </span>
+          </div>
+
+          <div style={{ padding: '1rem 1.4rem 0' }}>
+            <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden', marginBottom: '0.8rem' }}>
+              <div style={{ height: '100%', width: `${progressStats.percent}%`, background: '#C9A84C', borderRadius: 2 }} />
+            </div>
+            {myNext ? (
+              <p style={{ fontFamily: 'Crimson Pro, serif', fontSize: '0.95rem', color: '#E8E2D5', margin: '0 0 0.4rem' }}>
+                Next: <strong style={{ color: '#F5F0E8' }}>{myNext.title}</strong>
+                {myNext.description ? ` — ${myNext.description}` : ''}
+              </p>
+            ) : (
+              <p style={{ fontFamily: 'Crimson Pro, serif', fontSize: '0.95rem', color: '#5DBE85', margin: '0 0 0.4rem' }}>
+                You have completed every required step. Speak to your mentor about what follows.
+              </p>
+            )}
+            <p style={{ fontFamily: 'Crimson Pro, serif', fontStyle: 'italic', fontSize: '0.85rem', color: '#918879', margin: '0 0 1rem' }}>
+              Steps are signed off by an officer who has heard them — that is what a proficiency
+              means, so they cannot be ticked here.
+            </p>
+          </div>
+
+          {mySteps.map((s: any) => {
+            const isDone = done.has(s.id)
+            const material = s.document_id ? docById.get(s.document_id) : null
+            return (
+              <div key={s.id} style={{ padding: '0.7rem 1.4rem', borderBottom: '1px solid rgba(201,168,76,0.05)', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                <span aria-hidden="true" style={{ color: isDone ? '#5DBE85' : '#3A4155', fontSize: '0.9rem', lineHeight: 1.5 }}>
+                  {isDone ? '✓' : '○'}
+                </span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: 'block', fontFamily: 'Cinzel, serif', fontSize: '0.85rem', color: isDone ? '#918879' : '#F5F0E8' }}>
+                    {s.title}
+                    {!s.required && <span style={{ fontFamily: 'Crimson Pro, serif', fontStyle: 'italic', color: '#918879' }}> · optional</span>}
+                  </span>
+                  {s.description && (
+                    <span style={{ display: 'block', fontFamily: 'Crimson Pro, serif', fontSize: '0.85rem', color: '#B8B0A0' }}>
+                      {s.description}
+                    </span>
+                  )}
+                  {/* Only when the material is open to his degree — a
+                      step may point at something he cannot yet read,
+                      and naming it would leak what the floor hides. */}
+                  {material && (
+                    <a href={`/api/documents/${material.id}/download`} style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.58rem', color: '#C9A84C', textDecoration: 'none' }}>
+                      📄 {material.name}
+                    </a>
+                  )}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {visible.length === 0 ? (
         <div className="data-box">

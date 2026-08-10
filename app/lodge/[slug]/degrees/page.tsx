@@ -3,6 +3,9 @@ import { getTenantBySlug } from '@/lib/supabase/queries'
 import { notFound } from 'next/navigation'
 import { format } from 'date-fns'
 import { ProficiencyControl } from '@/components/lodge/ProficiencyControl'
+import { CandidateCurriculum } from '@/components/lodge/CandidateCurriculum'
+import { CURRICULUM_DEGREES, type CurriculumDegree } from '@/lib/curriculum'
+import { getSessionUser, getMembership, getProfile } from '@/lib/supabase/queries'
 
 export default async function LodgeDegreesPage({ params }: { params: { slug: string } }) {
   const supabase = await createClient()
@@ -22,6 +25,39 @@ export default async function LodgeDegreesPage({ params }: { params: { slug: str
     .from('degree_progress')
     .select('*, profiles(first_name, last_name)')
     .eq('tenant_id', tenant.id)
+
+  // The curriculum, and who has done what of it. Both scoped by RLS to
+  // this lodge; sign-off itself is re-checked by /api/curriculum, which
+  // is the authority.
+  const [{ data: curriculumSteps }, { data: curriculumDone }, viewer] = await Promise.all([
+    supabase
+      .from('curriculum_steps')
+      .select('id, degree, title, description, sort_order, document_id, required')
+      .eq('tenant_id', tenant.id)
+      .order('sort_order'),
+    supabase
+      .from('curriculum_progress')
+      .select('member_id, step_id')
+      .eq('tenant_id', tenant.id),
+    getSessionUser(),
+  ])
+
+  const [viewerMembership, viewerProfile] = await Promise.all([
+    viewer ? getMembership(tenant.id, viewer.id) : Promise.resolve(null),
+    viewer ? getProfile(viewer.id) : Promise.resolve(null),
+  ])
+
+  // Hearing a catechism is officer work — the same breadth that records
+  // attendance, which since migration 022 includes wardens and deacons.
+  // A Junior Deacon is very often the man actually doing it.
+  const canSignOff = !!viewerMembership || viewerProfile?.platform_role === 'super_admin'
+
+  const doneByMember = new Map<string, string[]>()
+  for (const row of curriculumDone ?? []) {
+    const id = (row as any).member_id
+    if (!doneByMember.has(id)) doneByMember.set(id, [])
+    doneByMember.get(id)!.push((row as any).step_id)
+  }
 
   const ea = members?.filter((m: any) => m.degree === 'EA') ?? []
   const fc = members?.filter((m: any) => m.degree === 'FC') ?? []
@@ -55,7 +91,7 @@ export default async function LodgeDegreesPage({ params }: { params: { slug: str
       <div className="data-box">
         <div className="data-box-head">All Members — Degree Status</div>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead><tr>{['Brother', 'Current Degree', 'Lodge Role', 'Joined', 'Proficiency', 'Notes'].map(h => <th key={h} className="dash-th">{h}</th>)}</tr></thead>
+          <thead><tr>{['Brother', 'Current Degree', 'Lodge Role', 'Joined', 'Proficiency', 'Curriculum'].map(h => <th key={h} className="dash-th">{h}</th>)}</tr></thead>
           <tbody>
             {members?.map((m: any) => (
               <tr key={m.id}>
@@ -75,7 +111,27 @@ export default async function LodgeDegreesPage({ params }: { params: { slug: str
                     progress={progressByMember[`${m.user_id}:${m.degree}`] ?? null}
                   />
                 </td>
-                <td className="dash-td" style={{ color: '#B8B0A0', fontSize: '0.85rem' }}>{m.notes || '—'}</td>
+                {/* Replaces the Notes column, which repeated what the
+                    brother's own profile already shows. This is the
+                    thing the page could never answer: where in the
+                    degree's work he actually is. */}
+                <td className="dash-td" style={{ minWidth: 240 }}>
+                  {(CURRICULUM_DEGREES as readonly string[]).includes(m.degree) ? (
+                    <CandidateCurriculum
+                      tenantId={tenant.id}
+                      memberId={m.user_id}
+                      memberName={`${m.profiles?.first_name ?? ''} ${m.profiles?.last_name ?? ''}`.trim()}
+                      degree={m.degree as CurriculumDegree}
+                      steps={(curriculumSteps ?? []) as any}
+                      completedStepIds={doneByMember.get(m.user_id) ?? []}
+                      canSignOff={canSignOff}
+                    />
+                  ) : (
+                    <span style={{ color: '#918879', fontStyle: 'italic', fontSize: '0.85rem' }}>
+                      Beyond the Blue Lodge
+                    </span>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
