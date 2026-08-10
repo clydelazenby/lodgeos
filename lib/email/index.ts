@@ -142,6 +142,103 @@ export async function sendPasswordResetEmail({
   }, 'password reset email')
 }
 
+// ── Removed from the roster ──
+
+/**
+ * Tells a brother his membership has ended.
+ *
+ * TONE IS THE DESIGN HERE. Being taken off a lodge roster is not a
+ * subscription lapsing, and the reasons vary enormously: a demit at his
+ * own request, a suspension, non-payment, an administrative
+ * correction — or a death, where this message reaches a widow. So it
+ * states the fact plainly, thanks him, tells him his record is kept,
+ * and does not speculate about why or lecture him about it.
+ *
+ * `note` is the Secretary's own words when he chooses to add them. It
+ * is the only part that can explain the reason, and it is his to write
+ * rather than something inferred from a status column.
+ *
+ * The Secretary can also decline to send this at all — see
+ * app/api/members/remove. An automatic message is right for the common
+ * case and badly wrong for the bereaved one.
+ */
+export async function sendMembershipRemovedEmail({
+  to, firstName, lodgeName, note, brand,
+}: {
+  to: string; firstName: string; lodgeName: string
+  note?: string | null; brand?: LodgeBrand
+}) {
+  const b = resolveBrand(brand, lodgeName)
+  const title = lodgeTitle(b)
+
+  const body = {
+    greeting: `Dear Brother ${firstName},`,
+    paragraphs: [
+      `This is to let you know that your name has been removed from the roster of ${title}, and your access to the member portal has ended.`,
+      ...(note ? [note] : []),
+      'Your attendance, dues and degree records remain with the lodge — nothing has been erased, and if you return they attach to you again.',
+      'If you believe this has been done in error, reply to this message and the Secretary will look into it.',
+    ],
+    signOff: { closing: 'Fraternally,', lines: ['The Secretary', title] },
+  }
+
+  return send({
+    from: `${title} <${FROM}>`,
+    to,
+    replyTo: b.email || undefined,
+    subject: `Your membership at ${title}`,
+    html: renderLodgeEmail(b, body, 'A change to your membership.'),
+    text: renderLodgeEmailText(b, body),
+  }, 'membership removal notice')
+}
+
+// ── A charge levied against a brother's account ──
+
+/**
+ * Tells a brother money has been added to what he owes.
+ *
+ * Sent on every charge, deliberately and without an opt-out: a charge
+ * he does not know about is one he cannot pay, and the first he would
+ * otherwise hear of it is a dues reminder for a larger sum than he
+ * expects. The reason is always included — /api/dues/charges refuses a
+ * charge without one for the same reason this email carries it.
+ */
+export async function sendChargeAddedEmail({
+  to, firstName, lodgeName, amount, reason, chargeType, payUrl, brand,
+}: {
+  to: string; firstName: string; lodgeName: string
+  amount: number; reason: string; chargeType?: string | null
+  payUrl: string; brand?: LodgeBrand
+}) {
+  const b = resolveBrand(brand, lodgeName)
+  const title = lodgeTitle(b)
+  const typeLabel = chargeType ? chargeType.replace(/_/g, ' ') : null
+
+  const body = {
+    greeting: `Dear Brother ${firstName},`,
+    paragraphs: [
+      `A charge has been added to your account with ${title}.`,
+      'If you believe this is in error, or you would like to arrange terms, reply to this message and the Secretary or Treasurer will take it up with you.',
+    ],
+    details: [
+      { label: 'Amount', value: `$${amount.toFixed(2)}` },
+      { label: 'For', value: reason },
+      ...(typeLabel ? [{ label: 'Type', value: typeLabel }] : []),
+      { label: 'Added', value: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) },
+    ],
+    cta: { label: 'View Your Account', url: payUrl },
+  }
+
+  return send({
+    from: `${title} <${FROM}>`,
+    to,
+    replyTo: b.email || undefined,
+    subject: `A charge has been added to your account — $${amount.toFixed(2)}`,
+    html: renderLodgeEmail(b, body, `$${amount.toFixed(2)} — ${reason}`),
+    text: renderLodgeEmailText(b, body),
+  }, 'charge notice')
+}
+
 // ── Calendar invite for a lodge event ──
 //
 // Resend cannot set a custom Content-Type on attachments, so Outlook's

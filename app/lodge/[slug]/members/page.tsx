@@ -23,6 +23,8 @@ export default function LodgeMembersPage() {
   const [removing, setRemoving] = useState<any>(null)
   const [removeBusy, setRemoveBusy] = useState(false)
   const [removeError, setRemoveError] = useState('')
+  const [notifyRemoved, setNotifyRemoved] = useState(true)
+  const [removalNote, setRemovalNote] = useState('')
   const [notice, setNotice] = useState('')
   // Brothers who asked for a login from the public lodge site.
   const [accessRequests, setAccessRequests] = useState<any[]>([])
@@ -198,7 +200,7 @@ export default function LodgeMembersPage() {
       const res = await fetch('/api/members/remove', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenantId: tenant.id, memberId: removing.id }),
+        body: JSON.stringify({ tenantId: tenant.id, memberId: removing.id, notify: notifyRemoved, note: removalNote }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -210,6 +212,8 @@ export default function LodgeMembersPage() {
       }
       setMembers(prev => prev.filter(m => m.id !== removing.id))
       setRemoving(null)
+      setRemovalNote('')
+      setNotifyRemoved(true)
       setNotice(data.message)
     } catch (err: any) {
       setRemoveError(err?.message || 'Could not remove that brother.')
@@ -438,7 +442,7 @@ export default function LodgeMembersPage() {
         confirmLabel="Remove Brother"
         busy={removeBusy}
         error={removeError}
-        onCancel={() => { if (!removeBusy) { setRemoving(null); setRemoveError('') } }}
+        onCancel={() => { if (!removeBusy) { setRemoving(null); setRemoveError(''); setRemovalNote(''); setNotifyRemoved(true) } }}
         onConfirm={confirmRemove}
         body={
           <>
@@ -454,10 +458,52 @@ export default function LodgeMembersPage() {
               analytics will not change. If they return, invite them again and their history
               reattaches.
             </p>
-            <p style={{ fontSize: '0.92rem', color: '#918879', fontStyle: 'italic', margin: 0 }}>
+            <p style={{ fontSize: '0.92rem', color: '#918879', fontStyle: 'italic', marginBottom: '1rem' }}>
               To suspend a brother temporarily instead, set their status to Inactive rather than
               removing them.
             </p>
+
+            {/* Telling him, and the choice not to.
+                A demitted brother should hear it from the lodge. A
+                brother removed because he has died should not have an
+                automated message land in the inbox his widow is
+                reading, and a duplicate row created by mistake has
+                nobody to notify. Only the Secretary knows which this
+                is. */}
+            <div style={{ borderTop: '1px solid rgba(201,168,76,0.15)', paddingTop: '0.9rem' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={notifyRemoved}
+                  onChange={e => setNotifyRemoved(e.target.checked)}
+                  style={{ accentColor: '#C9A84C' }}
+                />
+                <span style={{ fontSize: '0.95rem', color: '#F5F0E8' }}>
+                  Let him know by email
+                </span>
+              </label>
+
+              {notifyRemoved ? (
+                <div style={{ marginTop: '0.7rem' }}>
+                  <textarea
+                    value={removalNote}
+                    onChange={e => setRemovalNote(e.target.value)}
+                    rows={2}
+                    maxLength={1000}
+                    placeholder="Optional — a line in your own words, e.g. &quot;Demitted at your own request, with the lodge's thanks.&quot;"
+                    style={{ width: '100%', background: '#0A0E1A', border: '1px solid rgba(201,168,76,0.2)', color: '#F5F0E8', padding: '9px 12px', fontFamily: 'Crimson Pro, serif', fontSize: '0.95rem', borderRadius: 4, resize: 'vertical' }}
+                  />
+                  <p style={{ fontSize: '0.82rem', color: '#918879', fontStyle: 'italic', margin: '4px 0 0' }}>
+                    The email states the fact and that his records are kept. It gives no reason unless
+                    you write one here.
+                  </p>
+                </div>
+              ) : (
+                <p style={{ fontSize: '0.82rem', color: '#918879', fontStyle: 'italic', margin: '6px 0 0' }}>
+                  He will be removed without being told.
+                </p>
+              )}
+            </div>
           </>
         }
       />

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireTenantRole } from '@/lib/auth/requireTenantAdmin'
+import { sendChargeAddedEmail, APP_URL } from '@/lib/email'
+import { LODGE_BRAND_COLUMNS, toLodgeBrand } from '@/lib/email/brand'
 
 /**
  * Levying, waiving and settling per-brother charges.
@@ -84,12 +86,60 @@ export async function POST(request: Request) {
         due_date: dueDate || null,
         created_by: auth.userId,
       })
-      .select('*, profiles!member_charges_member_id_fkey(first_name, last_name)')
+      .select('*, profiles!member_charges_member_id_fkey(first_name, last_name, email)')
       .single()
 
     if (error) throw error
 
-    return NextResponse.json({ success: true, charge })
+    /**
+     * Telling him.
+     *
+     * No opt-out, unlike a removal notice. A charge a brother does not
+     * know about is one he cannot pay: the first he would otherwise
+     * hear of it is a dues reminder for more than he expects, or a
+     * conversation at the door. The route already refuses a charge with
+     * no reason — "a brother is entitled to know what he is being
+     * charged for" — and an unsent notice defeats that just as surely
+     * as an empty reason field would.
+     *
+     * Best effort. The charge is recorded and correct; a mail failure
+     * is reported alongside it rather than instead of it, so nobody
+     * levies the same charge twice trying to make the email go out.
+     */
+    let emailed = false
+    let emailError: string | undefined
+    const chargedProfile = (charge as any)?.profiles
+
+    if (chargedProfile?.email) {
+      try {
+        const { data: tenant } = await supabase
+          .from('tenants').select(LODGE_BRAND_COLUMNS).eq('id', tenantId).maybeSingle()
+
+        await sendChargeAddedEmail({
+          to: chargedProfile.email,
+          firstName: chargedProfile.first_name || 'Brother',
+          lodgeName: tenant ? `${(tenant as any).name} #${(tenant as any).number}` : 'your lodge',
+          amount: Number((charge as any).amount),
+          reason: (charge as any).reason,
+          chargeType: (charge as any).charge_type,
+          payUrl: `${APP_URL}/portal/dues`,
+          brand: tenant ? toLodgeBrand(tenant) : undefined,
+        })
+        emailed = true
+      } catch (mailErr: any) {
+        emailError = mailErr?.message || 'unknown mail error'
+        console.error('Charge notice failed:', emailError)
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      charge,
+      emailed,
+      warning: chargedProfile?.email
+        ? (emailed ? undefined : `The charge was recorded, but he could not be notified: ${emailError}`)
+        : 'The charge was recorded. He has no email address on file, so he has not been told.',
+    })
   } catch (error: any) {
     console.error('Create charge error:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
@@ -145,12 +195,60 @@ export async function PATCH(request: Request) {
       .update(patch)
       .eq('id', chargeId)
       .eq('tenant_id', tenantId)
-      .select('*, profiles!member_charges_member_id_fkey(first_name, last_name)')
+      .select('*, profiles!member_charges_member_id_fkey(first_name, last_name, email)')
       .single()
 
     if (error) throw error
 
-    return NextResponse.json({ success: true, charge })
+    /**
+     * Telling him.
+     *
+     * No opt-out, unlike a removal notice. A charge a brother does not
+     * know about is one he cannot pay: the first he would otherwise
+     * hear of it is a dues reminder for more than he expects, or a
+     * conversation at the door. The route already refuses a charge with
+     * no reason — "a brother is entitled to know what he is being
+     * charged for" — and an unsent notice defeats that just as surely
+     * as an empty reason field would.
+     *
+     * Best effort. The charge is recorded and correct; a mail failure
+     * is reported alongside it rather than instead of it, so nobody
+     * levies the same charge twice trying to make the email go out.
+     */
+    let emailed = false
+    let emailError: string | undefined
+    const chargedProfile = (charge as any)?.profiles
+
+    if (chargedProfile?.email) {
+      try {
+        const { data: tenant } = await supabase
+          .from('tenants').select(LODGE_BRAND_COLUMNS).eq('id', tenantId).maybeSingle()
+
+        await sendChargeAddedEmail({
+          to: chargedProfile.email,
+          firstName: chargedProfile.first_name || 'Brother',
+          lodgeName: tenant ? `${(tenant as any).name} #${(tenant as any).number}` : 'your lodge',
+          amount: Number((charge as any).amount),
+          reason: (charge as any).reason,
+          chargeType: (charge as any).charge_type,
+          payUrl: `${APP_URL}/portal/dues`,
+          brand: tenant ? toLodgeBrand(tenant) : undefined,
+        })
+        emailed = true
+      } catch (mailErr: any) {
+        emailError = mailErr?.message || 'unknown mail error'
+        console.error('Charge notice failed:', emailError)
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      charge,
+      emailed,
+      warning: chargedProfile?.email
+        ? (emailed ? undefined : `The charge was recorded, but he could not be notified: ${emailError}`)
+        : 'The charge was recorded. He has no email address on file, so he has not been told.',
+    })
   } catch (error: any) {
     console.error('Update charge error:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })

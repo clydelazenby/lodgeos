@@ -79,7 +79,14 @@ export function MemberChargeForm({
         return
       }
 
-      setDone(`$${value.toFixed(2)} charged to ${memberName}.`)
+      // The route reports separately on whether he could be told. A
+      // charge he does not know about is the thing the notice exists to
+      // prevent, so a failed send is worth showing rather than burying.
+      setDone(
+        data?.warning
+          ? `$${value.toFixed(2)} charged to ${memberName}. ${data.warning}`
+          : `$${value.toFixed(2)} charged to ${memberName}. He has been notified by email.`
+      )
       setAmount('')
       setReason('')
       setChargeType('other')

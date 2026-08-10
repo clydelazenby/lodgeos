@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireTenantRole } from '@/lib/auth/requireTenantAdmin'
+import { sendMembershipRemovedEmail } from '@/lib/email'
+import { LODGE_BRAND_COLUMNS, toLodgeBrand } from '@/lib/email/brand'
 
 // The tiers that count as the lodge's administrative office. Kept as
 // one set so the last-officer guard below cannot drift from the list
@@ -47,7 +49,7 @@ const ADMIN_TIER_ROLES = new Set(['admin', 'secretary', 'grand_master'])
  */
 export async function POST(request: Request) {
   try {
-    const { tenantId, memberId } = await request.json()
+    const { tenantId, memberId, notify = true, note } = await request.json()
 
     if (!tenantId || !memberId) {
       return NextResponse.json(
@@ -67,7 +69,7 @@ export async function POST(request: Request) {
     // someone who happens to be an officer here.
     const { data: target, error: targetError } = await supabase
       .from('tenant_members')
-      .select('id, user_id, tenant_role, profiles(first_name, last_name)')
+      .select('id, user_id, tenant_role, profiles(first_name, last_name, email)')
       .eq('id', memberId)
       .eq('tenant_id', tenantId)
       .maybeSingle()
@@ -122,10 +124,56 @@ export async function POST(request: Request) {
     const p = (target as any).profiles
     const name = p ? `${p.first_name ?? ''} ${p.last_name ?? ''}`.trim() : 'That brother'
 
+    /**
+     * Telling him.
+     *
+     * Sent by default, and skippable — `notify: false`. A brother
+     * removed after a demit should hear it from the lodge rather than
+     * discover it at a locked door; a brother removed because he has
+     * DIED should not have an automated message land in the inbox his
+     * widow is reading, and a duplicate roster row created by mistake
+     * has nobody to notify at all. The Secretary knows which of those
+     * he is doing and the database does not, so the choice is his.
+     *
+     * Best effort: the removal has already happened and is correct. A
+     * mail failure is reported alongside the success, never instead of
+     * it — otherwise an officer retries a removal that already worked.
+     */
+    let emailed = false
+    let emailError: string | undefined
+
+    if (notify && p?.email) {
+      try {
+        const { data: tenant } = await supabase
+          .from('tenants').select(LODGE_BRAND_COLUMNS).eq('id', tenantId).maybeSingle()
+
+        await sendMembershipRemovedEmail({
+          to: p.email,
+          firstName: p.first_name || 'Brother',
+          lodgeName: tenant ? `${(tenant as any).name} #${(tenant as any).number}` : 'your lodge',
+          note: typeof note === 'string' && note.trim() ? note.trim().slice(0, 1000) : null,
+          brand: tenant ? toLodgeBrand(tenant) : undefined,
+        })
+        emailed = true
+      } catch (mailErr: any) {
+        emailError = mailErr?.message || 'unknown mail error'
+        console.error('Removal notice failed:', emailError)
+      }
+    }
+
+    const mailNote = !notify
+      ? ' No email was sent.'
+      : !p?.email
+        ? ' No email address on file, so he was not notified.'
+        : emailed
+          ? ' He has been notified by email.'
+          : ` He could NOT be notified by email: ${emailError}`
+
     return NextResponse.json({
       success: true,
       removed: name,
-      message: `${name} was removed from the roster. Attendance, dues, and degree history were kept.`,
+      emailed,
+      message: `${name} was removed from the roster. Attendance, dues, and degree history were kept.${mailNote}`,
     })
   } catch (error: any) {
     console.error('Member removal error:', error)
