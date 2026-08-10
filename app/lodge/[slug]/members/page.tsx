@@ -44,26 +44,77 @@ export default function LodgeMembersPage() {
     load()
   }, [])
 
+  /**
+   * WHY THE try/finally MATTERS — this is the bug that made the button
+   * say "Sending invitation..." forever.
+   *
+   * This used to call res.json() unconditionally with no try/catch. Any
+   * rejection — a dropped connection, or a platform timeout whose body
+   * is an HTML error page rather than JSON — left the promise rejected,
+   * so setInviting(false) never ran. The button stayed disabled and
+   * mid-flight for the rest of the page's life, with no error shown and
+   * nothing to retry. The Secretary had no way to tell a hung request
+   * from a slow one.
+   *
+   * Now: the spinner always clears, the body is parsed defensively, and
+   * the request has a deadline of its own so it cannot outlive the
+   * server's.
+   */
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault()
     setInviting(true)
     setInviteMsg('')
-    const res = await fetch('/api/members/invite', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tenantId: tenant.id, ...inviteForm }),
-    })
-    const data = await res.json()
-    if (res.ok) {
-      setInviteMsg('✓ Invitation sent successfully.')
+
+    // Comfortably beyond the route's own 30s ceiling, so this fires
+    // only when the request is genuinely lost rather than merely slow.
+    const controller = new AbortController()
+    const deadline = setTimeout(() => controller.abort(), 45000)
+
+    try {
+      const res = await fetch('/api/members/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId: tenant.id, ...inviteForm }),
+        signal: controller.signal,
+      })
+
+      // A gateway timeout or crashed function returns HTML, not JSON.
+      const raw = await res.text()
+      let data: any = null
+      try { data = raw ? JSON.parse(raw) : null } catch { /* handled below */ }
+
+      if (!res.ok) {
+        setInviteMsg(`Error: ${data?.error || `The server returned ${res.status}. The invitation was not completed.`}`)
+        return
+      }
+      if (!data) {
+        setInviteMsg('Error: The server sent an unreadable response. Check the roster before inviting again.')
+        return
+      }
+
+      // The brother is on the roster either way; the email is reported
+      // separately so "invitation sent" is never claimed falsely.
+      if (data.warning) {
+        setInviteMsg(`Added to the roster, but: ${data.warning}`)
+      } else if (data.method === 'magiclink') {
+        setInviteMsg('✓ Added. He already had a LodgeOS account, so he was emailed a sign-in link.')
+      } else {
+        setInviteMsg('✓ Invitation sent successfully.')
+      }
+
       setInviteForm({ firstName: '', lastName: '', email: '', degree: 'MM', lodgeRole: '', tenantRole: 'member' })
-      // Refresh
       const { data: m } = await supabase.from('tenant_members').select('*, profiles(first_name, last_name, email, phone, avatar_url)').eq('tenant_id', tenant.id).order('created_at')
       setMembers(m ?? [])
-    } else {
-      setInviteMsg(`Error: ${data.error}`)
+    } catch (err: any) {
+      setInviteMsg(
+        err?.name === 'AbortError'
+          ? 'Error: The invitation timed out. Check the roster below before trying again — he may already have been added.'
+          : `Error: ${err?.message || 'The invitation could not be sent.'}`
+      )
+    } finally {
+      clearTimeout(deadline)
+      setInviting(false)
     }
-    setInviting(false)
   }
 
   const FIELD_LABEL: Record<string, string> = { degree: 'Degree', dues_status: 'Dues status' }

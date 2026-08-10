@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireTenantRole, type TenantRole } from '@/lib/auth/requireTenantAdmin'
-import { sendWelcomeEmail } from '@/lib/email'
+import { sendWelcomeEmail, APP_URL } from '@/lib/email'
+import { createInviteLink } from '@/lib/auth/inviteLink'
 
 /**
  * Bulk roster import.
@@ -220,21 +221,31 @@ export async function POST(request: Request) {
     const failures: { email: string; reason: string }[] = []
 
     for (const v of toCreate) {
+      let actionUrl: string | null = null
+
       try {
         let profileId = profileIdByEmail.get(v.email)
 
         if (!profileId) {
-          // inviteUserByEmail both creates the auth user AND sends
-          // Supabase's own invitation. When the secretary has asked NOT
-          // to notify anyone yet, createUser is used instead so the
-          // roster can be loaded silently and the brothers emailed later.
+          // createInviteLink creates the auth user and mints the
+          // sign-in link WITHOUT sending anything — the welcome email
+          // below is the only message, and it goes out through Resend.
+          // (Its predecessor here, inviteUserByEmail, delegated sending
+          // to Supabase's own mailer; see lib/auth/inviteLink.ts for
+          // why those invitations never arrived.) When the secretary
+          // has asked NOT to notify anyone yet, createUser is used
+          // instead so the roster loads silently and the brothers can
+          // be emailed later.
           if (sendInvites) {
-            const { data: invite, error } = await supabase.auth.admin.inviteUserByEmail(v.email, {
-              data: { first_name: v.firstName, last_name: v.lastName },
-              redirectTo: `${appUrl}/auth/callback`,
+            const invite = await createInviteLink(supabase, {
+              email: v.email,
+              firstName: v.firstName,
+              lastName: v.lastName,
+              appUrl: APP_URL,
             })
-            if (error && !error.message.includes('already registered')) throw error
-            profileId = invite?.user?.id
+            profileId = invite.userId ?? undefined
+            actionUrl = invite.actionUrl
+            if (invite.warning) warnings.push(`${v.email}: ${invite.warning}`)
           } else {
             const { data: created, error } = await supabase.auth.admin.createUser({
               email: v.email,
@@ -292,6 +303,7 @@ export async function POST(request: Request) {
               lodgeName,
               lodgeSlug: tenant?.slug ?? '',
               loginUrl: `${appUrl}/auth/login`,
+              actionUrl,
             })
             invited++
           } catch (mailErr: any) {

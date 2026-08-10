@@ -1,13 +1,54 @@
 import { NextResponse } from 'next/server'
-import { createClient, createServiceClient } from '@/lib/supabase/server'
-import { sendWelcomeEmail } from '@/lib/email'
+import { createServiceClient } from '@/lib/supabase/server'
+import { sendWelcomeEmail, APP_URL } from '@/lib/email'
 import { requireTenantRole, TenantRole } from '@/lib/auth/requireTenantAdmin'
+import { createInviteLink } from '@/lib/auth/inviteLink'
 
 const ADMIN_TIER_ROLES = new Set<TenantRole>(['admin', 'secretary'])
 
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+/**
+ * Two Supabase Admin calls, a couple of table writes and one Resend
+ * send. Comfortably under this in practice — the ceiling exists so a
+ * slow dependency surfaces as a JSON error the Members page can render,
+ * rather than a platform timeout whose HTML body the page cannot parse.
+ */
+export const maxDuration = 30
+
+/**
+ * Invite a brother to the lodge.
+ *
+ * ORDERING MATTERS HERE — read before rearranging.
+ *
+ * This route used to await `inviteUserByEmail()` first, which asked
+ * Supabase to send the invitation over its own mailer (see
+ * lib/auth/inviteLink.ts for why that never arrived). Because it came
+ * first and its failure threw, one unreachable SMTP host meant the
+ * brother was never added to the roster AND the lodge's own welcome
+ * email was never attempted.
+ *
+ * Now the roster write is what the route is really for, and it is
+ * committed before any mail is sent. Mail is best-effort and reported
+ * honestly: the response says whether the email went out, so the
+ * Secretary is never told "invitation sent" when it wasn't.
+ */
 export async function POST(request: Request) {
   try {
-    const { tenantId, email, firstName, lastName, degree, lodgeRole, tenantRole } = await request.json()
+    const body = await request.json().catch(() => null)
+    if (!body) {
+      return NextResponse.json({ error: 'Malformed request.' }, { status: 400 })
+    }
+
+    const { tenantId, email, firstName, lastName, degree, lodgeRole, tenantRole } = body
+
+    const cleanEmail = typeof email === 'string' ? email.trim().toLowerCase() : ''
+    if (!cleanEmail || !EMAIL_SHAPE.test(cleanEmail)) {
+      return NextResponse.json(
+        { error: 'A valid email address is required to create portal access.' },
+        { status: 400 }
+      )
+    }
 
     // Inviting new members/officers is a Secretary-level administrative
     // action, not something every officer tier should do.
@@ -23,60 +64,103 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Only a Secretary or admin can assign the '${tenantRole}' role` }, { status: 403 })
     }
 
-    const supabase = await createClient()
     const serviceClient = createServiceClient()
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
-    // Invite user via Supabase Auth
-    const { data: inviteData, error: inviteErr } = await serviceClient.auth.admin.inviteUserByEmail(email, {
-      data: { first_name: firstName, last_name: lastName },
-      redirectTo: `${appUrl}/auth/callback`,
+    // Creates the auth user and mints a sign-in link. Sends nothing —
+    // the lodge's own welcome email below is the only message this
+    // brother receives, and it goes through Resend's verified domain.
+    const invite = await createInviteLink(serviceClient, {
+      email: cleanEmail,
+      firstName,
+      lastName,
+      appUrl: APP_URL,
     })
 
-    if (inviteErr && !inviteErr.message.includes('already registered')) {
-      throw inviteErr
-    }
-
-    // Get or create profile
-    let profileId = inviteData?.user?.id
+    // A brother who already had an auth account may come back without a
+    // user payload; his profile row still tells us who he is.
+    let profileId = invite.userId
     if (!profileId) {
       const { data: existingProfile } = await serviceClient
         .from('profiles')
         .select('id')
-        .eq('email', email)
-        .single()
-      profileId = existingProfile?.id
+        .eq('email', cleanEmail)
+        .maybeSingle()
+      profileId = existingProfile?.id ?? null
     }
 
-    if (profileId) {
-      // Add to tenant
-      await serviceClient.from('tenant_members').upsert({
-        tenant_id: tenantId,
-        user_id: profileId,
-        degree: degree || 'EA',
-        lodge_role: lodgeRole,
-        tenant_role: tenantRole || 'member',
-        dues_status: 'due',
-        is_active: true,
-      }, { onConflict: 'tenant_id,user_id' })
+    if (!profileId) {
+      return NextResponse.json(
+        { error: 'Could not create an account for that email address. Nothing was changed.' },
+        { status: 502 }
+      )
     }
 
-    // Get lodge info for email
-    const { data: tenant } = await supabase.from('tenants').select('name, number, slug').eq('id', tenantId).single()
+    // The profiles row is normally created by a signup trigger; upsert
+    // so the invite works whether or not that has fired yet, and so the
+    // names the Secretary typed fill in the blanks.
+    await serviceClient.from('profiles').upsert({
+      id: profileId,
+      email: cleanEmail,
+      ...(firstName ? { first_name: firstName } : {}),
+      ...(lastName ? { last_name: lastName } : {}),
+    }, { onConflict: 'id' })
 
-    if (tenant) {
-      await sendWelcomeEmail({
-        to: email,
-        firstName: firstName || 'Brother',
-        lodgeName: `${tenant.name} #${tenant.number}`,
-        lodgeSlug: tenant.slug,
-        loginUrl: `${appUrl}/auth/login`,
-      })
+    const { error: memberError } = await serviceClient.from('tenant_members').upsert({
+      tenant_id: tenantId,
+      user_id: profileId,
+      degree: degree || 'EA',
+      lodge_role: lodgeRole,
+      tenant_role: tenantRole || 'member',
+      dues_status: 'due',
+      is_active: true,
+    }, { onConflict: 'tenant_id,user_id' })
+
+    if (memberError) throw memberError
+
+    // ---- Mail: best effort, reported honestly -------------------
+    //
+    // The brother is on the roster from here on. A mail failure is
+    // worth telling the Secretary about, but it is not a reason to
+    // return an error for work that already succeeded — that would
+    // have him invite the same brother again and again.
+
+    const { data: tenant } = await serviceClient
+      .from('tenants').select('name, number, slug').eq('id', tenantId).maybeSingle()
+
+    let emailed = false
+    let warning = invite.warning
+
+    if (!tenant) {
+      warning = 'The brother was added, but the lodge record could not be read, so no welcome email was sent.'
+    } else {
+      try {
+        await sendWelcomeEmail({
+          to: cleanEmail,
+          firstName: firstName || 'Brother',
+          lodgeName: `${tenant.name} #${tenant.number}`,
+          lodgeSlug: tenant.slug,
+          loginUrl: `${APP_URL}/auth/login`,
+          actionUrl: invite.actionUrl,
+        })
+        emailed = true
+      } catch (mailErr: any) {
+        warning = `${firstName || 'The brother'} was added to the roster, but the welcome email could not be sent: ${mailErr?.message || 'unknown mail error'}`
+      }
     }
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({
+      success: true,
+      emailed,
+      // 'magiclink' means he already had an account and was sent a
+      // sign-in link rather than a fresh invitation.
+      method: invite.method,
+      warning,
+    })
   } catch (error: any) {
     console.error('Invite member error:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json(
+      { error: error?.message || 'The invitation could not be completed.' },
+      { status: 500 }
+    )
   }
 }

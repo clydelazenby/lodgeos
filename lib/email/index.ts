@@ -13,7 +13,7 @@ const FROM = process.env.EMAIL_FROM || 'onboarding@resend.dev'
 // (webhooks, RSVP link checkers, some mail-security scanners) do not.
 // Keeping the fallback on www means a missing env var degrades to a
 // working URL rather than a redirecting one.
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://www.psalmslodge1827.com'
+export const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://www.psalmslodge1827.com'
 
 /**
  * Escapes text before it is interpolated into an email's HTML.
@@ -35,11 +35,26 @@ export function escapeHtml(input: string): string {
     .replace(/'/g, '&#39;')
 }
 
-// ── Welcome email when brother is invited ──
+/**
+ * Welcome email when a brother is invited.
+ *
+ * `actionUrl` is the one-time link minted by lib/auth/inviteLink.ts. It
+ * is what actually gets the brother into the portal — a new brother has
+ * no password, so a bare link to the login page is a dead end for him.
+ * The parameter is optional so the email still sends (pointing at the
+ * login page, and saying so) if a link could not be minted; a brother
+ * who hears from his Secretary that he's been added and finds nothing
+ * in his inbox is the worse outcome.
+ */
 export async function sendWelcomeEmail({
-  to, firstName, lodgeName, lodgeSlug, loginUrl,
-}: { to: string; firstName: string; lodgeName: string; lodgeSlug: string; loginUrl: string }) {
+  to, firstName, lodgeName, lodgeSlug, loginUrl, actionUrl,
+}: {
+  to: string; firstName: string; lodgeName: string; lodgeSlug: string
+  loginUrl: string; actionUrl?: string | null
+}) {
   const resend = getResend()
+  const ctaUrl = actionUrl || loginUrl
+  const ctaLabel = actionUrl ? 'Set Up Your Portal' : 'Access Your Portal'
   return resend.emails.send({
     from: `${lodgeName} via LodgeOS <${FROM}>`,
     to,
@@ -62,8 +77,11 @@ export async function sendWelcomeEmail({
           </ul>
         </div>
         <div style="text-align:center;margin-bottom:32px;">
-          <a href="${loginUrl}" style="background:#C9A84C;color:#0A0E1A;font-family:Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;padding:14px 36px;text-decoration:none;display:inline-block;">Access Your Portal</a>
+          <a href="${ctaUrl}" style="background:#C9A84C;color:#0A0E1A;font-family:Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;padding:14px 36px;text-decoration:none;display:inline-block;">${ctaLabel}</a>
         </div>
+        ${actionUrl
+          ? `<p style="color:rgba(184,176,160,0.6);font-size:12px;line-height:1.7;text-align:center;margin-bottom:24px;">This link signs you in and lets you choose a password. It can only be used once — if it has expired, ask your Secretary to send a new invitation.</p>`
+          : `<p style="color:rgba(184,176,160,0.6);font-size:12px;line-height:1.7;text-align:center;margin-bottom:24px;">Sign in with this email address at <a href="${loginUrl}" style="color:#C9A84C;">${loginUrl}</a>.</p>`}
         <p style="color:#B8B0A0;font-size:13px;line-height:1.7;">If you have any questions contact your Secretary directly or reply to this email.</p>
         <div style="border-top:1px solid rgba(201,168,76,0.2);margin-top:32px;padding-top:16px;text-align:center;">
           <p style="color:rgba(184,176,160,0.4);font-size:11px;font-style:italic;">Liberty · Equality · Fraternity</p>

@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import type { EmailOtpType } from '@supabase/supabase-js'
 
 // Matches the officer tiers from lib/migrations/004_officer_role_tiers.sql
 // and the same set already used correctly in app/auth/login/page.tsx.
@@ -10,10 +11,48 @@ import { NextResponse } from 'next/server'
 // member portal instead of their real dashboard.
 const OFFICER_TIERS = new Set(['admin', 'secretary', 'worshipful_master', 'treasurer', 'warden', 'deacon'])
 
+/**
+ * `next` comes off a link in an email, so it is attacker-influencable
+ * in principle and must never be able to send a brother off-site. Only
+ * same-origin paths are honoured; '//evil.com' is a protocol-relative
+ * URL, not a path, which is why a leading '/' alone is not enough.
+ */
+function safeNext(value: string | null): string | null {
+  if (!value || !value.startsWith('/') || value.startsWith('//')) return null
+  return value
+}
+
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
   const next = searchParams.get('next') ?? '/portal'
+
+  /**
+   * Invitations and sign-in links minted by lib/auth/inviteLink.ts
+   * arrive here as a token_hash rather than a `code`.
+   *
+   * They have to: those links are generated server-side with no PKCE
+   * code verifier, so GoTrue's own /verify endpoint would hand the
+   * session back in a URL FRAGMENT — which never reaches the server,
+   * and so could never be turned into a session cookie here. Verifying
+   * the token ourselves keeps the whole exchange server-side, where
+   * createClient()'s cookie handler can actually write the session.
+   */
+  const tokenHash = searchParams.get('token_hash')
+  const otpType = searchParams.get('type') as EmailOtpType | null
+
+  if (tokenHash && otpType) {
+    const supabase = await createClient()
+    const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: otpType })
+    if (error) {
+      // Overwhelmingly this is a link that was already used or has
+      // expired, which is worth saying plainly — the brother's next
+      // move is to ask his Secretary for another invitation, not to
+      // guess at a password he never set.
+      return NextResponse.redirect(`${origin}/auth/login?error=link_expired`)
+    }
+    return NextResponse.redirect(`${origin}${safeNext(next) ?? '/portal'}`)
+  }
 
   if (code) {
     const supabase = await createClient()
