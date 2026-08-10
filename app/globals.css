@@ -543,3 +543,22 @@ textarea:user-invalid + .lodgeos-field-hint::after {
     padding: 1rem !important;
   }
 }
+
+
+/* ============================================================
+   AI SECRETARY LAUNCHER
+   ============================================================
+   On a phone the full "✦ Ask the Secretary" pill is ~190px of gold
+   across the bottom of every page. Below this width it becomes the
+   mark alone — still obviously a button, a fraction of the footprint.
+   It also tucks itself away while scrolling down; see
+   components/lodge/AiSecretaryPanel.tsx. */
+@media (max-width: 640px) {
+  .lodgeos-ai-launcher {
+    padding: 12px 14px !important;
+    border-radius: 999px !important;
+  }
+  .lodgeos-ai-launcher-label {
+    display: none;
+  }
+}

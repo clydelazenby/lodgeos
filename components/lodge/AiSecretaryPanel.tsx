@@ -3,6 +3,13 @@ import { useState, useRef, useEffect } from 'react'
 
 type Msg = { role: 'user' | 'assistant'; content: string }
 
+/**
+ * How far the officer must scroll down before the launcher gets out of
+ * the way. Small enough to react, large enough that a stray pixel of
+ * momentum does not make it flicker.
+ */
+const HIDE_AFTER_SCROLL = 24
+
 const SUGGESTIONS = [
   'Who currently owes dues?',
   'Any candidates need a mentor check-in?',
@@ -17,7 +24,36 @@ export function AiSecretaryPanel({ tenantId }: { tenantId: string }) {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [hidden, setHidden] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const lastY = useRef(0)
+
+  /**
+   * THE LAUNCHER GETS OUT OF THE WAY WHILE READING.
+   *
+   * It is fixed to the bottom-right, so it sits on top of whatever
+   * happens to be under it — the Stations Filled count on the Lodge
+   * Room, a row of the Sent Communications table. Padding at the foot
+   * of the page only helps at the very bottom; scrolling past anything
+   * else still puts a gold pill over it.
+   *
+   * So: scrolling DOWN (reading) tucks it away, scrolling UP or
+   * stopping brings it back. It never covers what is being read, and it
+   * is never more than a flick away. The panel itself is exempt —
+   * once open it stays put.
+   */
+  useEffect(() => {
+    const onScroll = () => {
+      const y = window.scrollY
+      const goingDown = y > lastY.current
+      if (Math.abs(y - lastY.current) > 4) {
+        setHidden(goingDown && y > HIDE_AFTER_SCROLL)
+        lastY.current = y
+      }
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
@@ -54,15 +90,24 @@ export function AiSecretaryPanel({ tenantId }: { tenantId: string }) {
     return (
       <button
         onClick={() => setOpen(true)}
+        className="lodgeos-ai-launcher"
+        aria-label="Ask the Secretary"
         style={{
           position: 'fixed', bottom: '20px', right: '16px', zIndex: 50,
           background: '#C9A84C', color: '#0A0E1A', border: 'none',
           padding: '12px 20px', borderRadius: '999px', cursor: 'pointer',
           fontFamily: 'Cinzel, serif', fontSize: '0.8rem', fontWeight: 700,
           boxShadow: '0 4px 16px rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', gap: '8px',
+          // Tucked away while reading, not removed: a display:none
+          // button cannot be tabbed back to, and the transform keeps it
+          // reachable by keyboard throughout.
+          transform: hidden ? 'translateY(120%)' : 'translateY(0)',
+          opacity: hidden ? 0 : 1,
+          transition: 'transform 0.22s ease, opacity 0.22s ease',
         }}
       >
-        ✦ Ask the Secretary
+        <span aria-hidden="true">✦</span>
+        <span className="lodgeos-ai-launcher-label">Ask the Secretary</span>
       </button>
     )
   }
@@ -110,7 +155,9 @@ export function AiSecretaryPanel({ tenantId }: { tenantId: string }) {
 
         {loading && (
           <div style={{ alignSelf: 'flex-start', color: '#B8B0A0', fontSize: '0.75rem', fontFamily: 'JetBrains Mono, monospace' }}>
-            Checking the roster…
+            {/* "Checking the roster" was shown even when drafting a
+                condolence letter, which touches no roster at all. */}
+            Working…
           </div>
         )}
         {error && (
