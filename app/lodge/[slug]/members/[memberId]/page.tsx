@@ -6,7 +6,14 @@ import { can } from '@/lib/auth/permissions'
 import { notFound } from 'next/navigation'
 import { MemberProfileTabs } from '@/components/lodge/MemberProfileTabs'
 
-export default async function MemberDetailPage({ params }: { params: { slug: string; memberId: string } }) {
+export default async function MemberDetailPage({
+  params,
+  searchParams,
+}: {
+  params: { slug: string; memberId: string }
+  /** A link from the Assignments board arrives as ?tab=Tasks. */
+  searchParams?: { tab?: string }
+}) {
   const supabase = await createClient()
   // Deduped against the identical lookup in lodge/[slug]/layout.tsx —
   // same render pass, so this costs no round trip.
@@ -47,11 +54,17 @@ export default async function MemberDetailPage({ params }: { params: { slug: str
     viewerProfile?.platform_role === 'super_admin'
   )
 
-  const [{ data: attendanceHistory }, { data: paymentHistory }, { data: degreeHistory }, { data: charges }] = await Promise.all([
+  const [{ data: attendanceHistory }, { data: paymentHistory }, { data: degreeHistory }, { data: charges }, { data: assignments }, { data: signedOff }] = await Promise.all([
     supabase.from('attendance').select('status, lodge_events(id, title, event_date)').eq('tenant_id', tenant.id).eq('member_id', params.memberId).order('lodge_events(event_date)', { ascending: false }),
     supabase.from('payments').select('*').eq('tenant_id', tenant.id).eq('member_id', params.memberId).eq('status', 'succeeded').order('created_at', { ascending: false }),
     supabase.from('degree_progress').select('*').eq('tenant_id', tenant.id).eq('member_id', params.memberId).order('degree'),
     supabase.from('member_charges').select('*').eq('tenant_id', tenant.id).eq('member_id', params.memberId).order('created_at', { ascending: false }),
+    // What the lodge has asked of THIS brother, and — separately — the
+    // curriculum steps he has been signed off on, because a degree
+    // assignment's completion lives there rather than on the assignment
+    // row. See lib/assignments.ts.
+    supabase.from('assignments').select('id, title, description, due_date, step_id, document_id, completed_at, cancelled_at, assigned_by_name, created_at').eq('tenant_id', tenant.id).eq('assigned_to', params.memberId).order('created_at', { ascending: false }),
+    supabase.from('curriculum_progress').select('step_id').eq('tenant_id', tenant.id).eq('member_id', params.memberId),
   ])
 
   return (
@@ -65,6 +78,9 @@ export default async function MemberDetailPage({ params }: { params: { slug: str
       charges={charges ?? []}
       canCharge={canCharge}
       canEditDates={canEditDates}
+      assignments={assignments ?? []}
+      signedOffStepIds={(signedOff ?? []).map((r: any) => r.step_id)}
+      initialTab={searchParams?.tab}
     />
   )
 }

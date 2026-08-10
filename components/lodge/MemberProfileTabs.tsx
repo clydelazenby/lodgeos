@@ -7,13 +7,15 @@ import { AvatarUpload } from '@/components/lodge/AvatarUpload'
 import { MemberQrCode } from '@/components/lodge/MemberQrCode'
 import { MemberChargeForm } from '@/components/lodge/MemberChargeForm'
 import { MasonicDates } from '@/components/lodge/MasonicDates'
+import { assignmentStatus, statusPill, statusLabel, dueLabel } from '@/lib/assignments'
 
-const TABS = ['Overview', 'Attendance', 'Dues', 'History', 'Notes'] as const
+const TABS = ['Overview', 'Tasks', 'Attendance', 'Dues', 'History', 'Notes'] as const
 type Tab = typeof TABS[number]
 
 export function MemberProfileTabs({
   slug, tenant, membership, attendanceHistory, paymentHistory, degreeHistory,
   charges = [], canCharge = false, canEditDates = false,
+  assignments = [], signedOffStepIds = [], initialTab,
 }: {
   slug: string; tenant: any; membership: any
   attendanceHistory: any[]; paymentHistory: any[]; degreeHistory: any[]
@@ -22,8 +24,19 @@ export function MemberProfileTabs({
   canCharge?: boolean
   /** Secretary's office. Register work, not something a Deacon edits. */
   canEditDates?: boolean
+  /** What the lodge has asked of THIS brother. */
+  assignments?: any[]
+  /** Steps he has been signed off on — a degree assignment's completion
+   *  lives in curriculum_progress, never on the assignment row. */
+  signedOffStepIds?: string[]
+  /** Lets a link say which tab to land on, e.g. ?tab=Tasks. */
+  initialTab?: string
 }) {
-  const [tab, setTab] = useState<Tab>('Overview')
+  const [tab, setTab] = useState<Tab>(
+    // A link from the Assignments board arrives with ?tab=Tasks, so
+    // opening a task lands on the man's work rather than his overview.
+    (TABS as readonly string[]).includes(initialTab ?? '') ? (initialTab as Tab) : 'Overview'
+  )
   const [notes, setNotes] = useState(membership.notes ?? '')
   const [savingNotes, setSavingNotes] = useState(false)
   const [notesSaved, setNotesSaved] = useState(false)
@@ -39,6 +52,22 @@ export function MemberProfileTabs({
   const outstanding = charges
     .filter((c: any) => c.status === 'outstanding')
     .reduce((sum: number, c: any) => sum + Number(c.amount), 0)
+
+  /**
+   * Status comes from lib/assignments, not from a boolean on the row:
+   * a plain task's completion lives on the assignment, a degree step's
+   * lives in curriculum_progress where an officer signed it off. One
+   * function so this page cannot disagree with the other two.
+   */
+  const signedOff = new Set(signedOffStepIds)
+  const assignmentRows = assignments
+    .filter((a: any) => !a.cancelled_at)
+    .map((a: any) => ({ a, status: assignmentStatus(a, signedOff) }))
+    .sort((x, y) => {
+      const rank = (s: string) => (s === 'overdue' ? 0 : s === 'open' ? 1 : 2)
+      if (rank(x.status) !== rank(y.status)) return rank(x.status) - rank(y.status)
+      return String(y.a.created_at).localeCompare(String(x.a.created_at))
+    })
 
   const saveNotes = async () => {
     setSavingNotes(true)
@@ -130,6 +159,40 @@ export function MemberProfileTabs({
     />
   </div>
 </div>
+        </div>
+      )}
+
+      {/* WHAT THE LODGE HAS ASKED OF HIM.
+          The Assignments board lists everything the lodge has given
+          out; this is the one man's share of it, which is what an
+          officer wants when he clicks a brother's name. Read-only —
+          giving work out and withdrawing it both happen on the
+          Assignments page, and a plain task is completed by the
+          brother himself. */}
+      {tab === 'Tasks' && (
+        <div>
+          {assignmentRows.length === 0 ? (
+            <div style={{ padding: '2.2rem', textAlign: 'center', color: T.inkFaint, fontStyle: 'italic', fontFamily: T.body }}>
+              Nothing has been asked of him yet.
+            </div>
+          ) : (
+            assignmentRows.map(({ a, status }) => (
+              <div key={a.id} style={{ ...sectionStyle, marginBottom: '0.6rem', display: 'flex', gap: '0.9rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: 180 }}>
+                  <div style={{ fontFamily: T.display, fontSize: '0.9rem', color: T.ink }}>{a.title}</div>
+                  {a.description && (
+                    <div style={{ fontFamily: T.body, fontSize: '0.85rem', color: T.inkFaint }}>{a.description}</div>
+                  )}
+                  <div style={{ fontFamily: T.mono, fontSize: '0.56rem', color: T.inkFainter, marginTop: 3 }}>
+                    {a.assigned_by_name ? `ASKED BY ${String(a.assigned_by_name).toUpperCase()}` : 'FROM THE LODGE'}
+                    {dueLabel(a.due_date) ? ` · ${dueLabel(a.due_date)!.toUpperCase()}` : ''}
+                    {a.step_id ? ' · DEGREE WORK' : ''}
+                  </div>
+                </div>
+                <span className={`pill ${statusPill(status)}`}>{statusLabel(status)}</span>
+              </div>
+            ))
+          )}
         </div>
       )}
 
