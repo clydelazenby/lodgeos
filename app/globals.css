@@ -267,6 +267,21 @@ textarea:user-invalid + .lodgeos-field-hint::after {
     justify-content: flex-start;
     min-width: 0;
   }
+
+  /* Portal header carries the same risk the super-admin one did: a
+     nowrap row of links plus the new Lodge Administration button. */
+  .lodgeos-portal-header {
+    padding: 0.6rem 1rem !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0.5rem !important;
+  }
+  .lodgeos-portal-nav {
+    gap: 0.9rem !important;
+    width: 100%;
+    justify-content: flex-start;
+    min-width: 0;
+  }
 }
 
 /* ============================================================

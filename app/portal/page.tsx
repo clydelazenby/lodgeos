@@ -72,7 +72,11 @@ export default async function PortalPage() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
         {/* Upcoming events */}
         <div className="data-box">
-          <div className="data-box-head"><span>Upcoming Events</span><Link href="/portal/events" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.58rem', color: '#C9A84C', textDecoration: 'none' }}>All →</Link></div>
+          {/* The "All →" link pointed at /portal/events, which has never
+              existed — a 404 one tap from the brother's landing page.
+              This box already lists the upcoming events, so there is
+              nowhere further to send him. */}
+          <div className="data-box-head"><span>Upcoming Events</span></div>
           {events && events.length > 0 ? events.map((ev: any, i: number) => (
             <div key={ev.id} style={{ padding: '0.85rem 1.4rem', borderBottom: i < events.length - 1 ? '1px solid rgba(201,168,76,0.05)' : 'none' }}>
               <div style={{ fontFamily: 'Cinzel, serif', fontSize: '0.82rem', color: '#F5F0E8', marginBottom: '2px' }}>{ev.title}</div>

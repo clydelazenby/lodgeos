@@ -11,7 +11,7 @@ export default async function PortalLayout({ children }: { children: React.React
   const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
   const { data: membership } = await supabase
     .from('tenant_members')
-    .select('*, tenants(name, number, primary_color, secondary_color)')
+    .select('*, tenants(name, number, slug, primary_color, secondary_color)')
     .eq('user_id', user.id)
     .eq('is_active', true)
     .single()
@@ -20,17 +20,48 @@ export default async function PortalLayout({ children }: { children: React.React
 
   const tenant = (membership as any).tenants
 
+  /**
+   * Every brother now lands here, officers included — so an officer
+   * needs a way back to the lodge side. Without this the Secretary
+   * signs in, arrives at his own dues page, and has no route to the
+   * roster or the minute book except typing a URL.
+   *
+   * Shown for any tier above plain member. It is a convenience link,
+   * not a permission: the lodge layout and every route behind it
+   * re-check the tier server-side.
+   */
+  const isOfficer = (membership as any).tenant_role && (membership as any).tenant_role !== 'member'
+  const isSuperAdmin = profile?.platform_role === 'super_admin'
+  const showLodgeLink = Boolean((isOfficer || isSuperAdmin) && tenant?.slug)
+
   return (
     <div style={{ minHeight: '100vh', background: '#0A0E1A' }}>
-      <header style={{ background: '#141C2E', borderBottom: '1px solid rgba(201,168,76,0.15)', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 1.5rem', position: 'sticky', top: 0, zIndex: 100 }}>
+      <header className="lodgeos-portal-header" style={{ background: '#141C2E', borderBottom: '1px solid rgba(201,168,76,0.15)', minHeight: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', padding: '0.5rem 1.5rem', position: 'sticky', top: 0, zIndex: 100 }}>
         <div>
           <div style={{ fontFamily: 'Cinzel, serif', fontSize: '0.82rem', color: '#C9A84C', letterSpacing: '0.08em' }}>{tenant?.name} #{tenant?.number}</div>
           <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.55rem', color: '#B8B0A0', letterSpacing: '0.1em' }}>BROTHER PORTAL</div>
         </div>
-        <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
-          {[['Dashboard', '/portal'], ['Dues', '/portal/dues'], ['Events', '/portal/events'], ['Profile', '/portal/profile']].map(([l, h]) => (
+        <div className="lodgeos-portal-nav" style={{ display: 'flex', gap: '1.25rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* 'Events' pointed at /portal/events, which does not exist —
+              a 404 sitting in the main navigation. Upcoming events are
+              already listed on the portal dashboard, so the dead link is
+              removed rather than replaced. */}
+          {[['Dashboard', '/portal'], ['Dues', '/portal/dues'], ['Profile', '/portal/profile']].map(([l, h]) => (
             <Link key={l} href={h} style={{ fontFamily: 'Cinzel, serif', fontSize: '0.68rem', color: '#B8B0A0', textDecoration: 'none', letterSpacing: '0.05em' }}>{l}</Link>
           ))}
+          {showLodgeLink && (
+            <Link
+              href={`/lodge/${tenant.slug}/dashboard`}
+              style={{
+                fontFamily: 'Cinzel, serif', fontSize: '0.66rem', color: '#C9A84C',
+                textDecoration: 'none', letterSpacing: '0.05em',
+                border: '1px solid rgba(201,168,76,0.3)', padding: '6px 12px', borderRadius: 4,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Lodge Administration →
+            </Link>
+          )}
           <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.6rem', color: '#C9A84C' }}>
             {profile?.first_name}
           </span>

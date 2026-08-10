@@ -75,10 +75,39 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  /**
+   * WHERE A BROTHER LANDS AFTER SIGNING IN.
+   *
+   * Previously every officer tier — Master, Treasurer, Warden, Deacon —
+   * landed on the lodge admin dashboard, and only plain members reached
+   * the portal. That put the administrative side of the app in front of
+   * brothers whose day-to-day use is their own dues, events and profile.
+   *
+   * Now: only a PLATFORM administrator lands on a lodge dashboard.
+   * Everyone else, the Secretary included, starts in the brother portal.
+   *
+   * This changes the LANDING PAGE ONLY. Officers keep every permission
+   * they had — a Treasurer still opens Dues, a Warden still records
+   * attendance — reached from the "Lodge Administration" link in the
+   * portal header, and still enforced server-side by requireTenantRole
+   * and RLS. Nothing here is a security boundary.
+   */
   let redirectTo = '/onboarding/setup'
 
   if (profile?.platform_role === 'super_admin') {
-    redirectTo = '/super-admin'
+    // The Platform Overview exists to choose BETWEEN lodges. With one
+    // lodge it is a wrapper around a single row, so go straight in.
+    // Fetching two rows is enough to answer "more than one?" without
+    // counting the whole table.
+    const { data: lodges } = await admin
+      .from('tenants')
+      .select('slug')
+      .limit(2)
+
+    redirectTo =
+      lodges && lodges.length === 1
+        ? `/lodge/${lodges[0].slug}/dashboard`
+        : '/super-admin'
   } else {
     const { data: membership, error: membershipError } = await admin
       .from('tenant_members')
@@ -95,25 +124,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: membershipError.message }, { status: 500 })
     }
 
-    if (membership) {
-      const slug = (membership.tenants as any)?.slug
-
-      const officerTiers = [
-        'admin',
-        'secretary',
-        'worshipful_master',
-        'treasurer',
-        'warden',
-        'deacon',
-      ]
-
-      if (officerTiers.includes(membership.tenant_role)) {
-        redirectTo = `/lodge/${slug}/dashboard`
-      } else {
-        redirectTo = '/portal'
-      }
-    }
+    // Any brother on a roster starts in the portal, whatever his office.
+    if (membership) redirectTo = '/portal'
   }
+
 const response = NextResponse.json({
   redirectTo,
 })
