@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { SelfCheckinScanner } from '@/components/portal/SelfCheckinScanner'
+import { LodgeRoomView } from '@/components/lodge/LodgeRoomView'
 
 /**
  * Self check-in for a brother at a meeting.
@@ -18,11 +19,12 @@ export default async function PortalCheckInPage() {
 
   const { data: membership } = await supabase
     .from('tenant_members')
-    .select('tenant_id, tenants(name, number)')
+    .select('tenant_id, tenants(name, number, slug)')
     .eq('user_id', user.id).eq('is_active', true).single()
 
   if (!membership) redirect('/auth/login')
   const tenantId = (membership as any).tenant_id
+  const slug = (membership as any).tenants?.slug
 
   const { data: openMeeting } = await supabase
     .from('lodge_events')
@@ -85,6 +87,28 @@ export default async function PortalCheckInPage() {
             <SelfCheckinScanner />
           )}
         </div>
+      </div>
+
+      {/* The room itself.
+          Every brother has a reason to see where the stations are and
+          who is sitting in them — arguably more reason than an officer,
+          who already knows. Pinned to the open meeting so the plan
+          fills in as brothers check themselves in; with no meeting open
+          it shows the stations alone.
+          Not interactive here: tapping a station on the officer page
+          opens a member record a plain brother may not have. */}
+      <div style={{ marginTop: '2rem' }}>
+        <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.62rem', letterSpacing: '0.3em', color: '#C9A84C', marginBottom: '0.75rem' }}>
+          {openMeeting ? 'WHO IS IN THE ROOM' : 'THE LODGE ROOM'}
+        </div>
+        {slug && (
+          <LodgeRoomView
+            slug={slug}
+            interactive={false}
+            showHeading={false}
+            fixedEventId={openMeeting ? (openMeeting as any).id : null}
+          />
+        )}
       </div>
     </div>
   )
