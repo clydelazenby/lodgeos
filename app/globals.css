@@ -546,26 +546,31 @@ textarea:user-invalid + .lodgeos-field-hint::after {
 
 
 /* ============================================================
-   AI SECRETARY LAUNCHER
+   AI SECRETARY — LAUNCHER
    ============================================================
-   On a phone the full "✦ Ask the Secretary" pill is ~190px of gold
-   across the bottom of every page. Below this width it becomes the
-   mark alone — still obviously a button, a fraction of the footprint.
-   It also tucks itself away while scrolling down; see
-   components/lodge/AiSecretaryPanel.tsx. */
+   TWO LAUNCHERS, ONE AT A TIME.
+
+   The floating pill was the only way in, on every screen size, and on a
+   phone that meant a gold button parked over the bottom-right corner of
+   whatever page you were reading — the Stations Filled count on the
+   Lodge Room, a row of the Sent Communications table. Shrinking it to a
+   bare mark and hiding it on scroll were both treatments for a wound we
+   were inflicting on ourselves.
+
+   Below 641px the launcher is instead a button in the top bar, beside
+   the notice bell, where every other global control already lives and
+   where it covers nothing. Above 641px there is room for the pill and
+   it stays. Exactly one is displayed at any width. */
+.lodgeos-ai-header-btn { display: none; }
+
 @media (max-width: 640px) {
-  .lodgeos-ai-launcher {
-    padding: 12px 14px !important;
-    border-radius: 999px !important;
-  }
-  .lodgeos-ai-launcher-label {
-    display: none;
-  }
+  .lodgeos-ai-header-btn { display: flex !important; }
+  .lodgeos-ai-launcher { display: none !important; }
 }
 
 
 /* ============================================================
-   AI SECRETARY PANEL
+   AI SECRETARY — PANEL AND PAGE
    ============================================================
    WHY THIS IS CSS AND NOT INLINE STYLE. The panel was sized inline at
    560px tall, capped by calc(100vh - 32px), and inline styles cannot
@@ -584,22 +589,37 @@ textarea:user-invalid + .lodgeos-field-hint::after {
   bottom: 16px;
   right: 16px;
   z-index: 50;
-  width: 380px;
+  width: 400px;
   max-width: calc(100vw - 32px);
-  height: 560px;
+  height: 580px;
   max-height: calc(100vh - 32px);
   max-height: calc(100dvh - 32px);
   background: #141C2E;
   border: 1px solid rgba(201,168,76,0.25);
-  border-radius: 10px;
   display: flex;
   flex-direction: column;
   box-shadow: 0 8px 32px rgba(0,0,0,0.5);
   overflow: hidden;
 }
 
+/* The full page. Same three parts as the panel, sized to the room it
+   has: the log takes the height and the composer stays pinned at the
+   foot, so a long draft scrolls inside its own frame rather than
+   pushing the text box off the bottom of the document. */
+.lodgeos-ai-page {
+  display: flex;
+  flex-direction: column;
+  background: #141C2E;
+  border: 1px solid rgba(201,168,76,0.15);
+  overflow: hidden;
+  /* Header 60px, the page's own padding, and its heading block. */
+  height: calc(100vh - 260px);
+  height: calc(100dvh - 260px);
+  min-height: 420px;
+}
+
 .lodgeos-ai-head {
-  padding: 14px 18px;
+  padding: 13px 16px;
   border-bottom: 1px solid rgba(201,168,76,0.15);
   display: flex;
   justify-content: space-between;
@@ -608,14 +628,19 @@ textarea:user-invalid + .lodgeos-field-hint::after {
   flex-shrink: 0;
 }
 
+/* The log is PAPER, the chrome around it is not. A reply is prose, and
+   prose in this app is set on the dark paper ground — the same one the
+   emails and the public site use. It is what lets the assistant's text
+   read as a letter rather than as a chat transcript. */
 .lodgeos-ai-log {
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 16px;
+  background: #0A0E1A;
+  padding: 18px 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 18px;
   min-height: 0; /* or a long reply pushes the compose box off the foot */
 }
 
@@ -641,10 +666,49 @@ textarea:user-invalid + .lodgeos-field-hint::after {
 
 @media (min-width: 641px) {
   /* Back to the intended size once there is no keyboard to trigger it. */
-  .lodgeos-ai-input { font-size: 0.85rem; }
+  .lodgeos-ai-input { font-size: 0.9rem; }
 }
 
-/* On a phone it is a sheet, not a floating card. A 380px card inset on
+/* Where the answer is being written. A caret rather than a spinner:
+   the officer is watching text arrive, and the mark that belongs at the
+   end of arriving text is the one a typewriter leaves. */
+.lodgeos-ai-caret {
+  display: inline-block;
+  width: 7px;
+  height: 1em;
+  margin-left: 2px;
+  background: #C9A84C;
+  vertical-align: text-bottom;
+  animation: lodgeos-ai-blink 1s step-end infinite;
+}
+
+@keyframes lodgeos-ai-blink {
+  0%, 45% { opacity: 1; }
+  50%, 95% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+/* Beside "Checking who owes dues…" — a lookup in progress. */
+.lodgeos-ai-pulse {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #C9A84C;
+  flex-shrink: 0;
+  animation: lodgeos-ai-pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes lodgeos-ai-pulse {
+  0%, 100% { opacity: 0.25; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lodgeos-ai-caret, .lodgeos-ai-pulse { animation: none; }
+}
+
+/* On a phone it is a sheet, not a floating card. A 400px card inset on
    all four sides of a 390px screen leaves margins too thin to be worth
    the clipping they cause. */
 @media (max-width: 640px) {
@@ -656,10 +720,32 @@ textarea:user-invalid + .lodgeos-field-hint::after {
     height: 100dvh;
     max-height: none;
     border: none;
-    border-radius: 0;
     /* Clear of the notch at the top and the home indicator at the
        bottom, both of which would otherwise cover real controls. */
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* The page's surrounding padding and heading are shorter here, and a
+     phone has less height to give away in the first place. */
+  .lodgeos-ai-page {
+    height: calc(100vh - 230px);
+    height: calc(100dvh - 230px);
+    min-height: 340px;
+  }
+}
+
+/* A READABLE MEASURE ON A WIDE SCREEN.
+   The panel is 400px, so its line length takes care of itself. The full
+   page does not: at 1280px the replies ran the whole width of the
+   browser, which is roughly 160 characters a line — around twice what
+   anyone can read without losing their place on the way back to the
+   left margin. The column is capped and centred, and the composer is
+   padded to match so the text box lines up with the text above it. */
+@media (min-width: 900px) {
+  .lodgeos-ai-page .lodgeos-ai-log,
+  .lodgeos-ai-page .lodgeos-ai-compose {
+    padding-left: max(16px, calc((100% - 78ch) / 2));
+    padding-right: max(16px, calc((100% - 78ch) / 2));
   }
 }

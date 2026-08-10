@@ -1,7 +1,7 @@
 import { redirect, notFound } from 'next/navigation'
 import { getSessionUser, getTenantBySlug, getMembership, getProfile } from '@/lib/supabase/queries'
 import Link from 'next/link'
-import { AiSecretaryPanel } from '@/components/lodge/AiSecretaryPanel'
+import { AiSecretaryPanel, AiSecretaryLauncherButton } from '@/components/lodge/AiSecretaryPanel'
 import { ResponsiveNavShell } from '@/components/lodge/ResponsiveNavShell'
 import { cookies } from 'next/headers'
 import { can, type Capability } from '@/lib/auth/permissions'
@@ -113,6 +113,11 @@ export default async function LodgeAdminLayout({
 
   const allNavEntries: ({ label: string; href: string; need?: Capability } | { label: string; need?: Capability; items: { label: string; href: string; need?: Capability }[] })[] = [
     { label: 'Dashboard', href: `${base}/dashboard` },
+    // Top-level, beside Dashboard, because drafting minutes is not a
+    // sub-task of anything — and because a tool nobody can find is a
+    // tool nobody uses. The floating button remains for a question
+    // asked in passing; this is where the writing happens.
+    { label: 'AI Secretary', href: `${base}/secretary` },
     {
       label: 'Meetings',
       items: [
@@ -182,6 +187,7 @@ export default async function LodgeAdminLayout({
           </span>
         </div>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexShrink: 0 }}>
+          <AiSecretaryLauncherButton />
           <NoticeBell href={`${base}/communications`} count={unreadCount ?? 0} />
           <Link href={`/${params.slug}`} className="lodgeos-public-site-link" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.58rem', color: '#B8B0A0', textDecoration: 'none', letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>Public Site ↗</Link>
           <span className="lodgeos-first-name" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.6rem', color: '#C9A84C', whiteSpace: 'nowrap' }}>{profile?.first_name}</span>
@@ -201,7 +207,11 @@ export default async function LodgeAdminLayout({
         </ResponsiveNavShell>
       </div>
 
-      <AiSecretaryPanel tenantId={tenant.id} />
+      <AiSecretaryPanel
+        tenantId={tenant.id}
+        slug={params.slug}
+        canSendNotices={allow('communications')}
+      />
 
       {/* Header items that get tight on very small screens hide below
           480px, keeping Sign out (the one action genuinely needed)
