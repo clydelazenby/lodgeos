@@ -37,6 +37,9 @@ export function PortalNav({
   const LINKS: [string, string][] = [
     ['Dashboard', '/portal'],
     ['Check In', '/portal/check-in'],
+    ['Events', '/portal/events'],
+    ['Notices', '/portal/notices'],
+    ['Roster', '/portal/roster'],
     ['Documents', '/portal/documents'],
     ['Dues', '/portal/dues'],
     ['Profile', '/portal/profile'],

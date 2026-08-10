@@ -296,12 +296,23 @@ textarea:user-invalid + .lodgeos-field-hint::after {
   }
   .lodgeos-portal-menu {
     display: block;
+    position: static;
   }
 }
 
-/* Above the breakpoint the button is not rendered at all. */
-.lodgeos-portal-menu {
-  display: none;
+/* Above the breakpoint the button is not shown.
+   WRITTEN AS min-width, NOT AS A BARE RULE. It was briefly
+   `.lodgeos-portal-menu { display: none }` with no query, sitting after
+   the max-width block that sets `display: block`. Media queries add no
+   specificity, so with the two rules tied the LATER one won — at every
+   width. The button was hidden on every screen, and because the mobile
+   rule also hides the inline links, the portal had no navigation at all
+   on a phone. Two mutually exclusive queries cannot fall into that
+   trap whatever order they appear in. */
+@media (min-width: 768px) {
+  .lodgeos-portal-menu {
+    display: none;
+  }
 }
 
 /* ============================================================
