@@ -1,7 +1,11 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { CURRICULUM_DEGREES, DEGREE_TITLE, type CurriculumDegree, type Step } from '@/lib/curriculum'
+import { DEGREE_TITLE, STARTER_OUTLINE, type CurriculumDegree, type Step } from '@/lib/curriculum'
+import { DEGREES } from '@/lib/degrees'
+
+/** Blue Lodge first — it is what anyone opens this page for. */
+const GROUP_ORDER = ['Blue Lodge', 'York Rite', 'Scottish Rite', 'Shrine']
 import { callApi, errorMessage } from '@/lib/clientFetch'
 
 /**
@@ -79,27 +83,32 @@ export function CurriculumEditor({
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: 6, marginBottom: '1rem', flexWrap: 'wrap' }}>
-        {CURRICULUM_DEGREES.map((d) => {
-          const active = degree === d
-          const count = steps.filter((s) => s.degree === d).length
-          return (
-            <button
-              key={d}
-              onClick={() => setDegree(d)}
-              aria-pressed={active}
-              style={{
-                background: active ? 'rgba(201,168,76,0.15)' : 'transparent',
-                border: `1px solid ${active ? 'rgba(201,168,76,0.5)' : 'rgba(201,168,76,0.18)'}`,
-                color: active ? '#F5F0E8' : '#B8B0A0',
-                fontFamily: 'Cinzel, serif', fontSize: '0.75rem',
-                padding: '9px 14px', borderRadius: 3, cursor: 'pointer',
-              }}
-            >
-              {DEGREE_TITLE[d]} <span style={{ color: '#C9A84C', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.6rem' }}>{count}</span>
-            </button>
-          )
-        })}
+      {/* A DROPDOWN, NOT SEVENTEEN BUTTONS. Blue Lodge first, then the
+          appendant bodies grouped as they actually are — a flat row of
+          seventeen chips is a wall, and the three anyone touches weekly
+          would be lost in it. */}
+      <div style={{ marginBottom: '1rem' }}>
+        <label style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.55rem', letterSpacing: '0.1em', color: '#B8B0A0', display: 'block', marginBottom: 4 }}>
+          DEGREE
+        </label>
+        <select
+          value={degree}
+          onChange={(e) => setDegree(e.target.value)}
+          style={{ ...input, maxWidth: 340, fontSize: '0.95rem', cursor: 'pointer' }}
+        >
+          {GROUP_ORDER.map((group) => (
+            <optgroup key={group} label={group}>
+              {DEGREES.filter((d) => d.group === group).map((d) => {
+                const n = steps.filter((s) => s.degree === d.value).length
+                return (
+                  <option key={d.value} value={d.value}>
+                    {d.label}{n ? ` — ${n} steps` : ''}
+                  </option>
+                )
+              })}
+            </optgroup>
+          ))}
+        </select>
       </div>
 
       {error && (
@@ -122,7 +131,7 @@ export function CurriculumEditor({
               Nothing written down for the {DEGREE_TITLE[degree]} degree yet. A candidate sees a flat
               library and has to work out the order for himself.
             </p>
-            {canEdit && (
+            {canEdit && (STARTER_OUTLINE[degree] ? (
               <>
                 <button onClick={() => call('POST', { action: 'seed' })} disabled={busy} className="btn-gold" style={{ fontSize: '0.68rem' }}>
                   {busy ? 'Working…' : 'Start from the standard outline'}
@@ -132,7 +141,15 @@ export function CurriculumEditor({
                   required and in what order — change, remove and add freely.
                 </p>
               </>
-            )}
+            ) : (
+              /* No outline beyond the Blue Lodge, on purpose: the app
+                 has no business inventing what the appendant bodies
+                 require. Those steps are the lodge's to write. */
+              <p style={{ fontFamily: 'Crimson Pro, serif', fontStyle: 'italic', fontSize: '0.9rem', color: '#918879', margin: 0 }}>
+                There is no standard outline for this degree — the app does not presume to know what
+                the appendant bodies ask. Add the steps below as your lodge mentors them.
+              </p>
+            ))}
           </div>
         ) : (
           forDegree.map((s, i) => {
@@ -189,7 +206,7 @@ export function CurriculumEditor({
           })
         )}
 
-        {canEdit && forDegree.length > 0 && (
+        {canEdit && (
           <div style={{ padding: '1rem 1.4rem' }}>
             {adding ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>

@@ -292,6 +292,86 @@ export async function sendAssignmentEmail({
   }, 'assignment notice')
 }
 
+// ── A brother says he has finished ──
+//
+// To the officer who gave him the work. Without this the submission
+// sits in the app and is discovered whenever somebody next opens the
+// page, which for a proficiency learned the week before a degree is
+// too late to be any use.
+export async function sendAssignmentSubmittedEmail({
+  to, officerFirstName, brotherName, lodgeName, title, isDegreeWork, reviewUrl, brand,
+}: {
+  to: string; officerFirstName: string; brotherName: string; lodgeName: string
+  title: string; isDegreeWork: boolean; reviewUrl: string; brand?: LodgeBrand
+}) {
+  const b = resolveBrand(brand, lodgeName)
+  const t = lodgeTitle(b)
+
+  const body = {
+    greeting: `Dear Brother ${officerFirstName},`,
+    paragraphs: [
+      `${brotherName} says he has completed "${title}".`,
+      isDegreeWork
+        ? 'This is part of his degree work, so it waits on you: sign it off if you have heard it, or send it back with a word about what is still wanting.'
+        : 'Sign it off if you are satisfied, or send it back with a note.',
+    ],
+    details: [
+      { label: 'Brother', value: brotherName },
+      { label: 'Item', value: title },
+      { label: 'Kind', value: isDegreeWork ? 'Degree work' : 'Task' },
+    ],
+    cta: { label: 'Sign Off or Send Back', url: reviewUrl },
+  }
+
+  return send({
+    from: `${t} <${FROM}>`,
+    to,
+    replyTo: b.email || undefined,
+    subject: `${brotherName} has finished: ${title}`,
+    html: renderLodgeEmail(b, body, `${brotherName} is waiting on your sign-off`),
+    text: renderLodgeEmailText(b, body),
+  }, 'submission notice')
+}
+
+// ── Sent back, with a reason ──
+//
+// The reason is the whole email. A proficiency returned without one
+// teaches the candidate nothing except that he failed, which is the
+// opposite of what a mentor is for.
+export async function sendAssignmentDeclinedEmail({
+  to, firstName, lodgeName, title, note, officerName, portalUrl, brand,
+}: {
+  to: string; firstName: string; lodgeName: string
+  title: string; note: string | null; officerName: string | null
+  portalUrl: string; brand?: LodgeBrand
+}) {
+  const b = resolveBrand(brand, lodgeName)
+  const t = lodgeTitle(b)
+
+  const body = {
+    greeting: `Dear Brother ${firstName},`,
+    paragraphs: [
+      `"${title}" has been sent back to you — it is not yet signed off.`,
+      ...(note ? [note] : ['No note was left. Speak to your mentor about what is still wanting.']),
+      'It is still on your list. Take it up again and mark it done when you are ready.',
+    ],
+    details: [
+      { label: 'Item', value: title },
+      ...(officerName ? [{ label: 'Returned by', value: officerName }] : []),
+    ],
+    cta: { label: 'See Your Work', url: portalUrl },
+  }
+
+  return send({
+    from: `${t} <${FROM}>`,
+    to,
+    replyTo: b.email || undefined,
+    subject: `Not yet signed off: ${title}`,
+    html: renderLodgeEmail(b, body, note ?? 'Sent back for further work'),
+    text: renderLodgeEmailText(b, body),
+  }, 'decline notice')
+}
+
 // ── A brother's years of service ──
 //
 // Sent by /api/cron/anniversaries, once, in the month the anniversary

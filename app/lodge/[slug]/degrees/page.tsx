@@ -116,7 +116,7 @@ export default async function LodgeDegreesPage({ params }: { params: { slug: str
                     thing the page could never answer: where in the
                     degree's work he actually is. */}
                 <td className="dash-td" style={{ minWidth: 240 }}>
-                  {(CURRICULUM_DEGREES as readonly string[]).includes(m.degree) ? (
+                  {CURRICULUM_DEGREES.includes(m.degree) ? (
                     <CandidateCurriculum
                       tenantId={tenant.id}
                       memberId={m.user_id}
@@ -128,7 +128,7 @@ export default async function LodgeDegreesPage({ params }: { params: { slug: str
                     />
                   ) : (
                     <span style={{ color: '#918879', fontStyle: 'italic', fontSize: '0.85rem' }}>
-                      Beyond the Blue Lodge
+                      No degree recorded
                     </span>
                   )}
                 </td>

@@ -23,7 +23,7 @@ import { CURRICULUM_DEGREES, STARTER_OUTLINE, type CurriculumDegree } from '@/li
 const MAX_STEPS_PER_DEGREE = 60
 
 function isDegree(value: unknown): value is CurriculumDegree {
-  return typeof value === 'string' && (CURRICULUM_DEGREES as readonly string[]).includes(value)
+  return typeof value === 'string' && CURRICULUM_DEGREES.includes(value)
 }
 
 /** Create a step, or lay down the starter outline for a whole degree. */
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     const { tenantId, degree, action } = body
 
     if (!tenantId || !isDegree(degree)) {
-      return NextResponse.json({ error: 'A tenantId and a degree of EA, FC or MM are required.' }, { status: 400 })
+      return NextResponse.json({ error: 'That is not a degree this app knows.' }, { status: 400 })
     }
 
     const auth = await requireTenantRole(tenantId, [
@@ -65,7 +65,20 @@ export async function POST(request: Request) {
         )
       }
 
-      const rows = STARTER_OUTLINE[degree].map((s, i) => ({
+      /**
+       * Only the Blue Lodge has an outline. Beyond the third degree the
+       * app has no business inventing what the Scottish Rite requires —
+       * those steps are written by the lodge or not written.
+       */
+      const outline = STARTER_OUTLINE[degree]
+      if (!outline) {
+        return NextResponse.json(
+          { error: `There is no standard outline for ${degree} — the app does not presume to know what the appendant bodies require. Add the steps yourself.` },
+          { status: 400 }
+        )
+      }
+
+      const rows = outline.map((s, i) => ({
         tenant_id: tenantId,
         degree,
         title: s.title,

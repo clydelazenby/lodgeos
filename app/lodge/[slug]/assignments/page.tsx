@@ -40,7 +40,7 @@ export default async function LodgeAssignmentsPage({ params }: { params: { slug:
         .eq('is_active', true),
       supabase
         .from('assignments')
-        .select('id, assigned_to, title, description, due_date, step_id, document_id, completed_at, cancelled_at, assigned_by_name, created_at')
+        .select('id, assigned_to, title, description, due_date, step_id, document_id, completed_at, cancelled_at, submitted_at, declined_at, declined_by_name, decline_note, assigned_by_name, created_at')
         .eq('tenant_id', tenant.id)
         .order('created_at', { ascending: false }),
       // Curriculum sign-offs, because a curriculum assignment's
