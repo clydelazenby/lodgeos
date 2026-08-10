@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { T } from '@/lib/designTokens'
 import { StationMemberModal, type StationSelection } from '@/components/lodge/StationMemberModal'
+import { STATIONS } from '@/lib/stations'
 
 /**
  * The Lodge Room floor plan, shared by the officer page and the
@@ -24,33 +25,17 @@ import { StationMemberModal, type StationSelection } from '@/components/lodge/St
  * the check-in page uses it to show the room filling up in real time
  * for the meeting that is currently open.
  */
-// Position each station as a percentage of the room's width/height,
-// laid out to resemble an actual lodge floor plan: East (top, where
-// the WM sits) to West (bottom, the entrance/Tyler's post), with
-// Wardens flanking the WM and the working officers along the sides.
 /**
- * `short` is the phone-sized label. The full station name is what
- * forces a chair to be ~76px wide, and twelve 76px chairs cannot fit a
- * 300px-wide floor plan at these fixed percentages no matter how small
- * the type gets — four of them ended up hanging off the edges of the
- * box. Abbreviating the label (and dropping the brother's name, which
- * stays in the tooltip and in the roster panel beside the plan) takes
- * a chair down to 48px, which fits with room to spare.
+ * The plan's geometry now lives in lib/stations.ts, shared with the
+ * office dropdown on the Members page — a station cannot exist in one
+ * and not the other, which is what made a hand-typed "Sr. Warden"
+ * leave a man unseated with nothing to explain why.
+ *
+ * `short` is the phone-sized label. The full station name forces a
+ * chair to be ~76px wide, and twelve of those cannot fit a 300px plan
+ * at these percentages however small the type gets.
  */
-const LAYOUT: { station: string; short: string; top: string; left: string }[] = [
-  { station: 'Worshipful Master', short: 'WM', top: '8%', left: '50%' },
-  { station: 'Senior Warden', short: 'SW', top: '22%', left: '25%' },
-  { station: 'Junior Warden', short: 'JW', top: '22%', left: '75%' },
-  { station: 'Treasurer', short: 'Treas', top: '42%', left: '12%' },
-  { station: 'Chaplain', short: 'Chap', top: '42%', left: '88%' },
-  { station: 'Secretary', short: 'Sec', top: '58%', left: '12%' },
-  { station: 'Marshal', short: 'Mar', top: '58%', left: '88%' },
-  { station: 'Senior Deacon', short: 'SD', top: '48%', left: '38%' },
-  { station: 'Junior Deacon', short: 'JD', top: '48%', left: '62%' },
-  { station: 'Senior Steward', short: 'SS', top: '80%', left: '30%' },
-  { station: 'Junior Steward', short: 'JS', top: '80%', left: '70%' },
-  { station: 'Tyler', short: 'Tyler', top: '94%', left: '50%' },
-]
+const LAYOUT = STATIONS.map(s => ({ station: s.name, short: s.short, top: s.top, left: s.left }))
 
 export function LodgeRoomView({
   slug,
