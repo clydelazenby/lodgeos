@@ -45,6 +45,15 @@ export function escapeHtml(input: string): string {
  * login page, and saying so) if a link could not be minted; a brother
  * who hears from his Secretary that he's been added and finds nothing
  * in his inbox is the worse outcome.
+ *
+ * THROWS when Resend rejects the message. The SDK does NOT throw on an
+ * API-level rejection — an unverified sending domain, an invalid
+ * recipient, a blown quota all RESOLVE, with the reason in `error`
+ * (sendLodgeNoticeBatch already accounts for this). Returning that
+ * object unchanged would let every caller's try/catch pass and report a
+ * delivery that never happened, which is the exact failure mode this
+ * whole change exists to end. Callers treat a throw as "not delivered",
+ * so surfacing it here fixes them all at once.
  */
 export async function sendWelcomeEmail({
   to, firstName, lodgeName, lodgeSlug, loginUrl, actionUrl,
@@ -55,7 +64,7 @@ export async function sendWelcomeEmail({
   const resend = getResend()
   const ctaUrl = actionUrl || loginUrl
   const ctaLabel = actionUrl ? 'Set Up Your Portal' : 'Access Your Portal'
-  return resend.emails.send({
+  const { data, error } = await resend.emails.send({
     from: `${lodgeName} via LodgeOS <${FROM}>`,
     to,
     subject: `Welcome to ${lodgeName} — Your portal is ready`,
@@ -90,6 +99,12 @@ export async function sendWelcomeEmail({
       </div>
     `,
   })
+
+  if (error) {
+    throw new Error(error.message || 'Resend rejected the welcome email.')
+  }
+
+  return data
 }
 
 /**

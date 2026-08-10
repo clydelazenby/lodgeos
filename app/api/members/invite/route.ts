@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { sendWelcomeEmail, APP_URL } from '@/lib/email'
 import { requireTenantRole, TenantRole } from '@/lib/auth/requireTenantAdmin'
 import { createInviteLink } from '@/lib/auth/inviteLink'
+import { upsertProfilePreservingIdentity } from '@/lib/auth/profile'
 
 const ADMIN_TIER_ROLES = new Set<TenantRole>(['admin', 'secretary'])
 
@@ -95,15 +96,16 @@ export async function POST(request: Request) {
       )
     }
 
-    // The profiles row is normally created by a signup trigger; upsert
-    // so the invite works whether or not that has fired yet, and so the
-    // names the Secretary typed fill in the blanks.
-    await serviceClient.from('profiles').upsert({
+    // The profiles row is normally created by a signup trigger; this
+    // works whether or not that has fired yet, and lets the names the
+    // Secretary typed fill BLANKS ONLY — a brother already known to
+    // another lodge must not be renamed there by this invitation.
+    await upsertProfilePreservingIdentity(serviceClient, {
       id: profileId,
       email: cleanEmail,
-      ...(firstName ? { first_name: firstName } : {}),
-      ...(lastName ? { last_name: lastName } : {}),
-    }, { onConflict: 'id' })
+      firstName,
+      lastName,
+    })
 
     const { error: memberError } = await serviceClient.from('tenant_members').upsert({
       tenant_id: tenantId,

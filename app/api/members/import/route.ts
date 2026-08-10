@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { requireTenantRole, type TenantRole } from '@/lib/auth/requireTenantAdmin'
 import { sendWelcomeEmail, APP_URL } from '@/lib/email'
 import { createInviteLink } from '@/lib/auth/inviteLink'
+import { upsertProfilePreservingIdentity } from '@/lib/auth/profile'
 
 /**
  * Bulk roster import.
@@ -271,15 +272,18 @@ export async function POST(request: Request) {
         }
 
         // The profiles row is normally created by a signup trigger;
-        // upsert so an import works whether or not that has fired yet,
-        // and so names from the spreadsheet fill in blanks.
-        await supabase.from('profiles').upsert({
+        // this works whether or not that has fired yet, and so names
+        // from the spreadsheet fill in blanks — which is what the
+        // upsert here always claimed to do but did not: it overwrote
+        // them, so importing a roster containing a brother who also
+        // belongs to another lodge renamed him there.
+        await upsertProfilePreservingIdentity(supabase, {
           id: profileId,
           email: v.email,
-          first_name: v.firstName,
-          last_name: v.lastName,
-          ...(v.phone ? { phone: v.phone } : {}),
-        }, { onConflict: 'id' })
+          firstName: v.firstName,
+          lastName: v.lastName,
+          phone: v.phone,
+        })
 
         const { error: memberError } = await supabase.from('tenant_members').upsert({
           tenant_id: tenantId,
