@@ -4,6 +4,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useSecretary } from './useSecretary'
 import { formatReply, suggestionsFor } from './format'
 import { splitDraft, stageForCompose, type ParsedDraft } from '@/lib/ai/draft'
+import { stageForMinutes } from '@/lib/minutesHandoff'
 import { SquareAndCompasses } from './Emblem'
 
 /**
@@ -43,11 +44,14 @@ function Actions({
   draft,
   canSendNotices,
   onSendAsNotice,
+  onSaveAsMinutes,
 }: {
   text: string
   draft: ParsedDraft | null
   canSendNotices: boolean
   onSendAsNotice: (draft: ParsedDraft) => void
+  /** Present only when the draft reads as a set of minutes. */
+  onSaveAsMinutes: ((draft: ParsedDraft) => void) | null
 }) {
   const [copied, setCopied] = useState(false)
 
@@ -106,6 +110,12 @@ function Actions({
           checks the tier again regardless; this stops the interface
           advertising a door that opens onto a 403. */}
       {draft && canSendNotices && button('SEND AS NOTICE →', () => onSendAsNotice(draft), true)}
+
+      {/* A set of minutes does not go out by email — it goes into the
+          minute book, is read at the next meeting and approved there.
+          Offering "send as notice" for it would be offering the wrong
+          door. */}
+      {draft && onSaveAsMinutes && button('SAVE TO MINUTE BOOK →', () => onSaveAsMinutes(draft), true)}
     </div>
   )
 }
@@ -114,10 +124,12 @@ function DraftCard({
   draft,
   canSendNotices,
   onSendAsNotice,
+  onSaveAsMinutes,
 }: {
   draft: ParsedDraft
   canSendNotices: boolean
   onSendAsNotice: (d: ParsedDraft) => void
+  onSaveAsMinutes: ((d: ParsedDraft) => void) | null
 }) {
   return (
     <div
@@ -177,6 +189,7 @@ function DraftCard({
           draft={draft}
           canSendNotices={canSendNotices}
           onSendAsNotice={onSendAsNotice}
+          onSaveAsMinutes={onSaveAsMinutes}
         />
       </div>
     </div>
@@ -248,6 +261,43 @@ export function SecretaryConversation({
     stageForCompose(draft)
     onNavigate?.()
     router.push(`/lodge/${slug}/communications`)
+  }
+
+  /**
+   * Minutes go to the minute book, not into an email.
+   *
+   * The model marks a draft but does not say what KIND of draft it is,
+   * and asking it to would be another instruction to get wrong. The
+   * subject line and the opening of a set of minutes are unmistakable
+   * in a way a condolence letter's are not — "the lodge was opened",
+   * "minutes of the stated communication" — so the test is on the text
+   * rather than on a promise from the model. A false negative costs a
+   * copy and paste; a false positive shows one extra button.
+   */
+  const looksLikeMinutes = (draft: ParsedDraft): boolean => {
+    const head = `${draft.subject}\n${draft.body.slice(0, 400)}`.toLowerCase()
+    return (
+      head.includes('minutes of') ||
+      head.includes('opened in due form') ||
+      head.includes('was opened in') ||
+      /\bminutes\b/.test(draft.subject.toLowerCase())
+    )
+  }
+
+  /**
+   * Carried in sessionStorage for the same reason as the Communications
+   * handoff: a set of minutes is hundreds of words and URL length
+   * limits vary by browser and proxy.
+   *
+   * Lands on the minute book rather than on one meeting's editor,
+   * because the assistant may have drafted from the most recent meeting
+   * without either of us naming which — the officer picks the meeting
+   * there, where they are listed with their dates.
+   */
+  const saveAsMinutes = (draft: ParsedDraft) => {
+    stageForMinutes(draft.body)
+    onNavigate?.()
+    router.push(`/lodge/${slug}/minutes`)
   }
 
   const composerDisabled = loading || !input.trim()
@@ -400,7 +450,12 @@ export function SecretaryConversation({
               )}
 
               {draft ? (
-                <DraftCard draft={draft} canSendNotices={canSendNotices} onSendAsNotice={sendAsNotice} />
+                <DraftCard
+                  draft={draft}
+                  canSendNotices={canSendNotices}
+                  onSendAsNotice={sendAsNotice}
+                  onSaveAsMinutes={looksLikeMinutes(draft) ? saveAsMinutes : null}
+                />
               ) : (
                 prose && (
                   <Actions
@@ -408,6 +463,7 @@ export function SecretaryConversation({
                     draft={null}
                     canSendNotices={canSendNotices}
                     onSendAsNotice={sendAsNotice}
+                    onSaveAsMinutes={null}
                   />
                 )
               )}

@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import { format } from 'date-fns'
 import { QrCheckinScanner } from '@/components/lodge/QrCheckinScanner'
 import { AttendanceImport } from '@/components/lodge/AttendanceImport'
+import { VisitorRegister } from '@/components/lodge/VisitorRegister'
 
 type Status = 'present' | 'absent' | 'excused'
 
@@ -164,6 +165,15 @@ export default function LodgeAttendancePage() {
               </tbody>
             </table>
             {members.length === 0 && <div style={{ padding: '3rem', textAlign: 'center', color: '#B8B0A0', fontStyle: 'italic' }}>No active members yet.</div>}
+          </div>
+
+          {/* THE VISITORS' COLUMN.
+              attendance keys off a profile id, so a brother from
+              another lodge could not be recorded above at all — not as
+              present, not as anything. He is signed in here instead,
+              and the minutes name him. */}
+          <div style={{ marginTop: '1.5rem' }}>
+            <VisitorRegister tenantId={tenant.id} eventId={selectedEventId} canEdit />
           </div>
         </>
       )}

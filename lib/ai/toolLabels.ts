@@ -19,6 +19,7 @@ const TOOL_LABELS: Record<string, string> = {
   get_upcoming_events: 'Checking the calendar',
   get_pending_petitions: 'Reading pending petitions',
   get_recent_attendance: 'Pulling up the last meeting',
+  get_meeting_record: 'Reading the record of that meeting',
 }
 
 export function toolLabel(name: string): string {

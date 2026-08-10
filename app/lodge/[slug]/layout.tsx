@@ -124,6 +124,10 @@ export default async function LodgeAdminLayout({
         { label: 'Lodge Room', href: `${base}/lodge-room` },
         { label: 'Meeting Mode', href: `${base}/meeting`, need: 'meetings' },
         { label: 'Attendance', href: `${base}/attendance`, need: 'meetings' },
+        // The lodge's principal record. Under Meetings rather than
+        // Records because writing them up is part of running a meeting,
+        // and it is the officer who just ran one who does it.
+        { label: 'Minutes', href: `${base}/minutes`, need: 'meetings' },
         { label: 'Events', href: `${base}/events` },
       ],
     },
