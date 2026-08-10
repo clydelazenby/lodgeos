@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { format } from 'date-fns'
 import { upcomingSince } from '@/lib/dates'
 import { RsvpButtons } from '@/components/portal/RsvpButtons'
+import { CalendarSubscribe } from '@/components/lodge/CalendarSubscribe'
 
 /**
  * The lodge calendar, and the brother's answer to each invitation.
@@ -22,11 +23,12 @@ export default async function PortalEventsPage() {
 
   const { data: membership } = await supabase
     .from('tenant_members')
-    .select('tenant_id')
+    .select('tenant_id, tenants(calendar_token)')
     .eq('user_id', user.id).eq('is_active', true).single()
 
   if (!membership) redirect('/auth/login')
   const tenantId = (membership as any).tenant_id
+  const calendarToken = (membership as any).tenants?.calendar_token ?? null
   const today = upcomingSince()
 
   const [{ data: events }, { data: myRsvps }] = await Promise.all([
@@ -78,6 +80,19 @@ export default async function PortalEventsPage() {
           Answer an invitation here if you have lost the email.
         </p>
       </div>
+
+      {/* SUBSCRIBE ONCE, NOT MONTHLY.
+          The per-event download below still exists and still works, but
+          it needs a fresh link for every meeting. This is added to a
+          phone once and stays current on its own. */}
+      {calendarToken && (
+        <div className="data-box" style={{ marginBottom: '1rem' }}>
+          <div className="data-box-head">
+            <span>The Lodge Calendar</span>
+          </div>
+          <CalendarSubscribe token={calendarToken} />
+        </div>
+      )}
 
       <div className="data-box" style={{ marginBottom: '1rem' }}>
         <div className="data-box-head">
