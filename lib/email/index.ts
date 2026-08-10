@@ -239,6 +239,59 @@ export async function sendChargeAddedEmail({
   }, 'charge notice')
 }
 
+// ── Work given to a brother ──
+//
+// ONE EMAIL PER BATCH, never one per item. Putting a candidate on the
+// Entered Apprentice plan assigns seven steps at once; seven emails
+// landing together is how a lodge teaches its brethren to filter its
+// mail. The list goes in the body.
+export async function sendAssignmentEmail({
+  to, firstName, lodgeName, assignedByName, items, dueDate, portalUrl, brand,
+}: {
+  to: string; firstName: string; lodgeName: string
+  assignedByName: string | null
+  items: { title: string; description?: string | null }[]
+  dueDate?: string | null
+  portalUrl: string
+  brand?: LodgeBrand
+}) {
+  const b = resolveBrand(brand, lodgeName)
+  const title = lodgeTitle(b)
+  const many = items.length > 1
+  const from = assignedByName ? `${assignedByName}` : 'The lodge'
+
+  const body = {
+    greeting: `Dear Brother ${firstName},`,
+    paragraphs: [
+      many
+        ? `${from} has asked you to take on the following at ${title}.`
+        : `${from} has asked you to take on the following at ${title}: ${items[0].title}.`,
+      ...(many ? items.map((i) => `• ${i.title}${i.description ? ` — ${i.description}` : ''}`) : []),
+      ...(!many && items[0].description ? [items[0].description] : []),
+      'You can see it in your portal, along with anything else outstanding and what you have already completed.',
+    ],
+    details: [
+      { label: many ? 'Items' : 'Task', value: many ? String(items.length) : items[0].title },
+      ...(dueDate
+        ? [{ label: 'By', value: new Date(dueDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) }]
+        : []),
+      ...(assignedByName ? [{ label: 'Asked by', value: assignedByName }] : []),
+    ],
+    cta: { label: many ? 'See What You Have Been Asked' : 'Open This Task', url: portalUrl },
+  }
+
+  return send({
+    from: `${title} <${FROM}>`,
+    to,
+    replyTo: b.email || undefined,
+    subject: many
+      ? `${items.length} things asked of you by ${title}`
+      : `You have been asked: ${items[0].title}`,
+    html: renderLodgeEmail(b, body, many ? `${items.length} items from ${title}` : items[0].title),
+    text: renderLodgeEmailText(b, body),
+  }, 'assignment notice')
+}
+
 // ── A brother's years of service ──
 //
 // Sent by /api/cron/anniversaries, once, in the month the anniversary

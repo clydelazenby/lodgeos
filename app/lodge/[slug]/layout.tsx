@@ -118,6 +118,10 @@ export default async function LodgeAdminLayout({
     // tool nobody uses. The floating button remains for a question
     // asked in passing; this is where the writing happens.
     { label: 'AI Secretary', href: `${base}/secretary` },
+    // Top-level: giving work out is a weekly act for the Master and the
+    // Wardens, and the tier that may do it is narrower than the section
+    // it would otherwise sit in.
+    { label: 'Assignments', href: `${base}/assignments`, need: 'assignments' },
     {
       label: 'Meetings',
       items: [
