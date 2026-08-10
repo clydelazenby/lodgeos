@@ -21,4 +21,12 @@ import { revalidatePath } from 'next/cache'
  */
 export async function revalidateLodgePage(slug: string) {
   revalidatePath(`/${slug}`)
+
+  // The donate page is separately cached and separately gated: it 404s
+  // until donations are enabled. Without purging it too, a secretary who
+  // visited /donate before switching donations on would keep getting the
+  // cached 404 for up to an hour after saving — the button would appear
+  // on the homepage and lead somewhere that still said the lodge did not
+  // exist.
+  revalidatePath(`/${slug}/donate`)
 }

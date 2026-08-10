@@ -48,11 +48,31 @@ export async function generateMetadata({
 export default async function DonatePage({ params }: { params: { slug: string } }) {
   const supabase = createServiceClient()
 
-  const { data: tenant } = await supabase
+  /**
+   * select('*') rather than a column list, matching the lodge homepage.
+   *
+   * This page originally named all eleven columns explicitly. PostgREST
+   * rejects the whole query if ANY named column is missing, so a
+   * partially-applied migration returned an error, `data` came back
+   * null, and the `!tenant` branch below rendered "No Lodge At This
+   * Address" — a database error wearing a missing-lodge costume, with
+   * nothing in the response to tell them apart. The homepage kept
+   * working throughout because select('*') simply returns whatever
+   * columns exist.
+   */
+  const { data: tenant, error } = await supabase
     .from('tenants')
-    .select('name, number, slug, donations_enabled, cashapp_handle, venmo_handle, zelle_handle, zelle_name, donation_message, email, primary_color')
+    .select('*')
     .eq('slug', params.slug)
     .maybeSingle()
+
+  // A failed query is NOT a missing lodge. Conflating them is what made
+  // this undiagnosable; rethrowing sends it to the error boundary with a
+  // real message and puts the cause in the server log.
+  if (error) {
+    console.error('Donate page: tenant query failed', { slug: params.slug, error })
+    throw new Error(`Could not load this lodge: ${error.message}`)
+  }
 
   if (!tenant) notFound()
 
