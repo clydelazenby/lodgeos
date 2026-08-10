@@ -75,6 +75,7 @@ alter table public.audit_log enable row level security;
 -- is deliberately narrower than is_tenant_admin() — which since
 -- migration 022 means "holds administrative access of some kind" and
 -- includes wardens and deacons.
+drop policy if exists "Audit visible to the secretary's office" on public.audit_log;
 create policy "Audit visible to the secretary's office" on public.audit_log for select
   using (
     exists (
@@ -91,6 +92,7 @@ create policy "Audit visible to the secretary's office" on public.audit_log for 
 -- RLS. This policy exists so that a future in-app writer running as the
 -- officer still works, and so the absence of update/delete policies is
 -- an explicit statement rather than an oversight.
+drop policy if exists "Audit entries insertable by the lodge" on public.audit_log;
 create policy "Audit entries insertable by the lodge" on public.audit_log for insert
   with check (public.is_tenant_admin(tenant_id));
 

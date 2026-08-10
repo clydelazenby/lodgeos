@@ -83,8 +83,10 @@ comment on table public.milestone_notices is
 
 alter table public.milestone_notices enable row level security;
 
+drop policy if exists "Milestone notices visible to lodge admins" on public.milestone_notices;
 create policy "Milestone notices visible to lodge admins" on public.milestone_notices for select
   using (public.is_tenant_admin(tenant_id));
 
+drop policy if exists "Milestone notices writable by lodge admins" on public.milestone_notices;
 create policy "Milestone notices writable by lodge admins" on public.milestone_notices for all
   using (public.is_tenant_admin(tenant_id));

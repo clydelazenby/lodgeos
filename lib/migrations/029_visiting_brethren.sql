@@ -60,6 +60,7 @@ alter table public.event_visitors enable row level security;
 
 -- Visible to the whole lodge. Who visited is read out in open lodge and
 -- printed in the minutes; it is not administrative data.
+drop policy if exists "Visitors visible to lodge members" on public.event_visitors;
 create policy "Visitors visible to lodge members" on public.event_visitors for select
   using (tenant_id in (select public.get_user_tenant_ids()));
 
@@ -67,6 +68,7 @@ create policy "Visitors visible to lodge members" on public.event_visitors for s
 -- records attendance — is_tenant_admin() since migration 022 covers
 -- wardens and deacons, and the Junior Deacon is frequently the man
 -- actually holding the book.
+drop policy if exists "Visitors recordable by officers" on public.event_visitors;
 create policy "Visitors recordable by officers" on public.event_visitors for all
   using (public.is_tenant_admin(tenant_id));
 

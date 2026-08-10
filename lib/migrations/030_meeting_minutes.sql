@@ -79,15 +79,18 @@ alter table public.meeting_minutes enable row level security;
 -- lodge; a brother who was absent has every right to read what was
 -- done. Drafts are not — an unapproved draft is one officer's account
 -- of a meeting and carries no authority yet.
+drop policy if exists "Approved minutes visible to lodge members" on public.meeting_minutes;
 create policy "Approved minutes visible to lodge members" on public.meeting_minutes for select
   using (
     status = 'approved'
     and tenant_id in (select public.get_user_tenant_ids())
   );
 
+drop policy if exists "All minutes visible to officers" on public.meeting_minutes;
 create policy "All minutes visible to officers" on public.meeting_minutes for select
   using (public.is_tenant_admin(tenant_id));
 
+drop policy if exists "Minutes managed by officers" on public.meeting_minutes;
 create policy "Minutes managed by officers" on public.meeting_minutes for all
   using (public.is_tenant_admin(tenant_id));
 
