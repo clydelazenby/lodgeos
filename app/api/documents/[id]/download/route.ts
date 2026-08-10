@@ -1,12 +1,17 @@
 import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { DEGREE_RANK, degreeLabel } from '@/lib/degrees'
 
 // Degree hierarchy for access_level checks: a Master Mason can see
 // everything an EA or FC can see, plus MM-restricted documents. This
 // mirrors how degree progression actually works — a EA-restricted
 // document isn't meant to become invisible once someone advances past
 // EA, it's a FLOOR, not an exact-match requirement.
-const DEGREE_RANK: Record<string, number> = { EA: 1, FC: 2, MM: 3 }
+//
+// The map now covers the appendant degrees too and lives in
+// lib/degrees.ts, so this route and the documents list cannot drift
+// apart — they were previously two hand-written copies of the same
+// three entries.
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
@@ -40,7 +45,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
         const requiredRank = DEGREE_RANK[doc.access_level] ?? 0
         const memberRank = DEGREE_RANK[membership.degree] ?? 0
         if (memberRank < requiredRank) {
-          return NextResponse.json({ error: `This document requires ${doc.access_level} degree or higher` }, { status: 403 })
+          return NextResponse.json({ error: `This document requires the ${degreeLabel(doc.access_level)} degree or higher` }, { status: 403 })
         }
       }
     }

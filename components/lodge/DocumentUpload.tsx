@@ -5,6 +5,7 @@ import { ConfirmDialog } from '@/components/lodge/ConfirmDialog'
 
 import { createClient } from '@/lib/supabase/client'
 import { notify } from '@/lib/toast'
+import { DegreeOptions } from '@/components/DegreeOptions'
 
 const CATEGORIES = ['Degree Materials', 'Minutes', 'Administration', 'Grand Lodge', 'Training', 'Other']
 
@@ -208,10 +209,7 @@ export function DocumentUploadButton({ tenantId }: { tenantId: string }) {
               <div>
                 <label style={labelStyle}>Access Level</label>
                 <select value={accessLevel} onChange={e => setAccessLevel(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
-                  <option value="all">All Brothers</option>
-                  <option value="EA">EA and above</option>
-                  <option value="FC">FC and above</option>
-                  <option value="MM">Master Mason only</option>
+                  <DegreeOptions mode="access" />
                 </select>
               </div>
             </div>

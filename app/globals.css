@@ -48,6 +48,18 @@ body { background: var(--navy); color: var(--cream); font-family: 'Crimson Pro',
 .pill-ea { background: rgba(74,127,165,0.2); color: #7BB8D4; border: 1px solid rgba(74,127,165,0.3); }
 .pill-fc { background: rgba(201,168,76,0.2); color: #C9A84C; border: 1px solid rgba(201,168,76,0.3); }
 .pill-mm { background: rgba(39,174,96,0.2); color: #5DBE85; border: 1px solid rgba(39,174,96,0.3); }
+/* Appendant bodies. One rule per body rather than per degree — the
+   degree list grows, and `pill-${value}` would leave each new one
+   unstyled. See degreePillClass() in lib/degrees.ts. */
+.pill-york { background: rgba(160,74,110,0.2); color: #D48CB2; border: 1px solid rgba(160,74,110,0.35); }
+.pill-scottish { background: rgba(110,88,180,0.2); color: #A99CE4; border: 1px solid rgba(110,88,180,0.35); }
+.pill-shrine { background: rgba(192,120,43,0.2); color: #E0A05B; border: 1px solid rgba(192,120,43,0.35); }
+/* Attendance statuses. The attendance table has carried these three
+   values since the schema was written; nothing had ever rendered them
+   as pills, so no rule existed. */
+.pill-present { background: rgba(39,174,96,0.2); color: #5DBE85; border: 1px solid rgba(39,174,96,0.3); }
+.pill-absent { background: rgba(192,57,43,0.2); color: #EC5B4B; border: 1px solid rgba(192,57,43,0.3); }
+.pill-excused { background: rgba(201,168,76,0.18); color: #C9A84C; border: 1px solid rgba(201,168,76,0.3); }
 .pill-paid { background: rgba(39,174,96,0.2); color: #5DBE85; border: 1px solid rgba(39,174,96,0.3); }
 .pill-due { background: rgba(201,168,76,0.2); color: #C9A84C; border: 1px solid rgba(201,168,76,0.3); }
 .pill-new { background: rgba(74,127,165,0.15); color: #7BB8D4; border: 1px solid rgba(74,127,165,0.3); }

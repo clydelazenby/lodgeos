@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { DegreeOptions } from '@/components/DegreeOptions'
 
 interface MemberRow { firstName: string; lastName: string; email: string; degree: string; role: string }
 
@@ -68,9 +69,7 @@ export default function MembersOnboardingPage() {
                 <td style={{ padding: '6px' }}><input type="email" value={m.email} onChange={e => updateRow(i, 'email', e.target.value)} placeholder="john@email.com" style={inputStyle} /></td>
                 <td style={{ padding: '6px' }}>
                   <select value={m.degree} onChange={e => updateRow(i, 'degree', e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
-                    <option value="EA">EA</option>
-                    <option value="FC">FC</option>
-                    <option value="MM">MM</option>
+                    <DegreeOptions short />
                   </select>
                 </td>
                 <td style={{ padding: '6px' }}><input value={m.role} onChange={e => updateRow(i, 'role', e.target.value)} placeholder="Officer role" style={inputStyle} /></td>

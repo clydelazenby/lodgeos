@@ -46,7 +46,13 @@ export default async function PortalLayout({ children }: { children: React.React
               a 404 sitting in the main navigation. Upcoming events are
               already listed on the portal dashboard, so the dead link is
               removed rather than replaced. */}
-          {[['Dashboard', '/portal'], ['Dues', '/portal/dues'], ['Profile', '/portal/profile']].map(([l, h]) => (
+          {[
+            ['Dashboard', '/portal'],
+            ['Check In', '/portal/check-in'],
+            ['Documents', '/portal/documents'],
+            ['Dues', '/portal/dues'],
+            ['Profile', '/portal/profile'],
+          ].map(([l, h]) => (
             <Link key={l} href={h} style={{ fontFamily: 'Cinzel, serif', fontSize: '0.68rem', color: '#B8B0A0', textDecoration: 'none', letterSpacing: '0.05em' }}>{l}</Link>
           ))}
           {showLodgeLink && (

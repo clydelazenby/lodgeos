@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireTenantAdmin } from '@/lib/auth/requireTenantAdmin'
+import { DEGREE_VALUES } from '@/lib/degrees'
 
 /**
  * Records a document row AFTER the browser has uploaded the file
@@ -39,7 +40,7 @@ const ALLOWED_TYPES = new Set([
   'audio/mpeg', 'audio/mp4', 'audio/wav',
 ])
 
-const ACCESS_LEVELS = new Set(['all', 'EA', 'FC', 'MM'])
+const ACCESS_LEVELS = new Set(['all', ...DEGREE_VALUES])
 
 export async function POST(request: Request) {
   try {

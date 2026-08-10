@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { upcomingSince } from '@/lib/dates'
+import { degreeLabel, degreePillClass } from '@/lib/degrees'
 
 export default async function PortalPage() {
   const supabase = await createClient()
@@ -20,23 +21,90 @@ export default async function PortalPage() {
   const tenant = (membership as any).tenants
   const today = upcomingSince()
 
-  const [{ data: events }, { data: payments }, { data: degrees }] = await Promise.all([
+  const [{ data: events }, { data: payments }, { data: attendance }, { data: openMeeting }] = await Promise.all([
     supabase.from('lodge_events').select('*').eq('tenant_id', tenant.id).gte('event_date', today).order('event_date').limit(3),
     supabase.from('payments').select('*').eq('member_id', user.id).eq('status', 'succeeded').order('created_at', { ascending: false }).limit(3),
-    supabase.from('degree_progress').select('*').eq('member_id', user.id).eq('tenant_id', tenant.id),
+    // His own attendance only. RLS keeps it that way, and the explicit
+    // member_id filter means the page does not depend on that alone.
+    supabase.from('attendance')
+      .select('id, status, created_at, lodge_events(id, title, event_date)')
+      .eq('member_id', user.id).eq('tenant_id', tenant.id)
+      .order('created_at', { ascending: false }),
+    // A meeting that is open right now, so the dashboard can offer
+    // check-in at the moment it is actually useful.
+    supabase.from('lodge_events')
+      .select('id, title')
+      .eq('tenant_id', tenant.id)
+      .not('opened_at', 'is', null)
+      .is('closed_at', null)
+      .limit(1).maybeSingle(),
   ])
 
   const duesDue = (membership as any).dues_status === 'due'
 
+  const attended = (attendance ?? []).filter((a: any) => a.status === 'present')
+  const thisYear = new Date().getFullYear()
+  const attendedThisYear = attended.filter((a: any) => {
+    const date = a.lodge_events?.event_date
+    return date && new Date(`${date}T12:00:00`).getFullYear() === thisYear
+  }).length
+
+  // Already checked in to the meeting that is currently open?
+  const checkedIntoOpen = Boolean(
+    openMeeting && (attendance ?? []).some((a: any) => a.lodge_events?.id === openMeeting.id)
+  )
+
+  const initials = `${profile?.first_name?.[0] ?? ''}${profile?.last_name?.[0] ?? ''}`.toUpperCase() || '?'
+
   return (
     <div>
-      <div style={{ marginBottom: '2rem' }}>
-        <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.62rem', letterSpacing: '0.3em', color: '#C9A84C', marginBottom: '0.5rem' }}>BROTHER PORTAL</div>
-        <h1 style={{ fontFamily: 'Cinzel, serif', fontSize: '1.6rem', color: '#F5F0E8', marginBottom: '0.25rem' }}>
-          Welcome, Brother <span style={{ color: '#C9A84C' }}>{profile?.first_name}</span>
-        </h1>
-        <p style={{ fontFamily: 'Crimson Pro, serif', fontStyle: 'italic', color: '#B8B0A0' }}>{tenant.name} #{tenant.number} · {(membership as any).lodge_role || (membership as any).degree}</p>
+      {/* His own photo, beside his name. The avatar was uploadable on
+          the profile page and then shown nowhere he would see it. */}
+      <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
+        {profile?.avatar_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={profile.avatar_url}
+            alt=""
+            style={{ width: 72, height: 72, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(201,168,76,0.4)', flexShrink: 0 }}
+          />
+        ) : (
+          <Link
+            href="/portal/profile"
+            title="Add your photo"
+            style={{ width: 72, height: 72, borderRadius: '50%', border: '2px dashed rgba(201,168,76,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Cinzel, serif', fontSize: '1.4rem', color: '#C9A84C', textDecoration: 'none', flexShrink: 0 }}
+          >
+            {initials}
+          </Link>
+        )}
+        <div>
+          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.62rem', letterSpacing: '0.3em', color: '#C9A84C', marginBottom: '0.5rem' }}>BROTHER PORTAL</div>
+          <h1 style={{ fontFamily: 'Cinzel, serif', fontSize: '1.6rem', color: '#F5F0E8', marginBottom: '0.25rem' }}>
+            Welcome, Brother <span style={{ color: '#C9A84C' }}>{profile?.first_name}</span>
+          </h1>
+          <p style={{ fontFamily: 'Crimson Pro, serif', fontStyle: 'italic', color: '#B8B0A0' }}>{tenant.name} #{tenant.number} · {(membership as any).lodge_role || degreeLabel((membership as any).degree)}</p>
+        </div>
       </div>
+
+      {/* Check-in, shown only while a meeting is actually open. */}
+      {openMeeting && (
+        <div style={{ background: checkedIntoOpen ? 'rgba(93,190,133,0.12)' : 'rgba(201,168,76,0.12)', border: `1px solid ${checkedIntoOpen ? 'rgba(93,190,133,0.3)' : 'rgba(201,168,76,0.35)'}`, padding: '1.25rem 1.5rem', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <div style={{ fontFamily: 'Cinzel, serif', fontSize: '0.9rem', color: checkedIntoOpen ? '#5DBE85' : '#C9A84C', marginBottom: '0.25rem' }}>
+              {checkedIntoOpen ? 'You are checked in' : 'Meeting in progress'}
+            </div>
+            <p style={{ fontSize: '0.9rem', color: '#B8B0A0', margin: 0 }}>
+              {(openMeeting as any).title}
+              {checkedIntoOpen
+                ? ' — your attendance has been recorded.'
+                : ' — scan the meeting code at the door to record your attendance.'}
+            </p>
+          </div>
+          {!checkedIntoOpen && (
+            <Link href="/portal/check-in" className="btn-gold" style={{ fontSize: '0.68rem', whiteSpace: 'nowrap' }}>Check In →</Link>
+          )}
+        </div>
+      )}
 
       {/* Dues alert */}
       {duesDue && (
@@ -53,7 +121,11 @@ export default async function PortalPage() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1px', marginBottom: '2rem' }}>
         <div style={{ background: '#141C2E', padding: '1.4rem' }}>
           <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.56rem', letterSpacing: '0.2em', color: '#C9A84C', textTransform: 'uppercase', marginBottom: '0.6rem' }}>Degree</div>
-          <span className={`pill pill-${(membership as any).degree?.toLowerCase()}`}>{(membership as any).degree}</span>
+          <span className={`pill ${degreePillClass((membership as any).degree)}`}>{degreeLabel((membership as any).degree)}</span>
+        </div>
+        <div style={{ background: '#141C2E', padding: '1.4rem' }}>
+          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.56rem', letterSpacing: '0.2em', color: '#C9A84C', textTransform: 'uppercase', marginBottom: '0.6rem' }}>Attended {thisYear}</div>
+          <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1.6rem', fontWeight: 700, color: '#F5F0E8' }}>{attendedThisYear}</div>
         </div>
         <div style={{ background: '#141C2E', padding: '1.4rem' }}>
           <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.56rem', letterSpacing: '0.2em', color: '#C9A84C', textTransform: 'uppercase', marginBottom: '0.6rem' }}>Dues Status</div>
@@ -98,6 +170,37 @@ export default async function PortalPage() {
             </div>
           )) : <div style={{ padding: '2rem', textAlign: 'center', color: '#B8B0A0', fontStyle: 'italic', fontSize: '0.9rem' }}>No payments yet.</div>}
         </div>
+      </div>
+
+      {/* Attendance — his own record, which he could not see anywhere
+          before this. Recorded by the Secretary at the door or by his
+          own check-in; either way it is his record to read. */}
+      <div className="data-box" style={{ marginTop: '1rem' }}>
+        <div className="data-box-head">
+          <span>My Attendance</span>
+          <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.58rem', color: '#B8B0A0' }}>
+            {attended.length} recorded
+          </span>
+        </div>
+        {attendance && attendance.length > 0 ? attendance.slice(0, 10).map((a: any, i: number) => (
+          <div key={a.id} style={{ padding: '0.85rem 1.4rem', borderBottom: i < Math.min(attendance.length, 10) - 1 ? '1px solid rgba(201,168,76,0.05)' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+            <div>
+              <div style={{ fontFamily: 'Cinzel, serif', fontSize: '0.82rem', color: '#F5F0E8', marginBottom: '2px' }}>
+                {a.lodge_events?.title ?? 'Lodge meeting'}
+              </div>
+              <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.6rem', color: '#B8B0A0' }}>
+                {a.lodge_events?.event_date
+                  ? format(new Date(a.lodge_events.event_date + 'T12:00:00'), 'MMM d, yyyy')
+                  : format(new Date(a.created_at), 'MMM d, yyyy')}
+              </div>
+            </div>
+            <span className={`pill pill-${a.status}`}>{a.status}</span>
+          </div>
+        )) : (
+          <div style={{ padding: '2rem', textAlign: 'center', color: '#B8B0A0', fontStyle: 'italic', fontSize: '0.9rem' }}>
+            No attendance recorded yet. Check in at the next meeting and it will appear here.
+          </div>
+        )}
       </div>
     </div>
   )

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { requireTenantRole } from '@/lib/auth/requireTenantAdmin'
 import { collectRecipients, sendLodgeNoticeBatch } from '@/lib/email/lodgeNotice'
+import { MM_AND_ABOVE, CANDIDATE_DEGREES } from '@/lib/degrees'
 
 /**
  * Sends a lodge-wide notice and records what actually happened.
@@ -197,8 +198,13 @@ export async function POST(request: Request) {
       .eq('tenant_id', tenantId)
       .eq('is_active', true)
 
-    if (group === 'mm_only') query = query.eq('degree', 'MM')
-    if (group === 'candidates') query = query.in('degree', ['EA', 'FC'])
+    // MM_AND_ABOVE, not an equality test on 'MM'. Since appendant
+    // degrees were added, a Royal Arch Mason or a Noble IS a Master
+    // Mason — an equality check would have quietly dropped exactly the
+    // most senior brethren from a Master-Mason-only notice, and nobody
+    // would have noticed until someone asked why he never gets mail.
+    if (group === 'mm_only') query = query.in('degree', MM_AND_ABOVE)
+    if (group === 'candidates') query = query.in('degree', CANDIDATE_DEGREES)
     if (group === 'dues_outstanding') query = query.eq('dues_status', 'due')
 
     const { data: members, error: membersError } = await query
