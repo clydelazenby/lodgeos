@@ -120,6 +120,14 @@ const muted = '#B7A98B'
 const panel = '#142234'
   const nextEvent = events?.[0]
 
+  // Mirrors the guard on /[slug]/donate, which 404s in the same case —
+  // the button and the page must agree, or the lodge advertises a dead
+  // link on its own front page.
+  const canDonate = Boolean(
+    tenant.donations_enabled &&
+    (tenant.cashapp_handle || tenant.venmo_handle || tenant.zelle_handle)
+  )
+
   const lodgeLogo = '/assets/lodgeos/images/pojl-logo.png'
   const heroImage = '/assets/lodgeos/images/lodge-hero.png'
 
@@ -741,7 +749,13 @@ h('img', {
         'div',
         { className: 'public-hero-buttons', style: { display: 'flex', gap: '1rem', flexWrap: 'wrap' } },
         h('a', { href: '#contact', style: buttonOutline }, 'Visit Our Lodge', h(ArrowRight, { size: 16 })),
-        h('a', { href: `/${params.slug}/petition`, style: buttonGold, className: 'cta-button' }, 'Become a Mason', h(ArrowRight, { size: 16 }))
+        h('a', { href: `/${params.slug}/petition`, style: buttonGold, className: 'cta-button' }, 'Become a Mason', h(ArrowRight, { size: 16 })),
+        // Only rendered when the lodge has enabled donations AND has at
+        // least one handle configured. A Donate button leading to a page
+        // that cannot take a gift costs more goodwill than no button.
+        canDonate
+          ? h('a', { key: 'donate', href: `/${params.slug}/donate`, style: buttonOutline }, 'Donate to Lodge', h(HeartHandshake, { size: 16 }))
+          : null
       )
     ),
     h(

@@ -59,7 +59,7 @@ export const getMembership = cache(async (tenantId: string, userId: string) => {
   const supabase = await createClient()
   const { data } = await supabase
     .from('tenant_members')
-    .select('tenant_role, lodge_role, degree, is_active')
+    .select('tenant_role, lodge_role, degree, is_active, communications_last_read_at')
     .eq('tenant_id', tenantId)
     .eq('user_id', userId)
     .single()

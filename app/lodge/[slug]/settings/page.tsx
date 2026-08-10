@@ -164,6 +164,94 @@ export default function LodgeSettingsPage() {
         <button onClick={() => save('content')} disabled={saving} className="btn-gold" style={{ fontSize: '0.68rem' }}>Save Content</button>
       </div>
 
+      {/* Donations — what the public /donate page shows */}
+      <div style={sectionStyle}>
+        <div style={sectionTitle}>Donations</div>
+
+        <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: '1.5rem', cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={!!form.donations_enabled}
+            onChange={e => setForm((p: any) => ({ ...p, donations_enabled: e.target.checked }))}
+            style={{ marginTop: 4, accentColor: '#C9A84C' }}
+          />
+          <span style={{ fontFamily: 'Crimson Pro, serif', color: '#F5F0E8', lineHeight: 1.6 }}>
+            Show a Donate button on the public lodge page
+            <span style={{ display: 'block', fontSize: '0.85rem', color: '#B8B0A0' }}>
+              Fill in at least one payment handle below first — a donate page with nothing on it
+              costs the lodge more goodwill than having no button at all.
+            </span>
+          </span>
+        </label>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+          <div>
+            <label style={labelStyle}>Cash App $Cashtag</label>
+            <input
+              value={form.cashapp_handle || ''}
+              onChange={e => setForm((p: any) => ({ ...p, cashapp_handle: e.target.value.replace(/^\$/, '') }))}
+              placeholder="PsalmsLodge1827"
+              style={inputStyle}
+            />
+            <p style={{ fontSize: '0.78rem', color: '#918879', fontStyle: 'italic', marginTop: 4 }}>
+              Without the $. Donors get a link with the amount already filled in.
+            </p>
+          </div>
+          <div>
+            <label style={labelStyle}>Venmo Username</label>
+            <input
+              value={form.venmo_handle || ''}
+              onChange={e => setForm((p: any) => ({ ...p, venmo_handle: e.target.value.replace(/^@/, '') }))}
+              placeholder="Psalms-Lodge-1827"
+              style={inputStyle}
+            />
+            <p style={{ fontSize: '0.78rem', color: '#918879', fontStyle: 'italic', marginTop: 4 }}>
+              Without the @. Also prefilled with the amount.
+            </p>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+          <div>
+            <label style={labelStyle}>Zelle Email or Phone</label>
+            <input
+              value={form.zelle_handle || ''}
+              onChange={e => setForm((p: any) => ({ ...p, zelle_handle: e.target.value }))}
+              placeholder="treasurer@psalmslodge1827.com"
+              style={inputStyle}
+            />
+            <p style={{ fontSize: '0.78rem', color: '#918879', fontStyle: 'italic', marginTop: 4 }}>
+              Whatever is enrolled with the lodge&apos;s bank account.
+            </p>
+          </div>
+          <div>
+            <label style={labelStyle}>Zelle Account Name</label>
+            <input
+              value={form.zelle_name || ''}
+              onChange={e => setForm((p: any) => ({ ...p, zelle_name: e.target.value }))}
+              placeholder="Psalms of Job Lodge #1827"
+              style={inputStyle}
+            />
+            <p style={{ fontSize: '0.78rem', color: '#918879', fontStyle: 'italic', marginTop: 4 }}>
+              The name a donor should see confirmed before sending. Zelle cannot be reversed.
+            </p>
+          </div>
+        </div>
+
+        <div style={{ marginBottom: '1.5rem' }}>
+          <label style={labelStyle}>Appeal Message (optional)</label>
+          <textarea
+            value={form.donation_message || ''}
+            onChange={e => setForm((p: any) => ({ ...p, donation_message: e.target.value }))}
+            rows={3}
+            placeholder="What the lodge puts gifts toward — building fund, scholarships, relief."
+            style={{ ...inputStyle, resize: 'vertical' }}
+          />
+        </div>
+
+        <button onClick={() => save('donations')} disabled={saving} className="btn-gold" style={{ fontSize: '0.68rem' }}>Save Donation Settings</button>
+      </div>
+
       {/* Subscription */}
       <div style={sectionStyle}>
         <div style={sectionTitle}>Subscription & Billing</div>

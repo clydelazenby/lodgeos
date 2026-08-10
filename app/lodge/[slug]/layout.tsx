@@ -5,6 +5,8 @@ import { AiSecretaryPanel } from '@/components/lodge/AiSecretaryPanel'
 import { ResponsiveNavShell } from '@/components/lodge/ResponsiveNavShell'
 import { cookies } from 'next/headers'
 import { can, type Capability } from '@/lib/auth/permissions'
+import { NoticeBell } from '@/components/lodge/NoticeBell'
+import { createClient } from '@/lib/supabase/server'
 
 export default async function LodgeAdminLayout({
   children,
@@ -56,6 +58,27 @@ export default async function LodgeAdminLayout({
   if (membership && membership.tenant_role === 'member') {
     redirect('/portal')
   }
+
+  /**
+   * Unread notice count for the header envelope.
+   *
+   * head:true means Postgres returns the count without sending any
+   * rows — this runs on every lodge page load, so it must stay a cheap
+   * counting query and never fetch the notices themselves. Migration
+   * 017 adds the partial index it uses.
+   *
+   * A brother who has never opened the page has a null timestamp, in
+   * which case every non-draft notice counts.
+   */
+  const lastRead = (membership as any)?.communications_last_read_at ?? null
+  const supabaseForCount = await createClient()
+  let unreadQuery = supabaseForCount
+    .from('communications')
+    .select('id', { count: 'exact', head: true })
+    .eq('tenant_id', tenant.id)
+    .eq('is_draft', false)
+  if (lastRead) unreadQuery = unreadQuery.gt('sent_at', lastRead)
+  const { count: unreadCount } = await unreadQuery
 
   const base = `/lodge/${params.slug}`
 
@@ -159,6 +182,7 @@ export default async function LodgeAdminLayout({
           </span>
         </div>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexShrink: 0 }}>
+          <NoticeBell href={`${base}/communications`} count={unreadCount ?? 0} />
           <Link href={`/${params.slug}`} className="lodgeos-public-site-link" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.58rem', color: '#B8B0A0', textDecoration: 'none', letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>Public Site ↗</Link>
           <span className="lodgeos-first-name" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.6rem', color: '#C9A84C', whiteSpace: 'nowrap' }}>{profile?.first_name}</span>
           <form action="/auth/signout" method="post">

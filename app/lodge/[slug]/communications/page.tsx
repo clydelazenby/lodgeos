@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import { format } from 'date-fns'
 import { T } from '@/lib/designTokens'
 import { ConfirmDialog } from '@/components/lodge/ConfirmDialog'
+import { markNoticesRead } from '@/app/actions/markNoticesRead'
 import { upcomingSince } from '@/lib/dates'
 
 /**
@@ -134,6 +135,13 @@ export default function LodgeCommunicationsPage() {
     setDeliveryProblems(Array.from(byEmail.values()))
 
     setLoading(false)
+
+    // Opening this page is what "reading" means for the header badge.
+    // Fired after the data lands rather than on mount, so a failed load
+    // doesn't silently clear a count the officer never actually saw.
+    markNoticesRead(t.id).catch(() => {
+      // Non-critical: the badge simply stays until the next visit.
+    })
   }
 
   const loadRecipients = async (communicationId: string) => {
