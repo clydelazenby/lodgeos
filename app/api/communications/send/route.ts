@@ -3,6 +3,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { requireTenantRole } from '@/lib/auth/requireTenantAdmin'
 import { collectRecipients, sendLodgeNoticeBatch } from '@/lib/email/lodgeNotice'
 import { MM_AND_ABOVE, CANDIDATE_DEGREES } from '@/lib/degrees'
+import { LODGE_BRAND_COLUMNS, toLodgeBrand } from '@/lib/email/brand'
 
 /**
  * Sends a lodge-wide notice and records what actually happened.
@@ -98,7 +99,7 @@ export async function POST(request: Request) {
     const supabase = await createClient()
     const serviceClient = createServiceClient()
 
-    const { data: tenant } = await supabase.from('tenants').select('name, number').eq('id', tenantId).single()
+    const { data: tenant } = await supabase.from('tenants').select(LODGE_BRAND_COLUMNS).eq('id', tenantId).single()
     if (!tenant) return NextResponse.json({ error: 'Lodge not found.' }, { status: 404 })
 
     const { data: sender } = await supabase
@@ -174,6 +175,7 @@ export async function POST(request: Request) {
       const { sent, failed } = await sendLodgeNoticeBatch({
         recipients: [{ email: sender.email, firstName: sender.first_name ?? 'Brother' }],
         lodgeName,
+        brand: toLodgeBrand(tenant),
         subject,
         body,
         sentByName,
@@ -243,6 +245,7 @@ export async function POST(request: Request) {
     const { sent, accepted, failed: sendFailures } = await sendLodgeNoticeBatch({
       recipients: valid,
       lodgeName,
+      brand: toLodgeBrand(tenant),
       subject,
       body,
       sentByName,

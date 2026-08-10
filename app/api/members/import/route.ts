@@ -5,6 +5,7 @@ import { sendWelcomeEmail, APP_URL } from '@/lib/email'
 import { createInviteLink } from '@/lib/auth/inviteLink'
 import { upsertProfilePreservingIdentity } from '@/lib/auth/profile'
 import { DEGREE_VALUES } from '@/lib/degrees'
+import { LODGE_BRAND_COLUMNS, toLodgeBrand } from '@/lib/email/brand'
 
 /**
  * Bulk roster import.
@@ -220,7 +221,7 @@ export async function POST(request: Request) {
 
     const { data: tenant } = await supabase
       .from('tenants')
-      .select('name, number, slug')
+      .select(`id, ${LODGE_BRAND_COLUMNS}`)
       .eq('id', tenantId)
       .single()
 
@@ -317,6 +318,7 @@ export async function POST(request: Request) {
               lodgeSlug: tenant?.slug ?? '',
               loginUrl: `${appUrl}/auth/login`,
               actionUrl,
+              brand: toLodgeBrand(tenant),
             })
             invited++
           } catch (mailErr: any) {

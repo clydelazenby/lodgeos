@@ -1,4 +1,9 @@
 import { Resend } from 'resend'
+import { renderLodgeEmail, renderLodgeEmailText, lodgeTitle, type LodgeBrand } from './layout'
+import { APP_URL, escapeHtml } from './shared'
+
+export { APP_URL, escapeHtml }
+export type { LodgeBrand }
 
 function getResend() {
   if (!process.env.RESEND_API_KEY) {
@@ -7,378 +12,376 @@ function getResend() {
 
   return new Resend(process.env.RESEND_API_KEY)
 }
+
 const FROM = process.env.EMAIL_FROM || 'onboarding@resend.dev'
-// The canonical origin is the WWW host. The bare domain 308-redirects
-// to it, which browsers follow silently but server-to-server callers
-// (webhooks, RSVP link checkers, some mail-security scanners) do not.
-// Keeping the fallback on www means a missing env var degrades to a
-// working URL rather than a redirecting one.
-export const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://www.psalmslodge1827.com'
 
 /**
- * Escapes text before it is interpolated into an email's HTML.
+ * LODGE MAIL LOOKS LIKE THE LODGE, NOT LIKE LODGEOS.
  *
- * Lodge notices are composed by officers, so this is not primarily an
- * anti-attacker measure — it's a correctness one. A secretary writing
- * "Dues & Refreshments" or "Bring your ID <before> 7pm" would otherwise
- * produce malformed HTML that renders wrong or swallows the rest of the
- * line, and there is no way to preview that in a sent email. Escaping
- * also means a pasted snippet of HTML shows up as the text it looks
- * like rather than silently becoming markup in every brother's inbox.
+ * Every template below renders through lib/email/layout.ts — the
+ * lodge's crest, name and tagline at the top, its own contact details
+ * and motto in the footer. Read the comment at the top of that file
+ * before changing the look of any of these.
+ *
+ * The brand comes from the tenants row (lib/email/brand.ts). Callers
+ * that have not been updated to pass one still work: `fallbackBrand()`
+ * builds a plain header from the lodge name alone, which is exactly
+ * what the old templates showed anyway.
  */
-export function escapeHtml(input: string): string {
-  return input
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
+function fallbackBrand(lodgeName: string): LodgeBrand {
+  // lodgeName arrives already formatted as "Psalms of Job Lodge #1827"
+  // from older callers, so the number is not split back out — doing so
+  // would just risk mangling a name that legitimately contains a '#'.
+  return { name: lodgeName, number: null }
+}
+
+function resolveBrand(brand: LodgeBrand | undefined, lodgeName: string): LodgeBrand {
+  return brand ?? fallbackBrand(lodgeName)
 }
 
 /**
- * Welcome email when a brother is invited.
+ * Every send goes through here so that a Resend rejection throws.
  *
- * `actionUrl` is the one-time link minted by lib/auth/inviteLink.ts. It
- * is what actually gets the brother into the portal — a new brother has
- * no password, so a bare link to the login page is a dead end for him.
- * The parameter is optional so the email still sends (pointing at the
- * login page, and saying so) if a link could not be minted; a brother
- * who hears from his Secretary that he's been added and finds nothing
- * in his inbox is the worse outcome.
- *
- * THROWS when Resend rejects the message. The SDK does NOT throw on an
- * API-level rejection — an unverified sending domain, an invalid
- * recipient, a blown quota all RESOLVE, with the reason in `error`
- * (sendLodgeNoticeBatch already accounts for this). Returning that
- * object unchanged would let every caller's try/catch pass and report a
- * delivery that never happened, which is the exact failure mode this
- * whole change exists to end. Callers treat a throw as "not delivered",
- * so surfacing it here fixes them all at once.
+ * The SDK does NOT throw on an API-level rejection — an unverified
+ * sending domain, an invalid recipient, a blown quota all RESOLVE, with
+ * the reason in `error`. Returning that object unchanged let callers'
+ * try/catch pass and report a delivery that never happened, which is
+ * the exact bug this codebase has already been bitten by once.
  */
-export async function sendWelcomeEmail({
-  to, firstName, lodgeName, lodgeSlug, loginUrl, actionUrl,
-}: {
-  to: string; firstName: string; lodgeName: string; lodgeSlug: string
-  loginUrl: string; actionUrl?: string | null
-}) {
+async function send(params: Parameters<Resend['emails']['send']>[0], what: string) {
   const resend = getResend()
-  const ctaUrl = actionUrl || loginUrl
-  const ctaLabel = actionUrl ? 'Set Up Your Portal' : 'Access Your Portal'
-  const { data, error } = await resend.emails.send({
-    from: `${lodgeName} via LodgeOS <${FROM}>`,
-    to,
-    subject: `Welcome to ${lodgeName} — Your portal is ready`,
-    html: `
-      <div style="font-family:Georgia,serif;max-width:600px;margin:0 auto;background:#0A0E1A;color:#F5F0E8;padding:40px;">
-        <div style="text-align:center;margin-bottom:32px;">
-          <div style="font-family:'Arial',sans-serif;font-size:24px;font-weight:700;color:#C9A84C;letter-spacing:0.2em;">LODGEOS</div>
-          <div style="font-size:12px;color:#B8B0A0;letter-spacing:0.3em;margin-top:4px;">LODGE MANAGEMENT PLATFORM</div>
-        </div>
-        <h1 style="font-family:'Arial',sans-serif;font-size:22px;color:#F5F0E8;margin-bottom:8px;">Welcome, Brother ${firstName}</h1>
-        <p style="color:#B8B0A0;line-height:1.7;margin-bottom:24px;">You have been added to <strong style="color:#C9A84C;">${lodgeName}</strong> on LodgeOS. Your brother portal is now active.</p>
-        <div style="background:#141C2E;padding:20px;margin-bottom:24px;border-left:3px solid #C9A84C;">
-          <p style="color:#B8B0A0;font-size:14px;margin:0 0 8px;">Through your portal you can:</p>
-          <ul style="color:#B8B0A0;font-size:14px;line-height:2;margin:0;padding-left:20px;">
-            <li>View your dues balance and pay online</li>
-            <li>See upcoming lodge events</li>
-            <li>Track your degree progression</li>
-            <li>Update your contact information</li>
-          </ul>
-        </div>
-        <div style="text-align:center;margin-bottom:32px;">
-          <a href="${ctaUrl}" style="background:#C9A84C;color:#0A0E1A;font-family:Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;padding:14px 36px;text-decoration:none;display:inline-block;">${ctaLabel}</a>
-        </div>
-        ${actionUrl
-          ? `<p style="color:rgba(184,176,160,0.6);font-size:12px;line-height:1.7;text-align:center;margin-bottom:24px;">This link signs you in and lets you choose a password. It can only be used once — if it has expired, ask your Secretary to send a new invitation.</p>`
-          : `<p style="color:rgba(184,176,160,0.6);font-size:12px;line-height:1.7;text-align:center;margin-bottom:24px;">Sign in with this email address at <a href="${loginUrl}" style="color:#C9A84C;">${loginUrl}</a>.</p>`}
-        <p style="color:#B8B0A0;font-size:13px;line-height:1.7;">If you have any questions contact your Secretary directly or reply to this email.</p>
-        <div style="border-top:1px solid rgba(201,168,76,0.2);margin-top:32px;padding-top:16px;text-align:center;">
-          <p style="color:rgba(184,176,160,0.4);font-size:11px;font-style:italic;">Liberty · Equality · Fraternity</p>
-          <p style="color:rgba(184,176,160,0.3);font-size:11px;">Powered by LodgeOS · ${APP_URL}</p>
-        </div>
-      </div>
-    `,
-  })
-
-  if (error) {
-    throw new Error(error.message || 'Resend rejected the welcome email.')
-  }
-
+  const { data, error } = await resend.emails.send(params)
+  if (error) throw new Error(error.message || `Resend rejected the ${what}.`)
   return data
 }
 
+// ── Welcome email when a brother is invited ──
+
 /**
- * @deprecated Superseded by lib/email/lodgeNotice.ts.
- *
- * This sent ONE notice per call, which meant the Communications route
- * awaited it once per brother in a loop — slow enough to hit the
- * serverless timeout on a large lodge, and well past Resend's rate
- * limit. It also interpolated subject and body into HTML unescaped, so
- * an ampersand or angle bracket in a secretary's message produced
- * malformed markup in every inbox.
- *
- * `sendLodgeNoticeBatch` replaces it: escaped, batched 100 per request,
- * with a plain-text alternative and a real Reply-To.
- *
- * Kept only so nothing breaks if an older caller surfaces. It has no
- * callers as of this change — delete it once that stays true.
+ * `actionUrl` is the one-time link minted by lib/auth/inviteLink.ts. It
+ * is what actually gets the brother into the portal — a new brother has
+ * no password, so a bare link to the login page is a dead end for him.
+ * Optional so the email still sends (pointing at the login page, and
+ * saying so) if a link could not be minted; a brother who hears from
+ * his Secretary that he's been added and finds nothing in his inbox is
+ * the worse outcome.
  */
-export async function sendLodgeNoticeEmail({
-  to, firstName, lodgeName, subject, body, sentByName,
-}: { to: string; firstName: string; lodgeName: string; subject: string; body: string; sentByName?: string }) {
-  const bodyHtml = body
-    .split('\n')
-    .map(line => line.trim().length ? `<p style="margin:0 0 14px;">${line}</p>` : '')
-    .join('')
-  const resend = getResend()
-  return resend.emails.send({
-    from: `${lodgeName} via LodgeOS <${FROM}>`,
-    to,
-    subject: `${lodgeName}: ${subject}`,
-    html: `
-      <div style="font-family:Georgia,serif;max-width:600px;margin:0 auto;background:#0A0E1A;color:#F5F0E8;padding:40px;">
-        <div style="text-align:center;margin-bottom:32px;">
-          <div style="font-family:'Arial',sans-serif;font-size:24px;font-weight:700;color:#C9A84C;letter-spacing:0.2em;">LODGEOS</div>
-        </div>
-        <h1 style="font-family:'Arial',sans-serif;font-size:20px;color:#F5F0E8;margin-bottom:4px;">${subject}</h1>
-        <p style="color:rgba(184,176,160,0.6);font-size:12px;margin-bottom:24px;">${lodgeName}${sentByName ? ` · Sent by ${sentByName}` : ''}</p>
-        <div style="background:#141C2E;padding:24px;margin-bottom:24px;border-left:3px solid #C9A84C;color:#B8B0A0;font-size:14px;line-height:1.7;">
-          <p style="margin:0 0 14px;">Brother ${firstName},</p>
-          ${bodyHtml}
-        </div>
-        <div style="border-top:1px solid rgba(201,168,76,0.2);margin-top:32px;padding-top:16px;text-align:center;">
-          <p style="color:rgba(184,176,160,0.4);font-size:11px;font-style:italic;">Liberty · Equality · Fraternity</p>
-          <p style="color:rgba(184,176,160,0.3);font-size:11px;">Powered by LodgeOS</p>
-        </div>
-      </div>
-    `,
-  })
-}
-
-// ── Calendar invite for a lodge event (Resend cannot set a custom
-// Content-Type on attachments, so Outlook's inline Accept/Decline
-// buttons aren't achievable this way — see lib/ics.ts. The .ics still
-// attaches, and the RSVP buttons below are the reliable, client-
-// agnostic path since they're plain links. ──
-export async function sendEventInviteEmail({
-  to, firstName, lodgeName, eventTitle, eventDateLabel, location, description,
-  icsContent, rsvpToken,
+export async function sendWelcomeEmail({
+  to, firstName, lodgeName, lodgeSlug, loginUrl, actionUrl, brand,
 }: {
-  to: string; firstName: string; lodgeName: string; eventTitle: string
-  eventDateLabel: string; location?: string; description?: string
-  icsContent: string; rsvpToken: string
+  to: string; firstName: string; lodgeName: string; lodgeSlug: string
+  loginUrl: string; actionUrl?: string | null; brand?: LodgeBrand
 }) {
-  const rsvpBase = `${APP_URL}/api/rsvp/${rsvpToken}`
-  const resend = getResend()
-  return resend.emails.send({
-    from: `${lodgeName} via LodgeOS <${FROM}>`,
-    to,
-    subject: `You're Invited: ${eventTitle} — ${lodgeName}`,
-    attachments: [
-      { content: Buffer.from(icsContent).toString('base64'), filename: 'invite.ics' },
+  const b = resolveBrand(brand, lodgeName)
+  const title = lodgeTitle(b)
+
+  const body = {
+    greeting: `Dear Brother ${firstName},`,
+    paragraphs: [
+      `You have been added to ${title} on the lodge's member portal. Through it you can view your dues and pay them online, see upcoming communications and events, follow your degree progression, read the lodge library, and keep your contact details current.`,
+      actionUrl
+        ? 'The link below will sign you in and let you choose a password.'
+        : `Sign in with this email address at ${loginUrl}.`,
     ],
-    html: `
-      <div style="font-family:Georgia,serif;max-width:600px;margin:0 auto;background:#0A0E1A;color:#F5F0E8;padding:40px;">
-        <div style="text-align:center;margin-bottom:32px;">
-          <div style="font-family:'Arial',sans-serif;font-size:24px;font-weight:700;color:#C9A84C;letter-spacing:0.2em;">LODGEOS</div>
-        </div>
-        <h1 style="font-family:'Arial',sans-serif;font-size:20px;color:#F5F0E8;margin-bottom:4px;">${eventTitle}</h1>
-        <p style="color:rgba(184,176,160,0.6);font-size:12px;margin-bottom:24px;">${lodgeName}</p>
-        <div style="background:#141C2E;padding:24px;margin-bottom:24px;border-left:3px solid #C9A84C;">
-          <p style="color:#F5F0E8;font-size:14px;margin:0 0 8px;"><strong>${eventDateLabel}</strong></p>
-          ${location ? `<p style="color:#B8B0A0;font-size:13px;margin:0 0 8px;">${location}</p>` : ''}
-          ${description ? `<p style="color:#B8B0A0;font-size:13px;line-height:1.6;margin:12px 0 0;">${description}</p>` : ''}
-        </div>
-        <p style="color:#B8B0A0;font-size:14px;margin-bottom:8px;">Brother ${firstName}, will you attend?</p>
-        <div style="text-align:center;margin:20px 0;">
-          <a href="${rsvpBase}?r=yes" style="display:inline-block;background:#5DBE85;color:#0A0E1A;text-decoration:none;padding:10px 20px;margin:0 4px;font-family:Arial,sans-serif;font-size:13px;font-weight:700;border-radius:4px;">Yes, I'll be there</a>
-          <a href="${rsvpBase}?r=maybe" style="display:inline-block;background:transparent;border:1px solid #C9A84C;color:#C9A84C;text-decoration:none;padding:10px 20px;margin:0 4px;font-family:Arial,sans-serif;font-size:13px;font-weight:700;border-radius:4px;">Maybe</a>
-          <a href="${rsvpBase}?r=no" style="display:inline-block;background:transparent;border:1px solid #E74C3C;color:#E74C3C;text-decoration:none;padding:10px 20px;margin:0 4px;font-family:Arial,sans-serif;font-size:13px;font-weight:700;border-radius:4px;">Can't make it</a>
-        </div>
-        <p style="color:rgba(184,176,160,0.5);font-size:11px;text-align:center;">A calendar file is attached — most calendar apps will detect it automatically. One tap above and you're marked without needing to sign in.</p>
-        <div style="border-top:1px solid rgba(201,168,76,0.2);margin-top:32px;padding-top:16px;text-align:center;">
-          <p style="color:rgba(184,176,160,0.4);font-size:11px;font-style:italic;">Liberty · Equality · Fraternity</p>
-          <p style="color:rgba(184,176,160,0.3);font-size:11px;">Powered by LodgeOS</p>
-        </div>
-      </div>
-    `,
-  })
-}
+    cta: { label: actionUrl ? 'Set Up Your Portal' : 'Access Your Portal', url: actionUrl || loginUrl },
+    ctaNote: actionUrl
+      ? 'This link can only be used once. If it has expired, ask the Secretary to send a new invitation.'
+      : undefined,
+  }
 
-// ── Dues reminder ──
-export async function sendDuesReminderEmail({
-  to, firstName, lodgeName, amount, year, payUrl, daysOverdue,
-}: { to: string; firstName: string; lodgeName: string; amount: number; year: number; payUrl: string; daysOverdue?: number }) {
-  const subject = daysOverdue && daysOverdue > 30
-    ? `Action Required: ${lodgeName} dues ${year} past due`
-    : `Reminder: ${lodgeName} annual dues ${year} — $${amount}`
-
-  const resend = getResend()
-  return resend.emails.send({
-    from: `${lodgeName} via LodgeOS <${FROM}>`,
+  return send({
+    from: `${title} <${FROM}>`,
     to,
-    subject,
-    html: `
-      <div style="font-family:Georgia,serif;max-width:600px;margin:0 auto;background:#0A0E1A;color:#F5F0E8;padding:40px;">
-        <div style="text-align:center;margin-bottom:32px;">
-          <div style="font-family:'Arial',sans-serif;font-size:24px;font-weight:700;color:#C9A84C;letter-spacing:0.2em;">LODGEOS</div>
-        </div>
-        <h1 style="font-family:'Arial',sans-serif;font-size:20px;color:#F5F0E8;margin-bottom:8px;">Brother ${firstName},</h1>
-        <p style="color:#B8B0A0;line-height:1.7;margin-bottom:24px;">This is a friendly reminder that your <strong style="color:#C9A84C;">${lodgeName}</strong> annual dues for ${year} are outstanding.</p>
-        <div style="background:#141C2E;padding:24px;margin-bottom:24px;text-align:center;">
-          <div style="font-family:'Arial',sans-serif;font-size:12px;letter-spacing:0.2em;color:#B8B0A0;text-transform:uppercase;margin-bottom:8px;">Amount Due</div>
-          <div style="font-family:'Arial',sans-serif;font-size:36px;font-weight:700;color:#C9A84C;">$${amount}</div>
-          <div style="font-family:'Arial',sans-serif;font-size:12px;color:#B8B0A0;margin-top:4px;">Annual dues for ${year}</div>
-        </div>
-        <div style="text-align:center;margin-bottom:32px;">
-          <a href="${payUrl}" style="background:#C9A84C;color:#0A0E1A;font-family:Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;padding:14px 36px;text-decoration:none;display:inline-block;">Pay Now — $${amount}</a>
-        </div>
-        <p style="color:#B8B0A0;font-size:13px;line-height:1.7;">Keeping your dues current maintains your good standing in the lodge. If you have any questions or concerns please contact your Secretary.</p>
-        <div style="border-top:1px solid rgba(201,168,76,0.2);margin-top:32px;padding-top:16px;text-align:center;">
-          <p style="color:rgba(184,176,160,0.4);font-size:11px;font-style:italic;">Liberty · Equality · Fraternity</p>
-          <p style="color:rgba(184,176,160,0.3);font-size:11px;">Powered by LodgeOS</p>
-        </div>
-      </div>
-    `,
-  })
+    replyTo: b.email || undefined,
+    subject: `Welcome to ${title}`,
+    html: renderLodgeEmail(b, body, `Your ${title} member portal is ready.`),
+    text: renderLodgeEmailText(b, body),
+  }, 'welcome email')
 }
 
-// ── Payment receipt ──
-export async function sendPaymentReceiptEmail({
-  to, firstName, lodgeName, amount, year, receiptUrl,
-}: { to: string; firstName: string; lodgeName: string; amount: number; year: number; receiptUrl?: string }) {
-  const resend = getResend()
-  return resend.emails.send({
-    from: `${lodgeName} via LodgeOS <${FROM}>`,
-    to,
-    subject: `Receipt: ${lodgeName} dues paid — $${amount}`,
-    html: `
-      <div style="font-family:Georgia,serif;max-width:600px;margin:0 auto;background:#0A0E1A;color:#F5F0E8;padding:40px;">
-        <div style="text-align:center;margin-bottom:32px;">
-          <div style="font-family:'Arial',sans-serif;font-size:24px;font-weight:700;color:#C9A84C;letter-spacing:0.2em;">LODGEOS</div>
-        </div>
-        <div style="text-align:center;margin-bottom:24px;">
-          <div style="width:48px;height:48px;background:rgba(39,174,96,0.2);border:1px solid rgba(39,174,96,0.4);border-radius:50%;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;">
-            <span style="color:#5DBE85;font-size:20px;">✓</span>
-          </div>
-          <h1 style="font-family:'Arial',sans-serif;font-size:20px;color:#5DBE85;margin:0;">Payment Confirmed</h1>
-        </div>
-        <p style="color:#B8B0A0;line-height:1.7;margin-bottom:24px;">Brother ${firstName}, your ${year} dues payment to <strong style="color:#C9A84C;">${lodgeName}</strong> has been received.</p>
-        <div style="background:#141C2E;padding:24px;margin-bottom:24px;">
-          <table style="width:100%;font-size:14px;color:#B8B0A0;">
-            <tr><td style="padding:6px 0;">Lodge</td><td style="text-align:right;color:#F5F0E8;">${lodgeName}</td></tr>
-            <tr><td style="padding:6px 0;">Year</td><td style="text-align:right;color:#F5F0E8;">${year}</td></tr>
-            <tr><td style="padding:6px 0;border-top:1px solid rgba(201,168,76,0.1);padding-top:12px;font-weight:bold;color:#C9A84C;">Amount Paid</td><td style="text-align:right;color:#C9A84C;font-size:18px;font-weight:bold;border-top:1px solid rgba(201,168,76,0.1);padding-top:12px;">$${amount}</td></tr>
-          </table>
-        </div>
-        <p style="color:#B8B0A0;font-size:13px;">Your membership status has been updated to <strong style="color:#5DBE85;">Paid — Good Standing</strong>.</p>
-        ${receiptUrl ? `<div style="text-align:center;margin:24px 0;"><a href="${receiptUrl}" style="color:#C9A84C;font-size:13px;">View full receipt →</a></div>` : ''}
-        <div style="border-top:1px solid rgba(201,168,76,0.2);margin-top:32px;padding-top:16px;text-align:center;">
-          <p style="color:rgba(184,176,160,0.4);font-size:11px;font-style:italic;">Liberty · Equality · Fraternity</p>
-        </div>
-      </div>
-    `,
-  })
-}
-
-// ── New petition alert to secretary ──
-export async function sendNewPetitionAlert({
-  to, secretaryName, lodgeName, petitionerName, petitionerEmail, dashboardUrl,
-}: { to: string; secretaryName: string; lodgeName: string; petitionerName: string; petitionerEmail: string; dashboardUrl: string }) {
-  const resend = getResend()
-  return resend.emails.send({
-    from: `LodgeOS <${FROM}>`,
-    to,
-    subject: `New petition received — ${petitionerName}`,
-    html: `
-      <div style="font-family:Georgia,serif;max-width:600px;margin:0 auto;background:#0A0E1A;color:#F5F0E8;padding:40px;">
-        <div style="text-align:center;margin-bottom:32px;">
-          <div style="font-family:'Arial',sans-serif;font-size:24px;font-weight:700;color:#C9A84C;letter-spacing:0.2em;">LODGEOS</div>
-        </div>
-        <h1 style="font-family:'Arial',sans-serif;font-size:20px;color:#F5F0E8;margin-bottom:8px;">New Petition Received</h1>
-        <p style="color:#B8B0A0;line-height:1.7;margin-bottom:24px;">Brother ${secretaryName}, a new petition has been submitted to <strong style="color:#C9A84C;">${lodgeName}</strong>.</p>
-        <div style="background:#141C2E;padding:20px;margin-bottom:24px;border-left:3px solid #C9A84C;">
-          <div style="font-size:14px;color:#B8B0A0;margin-bottom:4px;">Petitioner</div>
-          <div style="font-size:18px;color:#F5F0E8;margin-bottom:12px;">${petitionerName}</div>
-          <div style="font-size:14px;color:#B8B0A0;margin-bottom:4px;">Email</div>
-          <div style="font-size:14px;color:#C9A84C;">${petitionerEmail}</div>
-        </div>
-        <div style="text-align:center;margin-bottom:24px;">
-          <a href="${dashboardUrl}" style="background:#C9A84C;color:#0A0E1A;font-family:Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;padding:14px 36px;text-decoration:none;display:inline-block;">Review Petition</a>
-        </div>
-        <div style="border-top:1px solid rgba(201,168,76,0.2);margin-top:32px;padding-top:16px;text-align:center;">
-          <p style="color:rgba(184,176,160,0.3);font-size:11px;">Powered by LodgeOS</p>
-        </div>
-      </div>
-    `,
-  })
-}
+// ── Password reset ──
 
 /**
- * Password reset link, minted by /api/auth/forgot-password.
- *
  * Sent through Resend rather than Supabase's mailer, for the same
- * reason invitations are (see lib/auth/inviteLink.ts): the built-in
- * service is rate limited to a couple of messages an hour and is not
- * meant for production, which is how invitations came to silently
- * never arrive. A reset nobody receives is the same bug wearing a
- * different hat.
+ * reason invitations are: the built-in service is rate limited to a
+ * couple of messages an hour and is not meant for production, which is
+ * how invitations came to silently never arrive.
  *
  * Says plainly what to do if the request was not theirs. A reset email
  * arriving unbidden is alarming, and the honest answer — nothing has
  * changed, ignore it — is worth stating rather than leaving to guess.
+ *
+ * `brand` is optional here in a way it is not elsewhere: a man resetting
+ * his password has typed only an email address, and until that resolves
+ * we may not know which lodge he belongs to.
  */
 export async function sendPasswordResetEmail({
-  to, firstName, resetUrl, expiresInMinutes = 60,
-}: { to: string; firstName?: string | null; resetUrl: string; expiresInMinutes?: number }) {
-  const resend = getResend()
-  const greeting = firstName ? `Brother ${escapeHtml(firstName)}` : 'Brother'
+  to, firstName, resetUrl, expiresInMinutes = 60, brand,
+}: {
+  to: string; firstName?: string | null; resetUrl: string
+  expiresInMinutes?: number; brand?: LodgeBrand
+}) {
+  const b = brand ?? { name: 'LodgeOS', tagline: 'Lodge Management Platform', motto: 'Member portal' }
+  const body = {
+    greeting: firstName ? `Dear Brother ${firstName},` : 'Dear Brother,',
+    paragraphs: [
+      'We received a request to reset the password for this email address.',
+      'If you did not ask for this, you can ignore this email. Your password has not been changed, and it will not change unless someone opens the link below.',
+    ],
+    cta: { label: 'Choose a New Password', url: resetUrl },
+    ctaNote: `This link can only be used once and expires in about ${expiresInMinutes} minutes.`,
+    signOff: { closing: 'Fraternally,', lines: [lodgeTitle(b)] },
+  }
 
-  const { data, error } = await resend.emails.send({
-    from: `LodgeOS <${FROM}>`,
+  return send({
+    from: `${lodgeTitle(b)} <${FROM}>`,
     to,
-    subject: 'Reset your LodgeOS password',
-    html: `
-      <div style="font-family:Georgia,serif;max-width:600px;margin:0 auto;background:#0A0E1A;color:#F5F0E8;padding:40px;">
-        <div style="text-align:center;margin-bottom:32px;">
-          <div style="font-family:'Arial',sans-serif;font-size:24px;font-weight:700;color:#C9A84C;letter-spacing:0.2em;">LODGEOS</div>
-          <div style="font-size:12px;color:#B8B0A0;letter-spacing:0.3em;margin-top:4px;">LODGE MANAGEMENT PLATFORM</div>
-        </div>
-        <h1 style="font-family:'Arial',sans-serif;font-size:22px;color:#F5F0E8;margin-bottom:8px;">Reset your password</h1>
-        <p style="color:#B8B0A0;line-height:1.7;margin-bottom:24px;">${greeting}, we received a request to reset the password for this email address.</p>
-        <div style="text-align:center;margin-bottom:24px;">
-          <a href="${resetUrl}" style="background:#C9A84C;color:#0A0E1A;font-family:Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;padding:14px 36px;text-decoration:none;display:inline-block;">Choose a New Password</a>
-        </div>
-        <p style="color:rgba(184,176,160,0.6);font-size:12px;line-height:1.7;text-align:center;margin-bottom:24px;">
-          This link can only be used once and expires in about ${expiresInMinutes} minutes.
-        </p>
-        <div style="background:#141C2E;padding:20px;margin-bottom:24px;border-left:3px solid #C9A84C;">
-          <p style="color:#B8B0A0;font-size:13px;line-height:1.7;margin:0;">
-            <strong style="color:#C9A84C;">Didn't ask for this?</strong> You can ignore this email. Your password has not
-            been changed, and it will not change unless someone opens the link above.
-          </p>
-        </div>
-        <div style="border-top:1px solid rgba(201,168,76,0.2);margin-top:32px;padding-top:16px;text-align:center;">
-          <p style="color:rgba(184,176,160,0.4);font-size:11px;font-style:italic;">Liberty · Equality · Fraternity</p>
-          <p style="color:rgba(184,176,160,0.3);font-size:11px;">Powered by LodgeOS · ${APP_URL}</p>
-        </div>
-      </div>
-    `,
-  })
-
-  if (error) throw new Error(error.message || 'Resend rejected the password reset email.')
-  return data
+    subject: 'Reset your password',
+    html: renderLodgeEmail(b, body, 'A link to choose a new password.'),
+    text: renderLodgeEmailText(b, body),
+  }, 'password reset email')
 }
 
+// ── Calendar invite for a lodge event ──
+//
+// Resend cannot set a custom Content-Type on attachments, so Outlook's
+// inline Accept/Decline buttons aren't achievable this way — see
+// lib/ics.ts. The .ics still attaches, and the RSVP buttons below are
+// the reliable, client-agnostic path since they're plain links.
+export async function sendEventInviteEmail({
+  to, firstName, lodgeName, eventTitle, eventDateLabel, location, description,
+  icsContent, rsvpToken, brand,
+}: {
+  to: string; firstName: string; lodgeName: string; eventTitle: string
+  eventDateLabel: string; location?: string; description?: string
+  icsContent: string; rsvpToken: string; brand?: LodgeBrand
+}) {
+  const b = resolveBrand(brand, lodgeName)
+  const rsvpBase = `${APP_URL}/api/rsvp/${rsvpToken}`
+
+  const rsvpButtons = `
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:8px 0 4px;">
+      <tr>
+        <td align="center">
+          <a href="${rsvpBase}?r=yes" style="display:inline-block;margin:4px;padding:11px 20px;background:#2E7D4F;color:#FFFFFF;text-decoration:none;font-family:Georgia,serif;font-size:13px;border-radius:2px;">Yes, I'll be there</a>
+          <a href="${rsvpBase}?r=maybe" style="display:inline-block;margin:4px;padding:11px 20px;border:1px solid #B8912F;color:#B8912F;text-decoration:none;font-family:Georgia,serif;font-size:13px;border-radius:2px;">Maybe</a>
+          <a href="${rsvpBase}?r=no" style="display:inline-block;margin:4px;padding:11px 20px;border:1px solid #B03A2E;color:#B03A2E;text-decoration:none;font-family:Georgia,serif;font-size:13px;border-radius:2px;">Can't make it</a>
+        </td>
+      </tr>
+    </table>`
+
+  const body = {
+    greeting: `Dear Brother ${firstName},`,
+    paragraphs: [
+      `You are invited to ${eventTitle}.`,
+      ...(description ? [description] : []),
+      'Will you attend? One tap below records your answer — no sign-in needed.',
+    ],
+    details: [
+      { label: 'Event', value: eventTitle },
+      { label: 'Date', value: eventDateLabel },
+      ...(location ? [{ label: 'Location', value: location }] : []),
+    ],
+    extraHtml: rsvpButtons,
+    ctaNote: 'A calendar file is attached — most calendar apps will detect it automatically.',
+  }
+
+  return send({
+    from: `${lodgeTitle(b)} <${FROM}>`,
+    to,
+    replyTo: b.email || undefined,
+    subject: `You're Invited: ${eventTitle}`,
+    attachments: [{ content: Buffer.from(icsContent).toString('base64'), filename: 'invite.ics' }],
+    html: renderLodgeEmail(b, body, `${eventTitle} — ${eventDateLabel}`),
+    text: renderLodgeEmailText(b, body),
+  }, 'event invitation')
+}
+
+// ── Dues reminder ──
+export async function sendDuesReminderEmail({
+  to, firstName, lodgeName, amount, year, payUrl, daysOverdue, brand,
+}: {
+  to: string; firstName: string; lodgeName: string; amount: number; year: number
+  payUrl: string; daysOverdue?: number; brand?: LodgeBrand
+}) {
+  const b = resolveBrand(brand, lodgeName)
+  const overdue = Boolean(daysOverdue && daysOverdue > 30)
+
+  const body = {
+    greeting: `Dear Brother ${firstName},`,
+    paragraphs: [
+      overdue
+        ? `Our records show your ${year} annual dues remain outstanding and are now more than thirty days past due.`
+        : `This is a friendly reminder that your ${year} annual dues are outstanding.`,
+      'Keeping your dues current maintains your good standing in the lodge. If you have any questions, or if this reminder is in error, please contact the Secretary.',
+    ],
+    details: [
+      { label: 'Amount Due', value: `$${amount}` },
+      { label: 'Year', value: String(year) },
+      ...(overdue ? [{ label: 'Status', value: `${daysOverdue} days past due` }] : []),
+    ],
+    cta: { label: `Pay Now — $${amount}`, url: payUrl },
+  }
+
+  return send({
+    from: `${lodgeTitle(b)} <${FROM}>`,
+    to,
+    replyTo: b.email || undefined,
+    subject: overdue
+      ? `Action Required: ${year} dues past due`
+      : `Reminder: ${year} annual dues — $${amount}`,
+    html: renderLodgeEmail(b, body, `$${amount} due for ${year}.`),
+    text: renderLodgeEmailText(b, body),
+  }, 'dues reminder')
+}
+
+// ── Payment receipt ──
+export async function sendPaymentReceiptEmail({
+  to, firstName, lodgeName, amount, year, receiptUrl, brand,
+}: {
+  to: string; firstName: string; lodgeName: string; amount: number; year: number
+  receiptUrl?: string; brand?: LodgeBrand
+}) {
+  const b = resolveBrand(brand, lodgeName)
+  const body = {
+    greeting: `Dear Brother ${firstName},`,
+    paragraphs: [
+      `Your ${year} dues payment has been received with thanks. Your membership status is now Paid — Good Standing.`,
+    ],
+    details: [
+      { label: 'Lodge', value: lodgeTitle(b) },
+      { label: 'Year', value: String(year) },
+      { label: 'Amount Paid', value: `$${amount}` },
+    ],
+    ...(receiptUrl ? { cta: { label: 'View Full Receipt', url: receiptUrl } } : {}),
+  }
+
+  return send({
+    from: `${lodgeTitle(b)} <${FROM}>`,
+    to,
+    replyTo: b.email || undefined,
+    subject: `Receipt: ${year} dues paid — $${amount}`,
+    html: renderLodgeEmail(b, body, `$${amount} received. Thank you.`),
+    text: renderLodgeEmailText(b, body),
+  }, 'payment receipt')
+}
+
+// ── Event reminder (48hrs before) ──
+export async function sendEventReminderEmail({
+  to, firstName, lodgeName, eventTitle, eventDate, eventTime, location, dressCode, portalUrl, brand,
+}: {
+  to: string; firstName: string; lodgeName: string; eventTitle: string; eventDate: string
+  eventTime?: string; location?: string; dressCode?: string; portalUrl: string; brand?: LodgeBrand
+}) {
+  const b = resolveBrand(brand, lodgeName)
+  const body = {
+    greeting: `Dear Brother ${firstName},`,
+    paragraphs: [
+      `This is a reminder of our upcoming ${eventTitle}.`,
+      'Your attendance and participation are important as we continue the work of building better men and a stronger community.',
+    ],
+    details: [
+      { label: 'Date', value: eventDate },
+      ...(eventTime ? [{ label: 'Time', value: eventTime }] : []),
+      ...(location ? [{ label: 'Location', value: location }] : []),
+      ...(dressCode ? [{ label: 'Dress', value: dressCode }] : []),
+    ],
+    cta: { label: 'View in the Portal', url: portalUrl },
+  }
+
+  return send({
+    from: `${lodgeTitle(b)} <${FROM}>`,
+    to,
+    replyTo: b.email || undefined,
+    subject: `Reminder: ${eventTitle}`,
+    html: renderLodgeEmail(b, body, `${eventDate}${eventTime ? ` at ${eventTime}` : ''}`),
+    text: renderLodgeEmailText(b, body),
+  }, 'event reminder')
+}
+
+// ── New petition alert to the Secretary ──
+export async function sendNewPetitionAlert({
+  to, secretaryName, lodgeName, petitionerName, petitionerEmail, dashboardUrl, brand,
+}: {
+  to: string; secretaryName: string; lodgeName: string; petitionerName: string
+  petitionerEmail: string; dashboardUrl: string; brand?: LodgeBrand
+}) {
+  const b = resolveBrand(brand, lodgeName)
+  const body = {
+    greeting: `Dear Brother ${secretaryName},`,
+    paragraphs: [`A new petition for membership has been submitted to ${lodgeTitle(b)}.`],
+    details: [
+      { label: 'Petitioner', value: petitionerName },
+      { label: 'Email', value: petitionerEmail },
+    ],
+    cta: { label: 'Review Petition', url: dashboardUrl },
+    signOff: { closing: 'Fraternally,', lines: [lodgeTitle(b)] },
+  }
+
+  return send({
+    from: `${lodgeTitle(b)} <${FROM}>`,
+    to,
+    replyTo: petitionerEmail,
+    subject: `New petition received — ${petitionerName}`,
+    html: renderLodgeEmail(b, body, `${petitionerName} has petitioned for membership.`),
+    text: renderLodgeEmailText(b, body),
+  }, 'petition alert')
+}
+
+// ── A brother asking his lodge for a portal login ──
+
 /**
- * A lodge has asked to use LodgeOS (see app/request-access). Goes to
- * the platform owner, not to any lodge.
+ * Deliberately states that nothing has been granted. The Secretary is
+ * the one who knows whether this is really a brother of the lodge, and
+ * the only thing that creates an account is him choosing to invite the
+ * man from the Members page.
  *
- * Every field here is typed by an anonymous member of the public, so
- * all of it is escaped. Unlike a lodge notice — where escaping is
- * mostly a correctness measure for officers writing "Dues & Fees" —
- * this genuinely is untrusted input arriving from the open internet.
+ * Every value here was typed by an anonymous visitor. The template
+ * escapes them; do not add a field that bypasses that.
  */
+export async function sendPortalAccessRequestAlert({
+  to, secretaryName, lodgeName, requesterName, requesterEmail, requesterPhone,
+  yearsAMember, lodgeRole, message, membersUrl, brand,
+}: {
+  to: string; secretaryName: string; lodgeName: string
+  requesterName: string; requesterEmail: string; requesterPhone?: string | null
+  yearsAMember?: string | null; lodgeRole?: string | null; message?: string | null
+  membersUrl: string; brand?: LodgeBrand
+}) {
+  const b = resolveBrand(brand, lodgeName)
+  const body = {
+    greeting: `Dear Brother ${secretaryName},`,
+    paragraphs: [
+      `Someone has asked for portal access to ${lodgeTitle(b)}.`,
+      ...(message ? [message] : []),
+      'Nothing has been granted, and none of the details above are verified. If you know this man to be a brother of the lodge, invite him from the Members page — that is what creates his login.',
+    ],
+    details: [
+      { label: 'Name', value: requesterName },
+      { label: 'Email', value: requesterEmail },
+      ...(requesterPhone ? [{ label: 'Phone', value: requesterPhone }] : []),
+      ...(yearsAMember ? [{ label: 'Member Since', value: yearsAMember }] : []),
+      ...(lodgeRole ? [{ label: 'Office', value: lodgeRole }] : []),
+    ],
+    cta: { label: 'Open the Members Page', url: membersUrl },
+    signOff: { closing: 'Fraternally,', lines: [lodgeTitle(b)] },
+  }
+
+  return send({
+    from: `${lodgeTitle(b)} <${FROM}>`,
+    to,
+    replyTo: requesterEmail,
+    subject: `Portal access requested — ${requesterName}`,
+    html: renderLodgeEmail(b, body, `${requesterName} has asked for a portal login.`),
+    text: renderLodgeEmailText(b, body),
+  }, 'portal access request alert')
+}
+
+// ── A lodge asking to use LodgeOS ──
+//
+// The one email here that is genuinely FROM the platform rather than
+// from a lodge, so it carries LodgeOS's own header rather than a
+// lodge's crest.
 export async function sendPlatformAccessRequestAlert({
   to, lodgeName, lodgeNumber, jurisdiction, contactName, contactEmail, contactPhone,
   contactRole, memberCount, message,
@@ -387,148 +390,36 @@ export async function sendPlatformAccessRequestAlert({
   contactName: string; contactEmail: string; contactPhone?: string | null
   contactRole?: string | null; memberCount?: number | null; message?: string | null
 }) {
-  const resend = getResend()
-  const lodgeLabel = escapeHtml(lodgeNumber ? `${lodgeName} #${lodgeNumber}` : lodgeName)
+  const platform: LodgeBrand = {
+    name: 'LodgeOS',
+    tagline: 'Lodge Management Platform',
+    motto: 'Access request',
+  }
 
-  const row = (label: string, value?: string | null) => value
-    ? `<tr><td style="padding:6px 0;color:#B8B0A0;">${escapeHtml(label)}</td><td style="text-align:right;color:#F5F0E8;">${escapeHtml(value)}</td></tr>`
-    : ''
+  const body = {
+    greeting: 'A lodge has asked for access.',
+    paragraphs: [
+      ...(message ? [message] : []),
+      `Replying to this email reaches ${contactName} directly.`,
+    ],
+    details: [
+      { label: 'Lodge', value: lodgeNumber ? `${lodgeName} #${lodgeNumber}` : lodgeName },
+      ...(jurisdiction ? [{ label: 'Jurisdiction', value: jurisdiction }] : []),
+      { label: 'Contact', value: contactName },
+      ...(contactRole ? [{ label: 'Office', value: contactRole }] : []),
+      { label: 'Email', value: contactEmail },
+      ...(contactPhone ? [{ label: 'Phone', value: contactPhone }] : []),
+      ...(memberCount != null ? [{ label: 'Members', value: String(memberCount) }] : []),
+    ],
+    signOff: { closing: '', lines: [] },
+  }
 
-  const { data, error } = await resend.emails.send({
+  return send({
     from: `LodgeOS <${FROM}>`,
     to,
     replyTo: contactEmail,
     subject: `Access request — ${lodgeNumber ? `${lodgeName} #${lodgeNumber}` : lodgeName}`,
-    html: `
-      <div style="font-family:Georgia,serif;max-width:600px;margin:0 auto;background:#0A0E1A;color:#F5F0E8;padding:40px;">
-        <div style="text-align:center;margin-bottom:32px;">
-          <div style="font-family:'Arial',sans-serif;font-size:24px;font-weight:700;color:#C9A84C;letter-spacing:0.2em;">LODGEOS</div>
-        </div>
-        <h1 style="font-family:'Arial',sans-serif;font-size:20px;color:#F5F0E8;margin-bottom:8px;">New Access Request</h1>
-        <p style="color:#B8B0A0;line-height:1.7;margin-bottom:24px;">${lodgeLabel} has asked for access to LodgeOS.</p>
-        <div style="background:#141C2E;padding:20px;margin-bottom:24px;border-left:3px solid #C9A84C;">
-          <table style="width:100%;font-size:14px;">
-            ${row('Lodge', lodgeNumber ? `${lodgeName} #${lodgeNumber}` : lodgeName)}
-            ${row('Jurisdiction', jurisdiction)}
-            ${row('Contact', contactName)}
-            ${row('Office', contactRole)}
-            ${row('Email', contactEmail)}
-            ${row('Phone', contactPhone)}
-            ${row('Members', memberCount != null ? String(memberCount) : null)}
-          </table>
-        </div>
-        ${message
-          ? `<div style="background:#141C2E;padding:20px;margin-bottom:24px;color:#B8B0A0;font-size:14px;line-height:1.7;">${escapeHtml(message).replace(/\n/g, '<br>')}</div>`
-          : ''}
-        <p style="color:rgba(184,176,160,0.6);font-size:12px;line-height:1.7;">Replying to this email reaches ${escapeHtml(contactName)} directly.</p>
-        <div style="border-top:1px solid rgba(201,168,76,0.2);margin-top:32px;padding-top:16px;text-align:center;">
-          <p style="color:rgba(184,176,160,0.3);font-size:11px;">Powered by LodgeOS</p>
-        </div>
-      </div>
-    `,
-  })
-
-  if (error) throw new Error(error.message || 'Resend rejected the access request alert.')
-  return data
-}
-
-/**
- * A brother has asked his lodge for a portal login (see
- * app/[slug]/request-access). Goes to the Secretary.
- *
- * Deliberately states that nothing has been granted. The Secretary is
- * the one who knows whether this is really a brother of the lodge, and
- * the only thing that creates an account is him choosing to invite the
- * man from the Members page.
- */
-export async function sendPortalAccessRequestAlert({
-  to, secretaryName, lodgeName, requesterName, requesterEmail, requesterPhone,
-  yearsAMember, lodgeRole, message, membersUrl,
-}: {
-  to: string; secretaryName: string; lodgeName: string
-  requesterName: string; requesterEmail: string; requesterPhone?: string | null
-  yearsAMember?: string | null; lodgeRole?: string | null; message?: string | null
-  membersUrl: string
-}) {
-  const resend = getResend()
-
-  const row = (label: string, value?: string | null) => value
-    ? `<tr><td style="padding:6px 0;color:#B8B0A0;">${escapeHtml(label)}</td><td style="text-align:right;color:#F5F0E8;">${escapeHtml(value)}</td></tr>`
-    : ''
-
-  const { data, error } = await resend.emails.send({
-    from: `${lodgeName} via LodgeOS <${FROM}>`,
-    to,
-    replyTo: requesterEmail,
-    subject: `Portal access requested — ${requesterName}`,
-    html: `
-      <div style="font-family:Georgia,serif;max-width:600px;margin:0 auto;background:#0A0E1A;color:#F5F0E8;padding:40px;">
-        <div style="text-align:center;margin-bottom:32px;">
-          <div style="font-family:'Arial',sans-serif;font-size:24px;font-weight:700;color:#C9A84C;letter-spacing:0.2em;">LODGEOS</div>
-        </div>
-        <h1 style="font-family:'Arial',sans-serif;font-size:20px;color:#F5F0E8;margin-bottom:8px;">Portal Access Requested</h1>
-        <p style="color:#B8B0A0;line-height:1.7;margin-bottom:24px;">Brother ${escapeHtml(secretaryName)}, someone has asked for portal access to <strong style="color:#C9A84C;">${escapeHtml(lodgeName)}</strong>.</p>
-        <div style="background:#141C2E;padding:20px;margin-bottom:24px;border-left:3px solid #C9A84C;">
-          <table style="width:100%;font-size:14px;">
-            ${row('Name', requesterName)}
-            ${row('Email', requesterEmail)}
-            ${row('Phone', requesterPhone)}
-            ${row('Years a member', yearsAMember)}
-            ${row('Office', lodgeRole)}
-          </table>
-        </div>
-        ${message
-          ? `<div style="background:#141C2E;padding:20px;margin-bottom:24px;color:#B8B0A0;font-size:14px;line-height:1.7;">${escapeHtml(message).replace(/\n/g, '<br>')}</div>`
-          : ''}
-        <div style="background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.25);padding:16px;margin-bottom:24px;">
-          <p style="color:#B8B0A0;font-size:13px;line-height:1.7;margin:0;">
-            <strong style="color:#C9A84C;">Nothing has been granted.</strong> None of the details above are verified.
-            If you know this man to be a brother of the lodge, invite him from the Members page — that is what creates his login.
-          </p>
-        </div>
-        <div style="text-align:center;margin-bottom:24px;">
-          <a href="${membersUrl}" style="background:#C9A84C;color:#0A0E1A;font-family:Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;padding:14px 36px;text-decoration:none;display:inline-block;">Open the Members Page</a>
-        </div>
-        <div style="border-top:1px solid rgba(201,168,76,0.2);margin-top:32px;padding-top:16px;text-align:center;">
-          <p style="color:rgba(184,176,160,0.3);font-size:11px;">Powered by LodgeOS</p>
-        </div>
-      </div>
-    `,
-  })
-
-  if (error) throw new Error(error.message || 'Resend rejected the portal access request alert.')
-  return data
-}
-
-// ── Event reminder (48hrs before) ──
-export async function sendEventReminderEmail({
-  to, firstName, lodgeName, eventTitle, eventDate, eventTime, location, dressCode, portalUrl,
-}: { to: string; firstName: string; lodgeName: string; eventTitle: string; eventDate: string; eventTime?: string; location?: string; dressCode?: string; portalUrl: string }) {
- const resend = getResend()
-  return resend.emails.send({
-    from: `${lodgeName} via LodgeOS <${FROM}>`,
-    to,
-    subject: `Reminder: ${eventTitle} — Tomorrow`,
-    html: `
-      <div style="font-family:Georgia,serif;max-width:600px;margin:0 auto;background:#0A0E1A;color:#F5F0E8;padding:40px;">
-        <div style="text-align:center;margin-bottom:32px;">
-          <div style="font-family:'Arial',sans-serif;font-size:24px;font-weight:700;color:#C9A84C;letter-spacing:0.2em;">LODGEOS</div>
-        </div>
-        <h1 style="font-family:'Arial',sans-serif;font-size:20px;color:#F5F0E8;margin-bottom:8px;">Reminder, Brother ${firstName}</h1>
-        <p style="color:#B8B0A0;line-height:1.7;margin-bottom:24px;">This is your 48-hour reminder for an upcoming <strong style="color:#C9A84C;">${lodgeName}</strong> event.</p>
-        <div style="background:#141C2E;padding:24px;margin-bottom:24px;">
-          <div style="font-family:'Arial',sans-serif;font-size:18px;font-weight:700;color:#F5F0E8;margin-bottom:16px;">${eventTitle}</div>
-          <table style="width:100%;font-size:14px;color:#B8B0A0;">
-            <tr><td style="padding:4px 0;">Date</td><td style="text-align:right;color:#F5F0E8;">${eventDate}</td></tr>
-            ${eventTime ? `<tr><td style="padding:4px 0;">Time</td><td style="text-align:right;color:#F5F0E8;">${eventTime}</td></tr>` : ''}
-            ${location ? `<tr><td style="padding:4px 0;">Location</td><td style="text-align:right;color:#F5F0E8;">${location}</td></tr>` : ''}
-            ${dressCode ? `<tr><td style="padding:4px 0;color:#C9A84C;">Dress Code</td><td style="text-align:right;color:#C9A84C;">${dressCode}</td></tr>` : ''}
-          </table>
-        </div>
-        <div style="border-top:1px solid rgba(201,168,76,0.2);margin-top:32px;padding-top:16px;text-align:center;">
-          <p style="color:rgba(184,176,160,0.4);font-size:11px;font-style:italic;">Liberty · Equality · Fraternity</p>
-        </div>
-      </div>
-    `,
-  })
+    html: renderLodgeEmail(platform, body, `${contactName} of ${lodgeName}`),
+    text: renderLodgeEmailText(platform, body),
+  }, 'access request alert')
 }

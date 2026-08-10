@@ -1,8 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
+
+/** How long the confirmation sits before the lodge's site takes over. */
+const RETURN_DELAY_SECONDS = 6
 
 /**
  * For a brother of the lodge who has no portal login yet.
@@ -69,20 +72,7 @@ export default function PortalAccessRequestPage() {
   const labelStyle = { fontFamily: 'JetBrains Mono, monospace', fontSize: '0.6rem', letterSpacing: '0.2em', color: '#C9A84C', textTransform: 'uppercase' as const, marginBottom: '6px', display: 'block' }
 
   if (submitted) {
-    return (
-      <div style={{ minHeight: '100vh', background: '#0A0E1A', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', textAlign: 'center' }}>
-        <div style={{ maxWidth: '480px' }}>
-          <div style={{ fontSize: '3rem', marginBottom: '1.5rem' }}>✦</div>
-          <h2 style={{ fontFamily: 'Cinzel, serif', fontSize: '1.8rem', color: '#C9A84C', marginBottom: '1rem' }}>Request Sent</h2>
-          <p style={{ fontSize: '1.1rem', color: '#B8B0A0', lineHeight: 1.7, fontStyle: 'italic', marginBottom: '2rem' }}>
-            The Secretary has been notified. Once he confirms you on the roster you will receive an
-            invitation by email with a link to set up your portal.
-          </p>
-          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.62rem', letterSpacing: '0.2em', color: '#C9A84C' }}>LIBERTY · EQUALITY · FRATERNITY</div>
-          <Link href={`/${slug}`} style={{ display: 'inline-block', marginTop: '2rem', color: '#B8B0A0', fontFamily: 'Cinzel, serif', fontSize: '0.75rem', textDecoration: 'none', letterSpacing: '0.08em' }}>← Return to Lodge Site</Link>
-        </div>
-      </div>
-    )
+    return <RequestSentNotice slug={slug} />
   }
 
   return (
@@ -155,6 +145,49 @@ export default function PortalAccessRequestPage() {
             Already have a login? <Link href="/auth/login" style={{ color: '#C9A84C', textDecoration: 'none' }}>Sign in</Link>.
           </p>
         </form>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Confirmation, then back to the lodge's own site.
+ *
+ * A brother who came from his lodge's website should end up back on it,
+ * not marooned on a LodgeOS page. LodgeOS is the tool the lodge uses;
+ * from his side it should be invisible, and the last thing he sees
+ * should be the lodge's own site rather than the platform's.
+ *
+ * The redirect is on a timer rather than immediate so he can actually
+ * read what happens next, and there is a link for anyone who would
+ * rather not wait — the countdown never traps someone who has
+ * navigation disabled or who reads slowly.
+ */
+function RequestSentNotice({ slug }: { slug: string }) {
+  const [remaining, setRemaining] = useState(RETURN_DELAY_SECONDS)
+
+  useEffect(() => {
+    const tick = setInterval(() => setRemaining((n) => n - 1), 1000)
+    const go = setTimeout(() => window.location.assign(`/${slug}`), RETURN_DELAY_SECONDS * 1000)
+    return () => { clearInterval(tick); clearTimeout(go) }
+  }, [slug])
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#0A0E1A', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', textAlign: 'center' }}>
+      <div style={{ maxWidth: '480px' }}>
+        <div style={{ fontSize: '3rem', marginBottom: '1.5rem' }}>✦</div>
+        <h2 style={{ fontFamily: 'Cinzel, serif', fontSize: '1.8rem', color: '#C9A84C', marginBottom: '1rem' }}>Request Sent</h2>
+        <p style={{ fontSize: '1.1rem', color: '#B8B0A0', lineHeight: 1.7, fontStyle: 'italic', marginBottom: '2rem' }}>
+          The Secretary has been notified. Once he confirms you on the roster you will receive an
+          invitation by email with a link to set up your portal.
+        </p>
+        <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.62rem', letterSpacing: '0.2em', color: '#C9A84C' }}>LIBERTY · EQUALITY · FRATERNITY</div>
+        <div style={{ marginTop: '2rem' }}>
+          <Link href={`/${slug}`} className="btn-gold" style={{ fontSize: '0.68rem' }}>Return to Lodge Site</Link>
+        </div>
+        <p style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.58rem', letterSpacing: '0.14em', color: 'rgba(184,176,160,0.5)', marginTop: '1rem' }}>
+          {remaining > 0 ? `RETURNING IN ${remaining}…` : 'RETURNING…'}
+        </p>
       </div>
     </div>
   )

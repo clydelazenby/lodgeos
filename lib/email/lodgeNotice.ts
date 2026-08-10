@@ -1,5 +1,6 @@
 import { Resend, type CreateBatchOptions } from 'resend'
-import { escapeHtml } from '@/lib/email'
+import { escapeHtml } from '@/lib/email/shared'
+import { renderLodgeEmail, renderLodgeEmailText, lodgeTitle, type LodgeBrand, type EmailBody } from '@/lib/email/layout'
 
 /**
  * Lodge-wide notices: rendering and bulk delivery.
@@ -72,7 +73,7 @@ export type NoticeEvent = {
 }
 
 export function renderLodgeNotice({
-  firstName, lodgeName, subject, body, sentByName, event, meetingUrl, appUrl,
+  firstName, lodgeName, subject, body, sentByName, event, meetingUrl, appUrl, brand,
 }: {
   firstName: string; lodgeName: string; subject: string; body: string; sentByName?: string
   /** When set, the notice carries the meeting details and a calendar link. */
@@ -80,64 +81,60 @@ export function renderLodgeNotice({
   /** Zoom / Meet / Discord / Teams join link, rendered as a button. */
   meetingUrl?: string
   appUrl?: string
+  /** The lodge's own crest, tagline and contact details. */
+  brand?: LodgeBrand
 }): { html: string; text: string } {
-  const safeSubject = escapeHtml(subject)
-  const safeLodge = escapeHtml(lodgeName)
-  const safeName = escapeHtml(firstName)
-  const safeSender = sentByName ? escapeHtml(sentByName) : ''
-
-  const paragraphs = body.split('\n').filter((l) => l.trim().length)
-
-  const bodyHtml = paragraphs
-    .map((line) => `<p style="margin:0 0 14px;">${escapeHtml(line.trim())}</p>`)
-    .join('')
-
+  const b: LodgeBrand = brand ?? { name: lodgeName, number: null }
   const base = appUrl || process.env.NEXT_PUBLIC_APP_URL || 'https://www.psalmslodge1827.com'
 
-  // Event details plus a calendar link. Deliberately a LINK and not an
-  // .ics attachment — Resend's batch endpoint cannot carry attachments
-  // at all, and links survive mail-security filters that routinely strip
+  const paragraphs = body.split('\n').map((l) => l.trim()).filter((l) => l.length)
+
+  // The calendar link is deliberately a LINK and not an .ics
+  // attachment — Resend's batch endpoint cannot carry attachments at
+  // all, and links survive mail-security filters that routinely strip
   // calendar files. See app/api/events/[eventId]/calendar.ics.
-  const eventHtml = event
+  const calendarHtml = event
     ? `
-        <div style="background:#141C2E;border:1px solid rgba(201,168,76,0.3);padding:20px;margin-bottom:24px;">
-          <div style="font-family:'Arial',sans-serif;font-size:11px;letter-spacing:0.2em;color:#C9A84C;text-transform:uppercase;margin-bottom:8px;">Meeting Details</div>
-          <div style="font-size:16px;color:#F5F0E8;margin-bottom:6px;">${escapeHtml(event.title)}</div>
-          <div style="font-size:14px;color:#B8B0A0;">${escapeHtml(event.dateLabel)}</div>
-          ${event.location ? `<div style="font-size:14px;color:#B8B0A0;margin-top:4px;">${escapeHtml(event.location)}</div>` : ''}
-          <div style="margin-top:16px;">
-            <a href="${base}/api/events/${event.id}/calendar.ics" style="background:transparent;border:1px solid #C9A84C;color:#C9A84C;font-family:Arial,sans-serif;font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:10px 20px;text-decoration:none;display:inline-block;">Add to Calendar</a>
-          </div>
-        </div>`
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 20px;">
+        <tr><td align="center">
+          <a href="${base}/api/events/${event.id}/calendar.ics" style="display:inline-block;padding:11px 22px;border:1px solid #B8912F;color:#B8912F;text-decoration:none;font-family:Georgia,serif;font-size:12px;letter-spacing:0.1em;text-transform:uppercase;border-radius:2px;">Add to Calendar</a>
+        </td></tr>
+      </table>`
     : ''
 
   const meetingHtml = meetingUrl
     ? `
-        <div style="text-align:center;margin-bottom:24px;">
-          <a href="${escapeHtml(meetingUrl)}" style="background:#C9A84C;color:#0A0E1A;font-family:Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;padding:14px 36px;text-decoration:none;display:inline-block;">Join the Meeting</a>
-          <p style="color:rgba(184,176,160,0.5);font-size:11px;margin-top:10px;word-break:break-all;">${escapeHtml(meetingUrl)}</p>
-        </div>`
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 20px;">
+        <tr><td align="center">
+          <a href="${escapeHtml(meetingUrl)}" style="display:inline-block;padding:13px 30px;background:#12213D;color:#FFFFFF;text-decoration:none;font-family:Georgia,serif;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;border-radius:2px;">Join the Meeting</a>
+          <p style="margin:8px 0 0;font-family:Georgia,serif;font-size:11px;color:#5A5A5A;word-break:break-all;">${escapeHtml(meetingUrl)}</p>
+        </td></tr>
+      </table>`
     : ''
 
-  const html = `
-      <div style="font-family:Georgia,serif;max-width:600px;margin:0 auto;background:#0A0E1A;color:#F5F0E8;padding:40px;">
-        <div style="text-align:center;margin-bottom:32px;">
-          <div style="font-family:'Arial',sans-serif;font-size:24px;font-weight:700;color:#C9A84C;letter-spacing:0.2em;">LODGEOS</div>
-        </div>
-        <h1 style="font-family:'Arial',sans-serif;font-size:20px;color:#F5F0E8;margin-bottom:4px;">${safeSubject}</h1>
-        <p style="color:rgba(184,176,160,0.6);font-size:12px;margin-bottom:24px;">${safeLodge}${safeSender ? ` · Sent by ${safeSender}` : ''}</p>
-        <div style="background:#141C2E;padding:24px;margin-bottom:24px;border-left:3px solid #C9A84C;color:#B8B0A0;font-size:14px;line-height:1.7;">
-          <p style="margin:0 0 14px;">Brother ${safeName},</p>
-          ${bodyHtml}
-        </div>
-        ${eventHtml}
-        ${meetingHtml}
-        <div style="border-top:1px solid rgba(201,168,76,0.2);margin-top:32px;padding-top:16px;text-align:center;">
-          <p style="color:rgba(184,176,160,0.4);font-size:11px;font-style:italic;">Liberty · Equality · Fraternity</p>
-          <p style="color:rgba(184,176,160,0.3);font-size:11px;">Powered by LodgeOS</p>
-        </div>
-      </div>
-    `
+  const emailBody: EmailBody = {
+    greeting: `Dear Brother ${firstName},`,
+    paragraphs,
+    details: event
+      ? [
+          { label: 'Event', value: event.title },
+          { label: 'Date', value: event.dateLabel },
+          ...(event.location ? [{ label: 'Location', value: event.location }] : []),
+        ]
+      : [],
+    extraHtml: `${calendarHtml}${meetingHtml}`,
+    signOff: {
+      closing: 'Fraternally,',
+      // Named sender when we have one — a notice signed by the brother
+      // who actually sent it reads as correspondence rather than an
+      // automated message.
+      lines: sentByName
+        ? [sentByName, lodgeTitle(b)]
+        : ['Worshipful Master & Officers', lodgeTitle(b)],
+    },
+  }
+
+  const html = renderLodgeEmail(b, emailBody, subject)
 
   // A plain-text alternative is not decoration. Mail filters treat
   // HTML-only messages as a mild spam signal, and a lodge blasting the
@@ -145,21 +142,9 @@ export function renderLodgeNotice({
   // pattern filters look at hardest. It also renders correctly in
   // text-only clients and in notification previews.
   const text = [
-    subject,
-    `${lodgeName}${sentByName ? ` · Sent by ${sentByName}` : ''}`,
-    '',
-    `Brother ${firstName},`,
-    '',
-    ...paragraphs.map((l) => l.trim()),
-    ...(event
-      ? ['', 'MEETING DETAILS', event.title, event.dateLabel,
-         ...(event.location ? [event.location] : []),
-         `Add to calendar: ${base}/api/events/${event.id}/calendar.ics`]
-      : []),
-    ...(meetingUrl ? ['', `Join the meeting: ${meetingUrl}`] : []),
-    '',
-    '—',
-    'Powered by LodgeOS',
+    renderLodgeEmailText(b, emailBody),
+    ...(event ? ['', `Add to calendar: ${base}/api/events/${event.id}/calendar.ics`] : []),
+    ...(meetingUrl ? [`Join the meeting: ${meetingUrl}`] : []),
   ].join('\n')
 
   return { html, text }
@@ -216,10 +201,11 @@ export type BatchSendResult = {
 }
 
 export async function sendLodgeNoticeBatch({
-  recipients, lodgeName, subject, body, sentByName, replyTo, scheduledAt, event, meetingUrl,
+  recipients, lodgeName, subject, body, sentByName, replyTo, scheduledAt, event, meetingUrl, brand,
 }: {
   recipients: NoticeRecipient[]
   lodgeName: string
+  brand?: LodgeBrand
   subject: string
   body: string
   sentByName?: string
@@ -268,6 +254,7 @@ export async function sendLodgeNoticeBatch({
       const { html, text } = renderLodgeNotice({
         firstName: r.firstName,
         lodgeName,
+        brand,
         subject,
         body,
         sentByName,
@@ -276,7 +263,7 @@ export async function sendLodgeNoticeBatch({
       })
 
       return {
-        from: `${lodgeName} via LodgeOS <${from}>`,
+        from: `${lodgeName} <${from}>`,
         to: r.email,
         subject: `${lodgeName}: ${subject}`,
         html,

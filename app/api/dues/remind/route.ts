@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { sendDuesReminderEmail } from '@/lib/email'
 import { requireTenantRole } from '@/lib/auth/requireTenantAdmin'
 import { createClient } from '@/lib/supabase/server'
+import { LODGE_BRAND_COLUMNS, toLodgeBrand } from '@/lib/email/brand'
 
 export async function POST(request: Request) {
   try {
@@ -17,7 +18,7 @@ export async function POST(request: Request) {
     const supabase = await createClient()
 
     // Get tenant info
-    const { data: tenant } = await supabase.from('tenants').select('name, number, dues_amount').eq('id', tenantId).single()
+    const { data: tenant } = await supabase.from('tenants').select(`dues_amount, ${LODGE_BRAND_COLUMNS}`).eq('id', tenantId).single()
     if (!tenant) return NextResponse.json({ error: 'Tenant not found' }, { status: 404 })
 
     // Get all members with outstanding dues
@@ -41,6 +42,7 @@ export async function POST(request: Request) {
           to: profile.email,
           firstName: profile.first_name ?? 'Brother',
           lodgeName: `${tenant.name} #${tenant.number}`,
+          brand: toLodgeBrand(tenant),
           amount: tenant.dues_amount,
           year: new Date().getFullYear(),
           payUrl: `${appUrl}/portal/dues`,
