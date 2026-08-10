@@ -40,6 +40,15 @@ export default async function PortalPage() {
       .limit(1).maybeSingle(),
   ])
 
+  // Who to ask. "I have a question about my dues — who do I email?" had
+  // no answer anywhere in the portal; a brother had to already know.
+  const { data: officers } = await supabase
+    .from('tenant_members')
+    .select('lodge_role, profiles(first_name, last_name, email)')
+    .eq('tenant_id', tenant.id)
+    .eq('is_active', true)
+    .in('lodge_role', ['Secretary', 'Worshipful Master', 'Treasurer'])
+
   const duesDue = (membership as any).dues_status === 'due'
 
   const attended = (attendance ?? []).filter((a: any) => a.status === 'present')
@@ -171,6 +180,28 @@ export default async function PortalPage() {
           )) : <div style={{ padding: '2rem', textAlign: 'center', color: '#B8B0A0', fontStyle: 'italic', fontSize: '0.9rem' }}>No payments yet.</div>}
         </div>
       </div>
+
+      {/* Who to ask, with the office each man actually holds. */}
+      {officers && officers.length > 0 && (
+        <div className="data-box" style={{ marginTop: '1rem' }}>
+          <div className="data-box-head"><span>Who to Ask</span></div>
+          {officers.map((o: any, i: number) => (
+            <div key={`${o.lodge_role}-${i}`} style={{ padding: '0.85rem 1.4rem', borderBottom: i < officers.length - 1 ? '1px solid rgba(201,168,76,0.05)' : 'none', display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+              <div>
+                <div style={{ fontFamily: 'Cinzel, serif', fontSize: '0.82rem', color: '#F5F0E8' }}>
+                  {o.profiles?.first_name} {o.profiles?.last_name}
+                </div>
+                <div style={{ fontFamily: 'Crimson Pro, serif', fontStyle: 'italic', fontSize: '0.85rem', color: '#C9A84C' }}>{o.lodge_role}</div>
+              </div>
+              {o.profiles?.email && (
+                <a href={`mailto:${o.profiles.email}`} style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.62rem', color: '#B8B0A0', textDecoration: 'none', alignSelf: 'center' }}>
+                  {o.profiles.email}
+                </a>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Attendance — his own record, which he could not see anywhere
           before this. Recorded by the Secretary at the door or by his
