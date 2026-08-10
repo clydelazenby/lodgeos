@@ -11,10 +11,16 @@ import { escapeHtml, APP_URL } from './shared'
  * Job: the crest, the lodge's name, its tagline, its contact details in
  * the footer. LodgeOS is the tool, not the sender.
  *
- * The design is light — white paper, navy serif, gold rules — because
- * that is what lodge correspondence looks like, and because a dark
- * email card renders unpredictably in clients that apply their own dark
- * mode on top of it.
+ * The design is dark — navy ground, cream serif, gold rules — matching
+ * the lodge's own palette in globals.css, so an email and the portal
+ * look like one another. It was briefly light, and the whole theme
+ * lives in the colour block below: inverting it again means editing
+ * those constants and nothing else.
+ *
+ * One consequence of a dark email worth knowing: clients that apply
+ * their own dark mode can compound it. The <meta color-scheme> tags
+ * below declare this message as already dark, which is what stops
+ * Gmail and Outlook re-inverting it into something muddy.
  *
  * EMAIL HTML, NOT WEB HTML. Tables and inline styles throughout, no
  * flexbox, no grid, no <style> block: Outlook renders none of those
@@ -40,13 +46,25 @@ export type LodgeBrand = {
   website?: string | null
 }
 
-const NAVY = '#12213D'
-const GOLD = '#B8912F'
-const INK = '#2B2B2B'
-const INK_SOFT = '#5A5A5A'
-const PAPER = '#FFFFFF'
-const PAPER_EDGE = '#F4F1EA'
-const RULE = '#E3DDD0'
+/**
+ * The lodge's colours, dark. These mirror the app's own palette
+ * (globals.css) so an email and the portal look like one another.
+ *
+ * The names are kept from the light version deliberately — PAPER is
+ * "the surface the letter is written on" whatever colour that is — so
+ * the markup below did not have to be rewritten to invert the theme,
+ * and can be inverted again by changing only this block.
+ */
+const NAVY = '#F5F0E8'      // headings: cream on dark
+const GOLD = '#C9A84C'
+const INK = '#E8E2D5'       // body text
+const INK_SOFT = '#B8B0A0'  // secondary text
+const PAPER = '#0A0E1A'     // the letter itself
+const PAPER_EDGE = '#060910' // the surround, and the footer band
+const RULE = 'rgba(201,168,76,0.22)'
+/** Button fill. Gold on dark reads far better than navy-on-navy. */
+const BUTTON_BG = '#C9A84C'
+const BUTTON_INK = '#0A0E1A'
 
 /** "Psalms of Job Lodge #1827" */
 export function lodgeTitle(brand: LodgeBrand): string {
@@ -122,7 +140,7 @@ function footer(brand: LodgeBrand): string {
   const motto = brand.motto || 'Making good men better'
 
   return `
-  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${PAPER_EDGE};border-top:1px solid ${RULE};">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#141C2E;border-top:1px solid ${RULE};">
     <tr>
       <td style="padding:26px 32px;text-align:center;">
         ${contactRow}
@@ -158,8 +176,8 @@ export function renderLodgeEmail(brand: LodgeBrand, body: EmailBody, preheader?:
     ? `
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px auto 6px;">
         <tr>
-          <td style="background:${NAVY};border-radius:2px;">
-            <a href="${body.cta.url}" style="display:inline-block;padding:14px 34px;font-family:Georgia,'Times New Roman',serif;font-size:13px;letter-spacing:0.14em;text-transform:uppercase;color:#FFFFFF;text-decoration:none;">${escapeHtml(body.cta.label)}</a>
+          <td style="background:${BUTTON_BG};border-radius:2px;">
+            <a href="${body.cta.url}" style="display:inline-block;padding:14px 34px;font-family:Georgia,'Times New Roman',serif;font-size:13px;font-weight:bold;letter-spacing:0.14em;text-transform:uppercase;color:${BUTTON_INK};text-decoration:none;">${escapeHtml(body.cta.label)}</a>
           </td>
         </tr>
       </table>`
@@ -182,7 +200,8 @@ export function renderLodgeEmail(brand: LodgeBrand, body: EmailBody, preheader?:
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="color-scheme" content="light">
+<meta name="color-scheme" content="dark">
+<meta name="supported-color-schemes" content="dark">
 <title>${escapeHtml(title)}</title>
 </head>
 <body style="margin:0;padding:0;background:${PAPER_EDGE};">
@@ -212,8 +231,8 @@ ${preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;"
         </tr>
         <tr><td>${footer(brand)}</td></tr>
       </table>
-      <p style="margin:14px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:11px;color:#9A9384;">
-        Sent by ${escapeHtml(title)} · <a href="${APP_URL}" style="color:#9A9384;">member portal</a>
+      <p style="margin:14px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:11px;color:rgba(184,176,160,0.45);">
+        Sent by ${escapeHtml(title)} · <a href="${APP_URL}" style="color:rgba(201,168,76,0.6);">member portal</a>
       </p>
     </td>
   </tr>

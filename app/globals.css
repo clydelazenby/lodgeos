@@ -288,12 +288,20 @@ textarea:user-invalid + .lodgeos-field-hint::after {
     align-items: flex-start !important;
     gap: 0.5rem !important;
   }
+  /* Below this width the links become a menu button. Driven by CSS
+     rather than a JS width check so there is no flash of the wrong
+     layout before hydration. */
   .lodgeos-portal-nav {
-    gap: 0.9rem !important;
-    width: 100%;
-    justify-content: flex-start;
-    min-width: 0;
+    display: none !important;
   }
+  .lodgeos-portal-menu {
+    display: block;
+  }
+}
+
+/* Above the breakpoint the button is not rendered at all. */
+.lodgeos-portal-menu {
+  display: none;
 }
 
 /* ============================================================
