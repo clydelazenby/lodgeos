@@ -17,7 +17,10 @@
       "Bash(git add *)",
       "Bash(git checkout *)",
       "Bash(python3 -)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(sed -n '/^const LAYOUT/,/^]/p' 'app/lodge/[slug]/lodge-room/page.tsx')",
+      "Bash(pkill -f \"http.server 8899\")",
+      "Bash(sips -g pixelWidth -g pixelHeight -g format public/assets/lodgeos/images/pojl-logo.png)"
     ]
   }
 }

@@ -208,11 +208,38 @@ body { background: var(--navy); color: var(--cream); font-family: 'Crimson Pro',
    chairs just render smaller and tighter, which is the honest tradeoff
    for a genuinely spatial (not list-based) layout on a small screen.
    ============================================================ */
+/* THE ACTUAL SQUEEZE WAS VERTICAL, NOT HORIZONTAL.
+   Shrinking the chairs (below) was never enough. The plan is a 4:3 box
+   sized to its container, so on a 375px phone it was only ~220px TALL.
+   Stations sit at fixed percentage coordinates, and Treasurer (42%) and
+   Secretary (58%) are 16% apart — about 35px at that height — while
+   each chair is ~62px tall counting its circle, station label and name.
+   They overlapped by roughly 25px, and so did Chaplain/Marshal on the
+   other side. No amount of shrinking type fixes a layout whose vertical
+   rhythm is a fraction of its content height.
+
+   The plan is given a floor width instead, and scrolls horizontally
+   below it. At 560px wide the box is 420px tall, which puts those two
+   rows ~68px apart — just clear of the ~62px chair. This matches how
+   the data tables and the dashboard heatmap already behave on phones:
+   a genuinely spatial layout keeps its shape and scrolls, rather than
+   being compressed into illegibility. */
+@media (max-width: 767px) {
+  .lodgeos-room-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    /* Bleed to the card edges so the scroll affordance is obvious. */
+    margin: 0 -1.5rem;
+    padding: 0 1.5rem;
+  }
+  .lodgeos-room-plan { min-width: 560px; }
+}
+
 @media (max-width: 480px) {
-  .lodgeos-room-chair-circle { width: 34px !important; height: 34px !important; }
-  .lodgeos-room-chair-label { font-size: 7px !important; }
-  .lodgeos-room-chair-name { font-size: 8.5px !important; }
-  .lodgeos-room-chair-wrap { width: 68px !important; }
+  .lodgeos-room-chair-circle { width: 38px !important; height: 38px !important; }
+  .lodgeos-room-chair-label { font-size: 7.5px !important; }
+  .lodgeos-room-chair-name { font-size: 9px !important; }
+  .lodgeos-room-chair-wrap { width: 76px !important; }
 }
 
 @media (max-width: 767px) {

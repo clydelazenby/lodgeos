@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getTenantBySlug, getSessionUser, getMembership, getProfile } from '@/lib/supabase/queries'
 import { notFound } from 'next/navigation'
 import { format } from 'date-fns'
-import { DocumentUploadButton, DocumentDownloadLink, DocumentDeleteButton } from '@/components/lodge/DocumentUpload'
+import { DocumentUploadButton, DocumentDownloadLink, DocumentDeleteButton, DocumentPlayer, isPlayable, formatDuration } from '@/components/lodge/DocumentUpload'
 
 /**
  * Degree hierarchy — deliberately identical to the map in
@@ -110,14 +110,35 @@ export default async function LodgeDocumentsPage({ params }: { params: { slug: s
             <tbody>
               {visible.map((d: any) => (
                 <tr key={d.id}>
-                  <td className="dash-td"><div style={{ fontFamily: 'Cinzel, serif', fontSize: '0.85rem' }}>{d.name}</div><div style={{ fontSize: '0.78rem', color: '#B8B0A0', marginTop: '2px' }}>{d.description || ''}</div></td>
+                  <td className="dash-td">
+                    <div style={{ fontFamily: 'Cinzel, serif', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {isPlayable(d.mime_type) && (
+                        <span title="Recording" style={{ color: '#C9A84C', fontSize: '0.7rem' }}>
+                          {d.mime_type?.startsWith('video/') ? '▶' : '♪'}
+                        </span>
+                      )}
+                      {d.name}
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: '#B8B0A0', marginTop: '2px' }}>
+                      {d.description || ''}
+                      {formatDuration(d.duration_seconds) && (
+                        <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.62rem', marginLeft: d.description ? 8 : 0 }}>
+                          {formatDuration(d.duration_seconds)}
+                        </span>
+                      )}
+                    </div>
+                  </td>
                   <td className="dash-td" style={{ color: '#B8B0A0', fontSize: '0.85rem' }}>{d.category}</td>
                   <td className="dash-td" style={{ fontSize: '0.82rem', color: '#B8B0A0' }}>{d.profiles ? `${d.profiles.first_name} ${d.profiles.last_name}` : '—'}</td>
                   <td className="dash-td" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.68rem', color: '#B8B0A0' }}>{format(new Date(d.created_at), 'MMM d, yyyy')}</td>
                   <td className="dash-td"><span className={`pill ${accessColor[d.access_level] ?? 'pill-new'}`}>{d.access_level === 'all' ? 'All Brothers' : `${d.access_level}+`}</span></td>
-                  <td className="dash-td" style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>
-                    <DocumentDownloadLink documentId={d.id} />
-                    {canManage && <DocumentDeleteButton documentId={d.id} documentName={d.name} />}
+                  <td className="dash-td" style={{ textAlign: 'right' }}>
+                    <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                      {isPlayable(d.mime_type)
+                        ? <DocumentPlayer documentId={d.id} mimeType={d.mime_type} name={d.name} />
+                        : <DocumentDownloadLink documentId={d.id} />}
+                      {canManage && <DocumentDeleteButton documentId={d.id} documentName={d.name} />}
+                    </div>
                   </td>
                 </tr>
               ))}

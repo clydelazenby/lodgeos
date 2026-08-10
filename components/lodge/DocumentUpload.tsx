@@ -3,7 +3,54 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ConfirmDialog } from '@/components/lodge/ConfirmDialog'
 
-const CATEGORIES = ['Degree Materials', 'Minutes', 'Administration', 'Grand Lodge', 'Other']
+import { createClient } from '@/lib/supabase/client'
+
+const CATEGORIES = ['Degree Materials', 'Minutes', 'Administration', 'Grand Lodge', 'Training', 'Other']
+
+const ACCEPT =
+  '.pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,.mp4,.webm,.mov,.mp3,.m4a,.wav'
+
+const MAX_SIZE = 500 * 1024 * 1024
+
+export const isPlayable = (mime?: string | null) =>
+  !!mime && (mime.startsWith('video/') || mime.startsWith('audio/'))
+
+export const formatDuration = (s?: number | null) => {
+  if (!s || s < 1) return null
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const sec = Math.round(s % 60)
+  return h > 0
+    ? `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
+    : `${m}:${String(sec).padStart(2, '0')}`
+}
+
+export const formatBytes = (b?: number | null) => {
+  if (!b) return null
+  if (b < 1024 * 1024) return `${Math.round(b / 1024)} KB`
+  return `${(b / (1024 * 1024)).toFixed(1)} MB`
+}
+
+/**
+ * Reads playback length from a media file in the browser, before upload.
+ * Resolves null rather than rejecting — duration is a nicety, and a
+ * codec the browser can't decode must not block the upload of a file
+ * that other brothers may still be able to play.
+ */
+function readDuration(file: File): Promise<number | null> {
+  return new Promise((resolve) => {
+    if (!file.type.startsWith('video/') && !file.type.startsWith('audio/')) return resolve(null)
+    const el = document.createElement(file.type.startsWith('video/') ? 'video' : 'audio')
+    const url = URL.createObjectURL(file)
+    const done = (v: number | null) => { URL.revokeObjectURL(url); resolve(v) }
+    el.preload = 'metadata'
+    el.onloadedmetadata = () => done(Number.isFinite(el.duration) ? el.duration : null)
+    el.onerror = () => done(null)
+    // Don't hang the upload button on a file the browser won't decode.
+    setTimeout(() => done(null), 5000)
+    el.src = url
+  })
+}
 
 export function DocumentUploadButton({ tenantId }: { tenantId: string }) {
   const router = useRouter()
@@ -14,28 +61,78 @@ export function DocumentUploadButton({ tenantId }: { tenantId: string }) {
   const [accessLevel, setAccessLevel] = useState('all')
   const [description, setDescription] = useState('')
   const [uploading, setUploading] = useState(false)
+  const [progress, setProgress] = useState('')
   const [error, setError] = useState('')
 
-  const reset = () => { setFile(null); setName(''); setCategory(CATEGORIES[0]); setAccessLevel('all'); setDescription(''); setError('') }
+  const reset = () => { setFile(null); setName(''); setCategory(CATEGORIES[0]); setAccessLevel('all'); setDescription(''); setError(''); setProgress('') }
 
+  /**
+   * Uploads straight from the browser to Supabase Storage, then asks
+   * the server to record the metadata row.
+   *
+   * This used to POST the file to /api/documents/upload as form data.
+   * That path is capped by Vercel at a 4.5MB request body — well under
+   * the 25MB the route claimed to allow, and nowhere near a training
+   * video. Going direct removes that ceiling entirely. It is still
+   * authorized: migration 007's storage policy checks is_tenant_admin()
+   * against the tenant-id folder being written to.
+   */
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!file) { setError('Choose a file first.'); return }
+    if (file.size > MAX_SIZE) {
+      setError(`That file is ${(file.size / 1024 / 1024).toFixed(0)}MB. The limit is 500MB.`)
+      return
+    }
+
     setUploading(true)
     setError('')
-
-    const formData = new FormData()
-    formData.append('file', file)
-    formData.append('tenantId', tenantId)
-    formData.append('name', name || file.name)
-    formData.append('category', category)
-    formData.append('accessLevel', accessLevel)
-    formData.append('description', description)
+    setProgress('Reading file…')
 
     try {
-      const res = await fetch('/api/documents/upload', { method: 'POST', body: formData })
+      const supabase = createClient()
+      const duration = await readDuration(file)
+
+      // Same shape the old server route used: {tenant}/{uuid}-{safe name}.
+      // The uuid prevents two uploads of "minutes.pdf" from colliding,
+      // and the tenant folder is what storage RLS authorizes against.
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+      const storagePath = `${tenantId}/${crypto.randomUUID()}-${safeName}`
+
+      setProgress(file.size > 5 * 1024 * 1024 ? 'Uploading — large files can take a minute…' : 'Uploading…')
+
+      const { error: uploadError } = await supabase.storage
+        .from('documents')
+        .upload(storagePath, file, { contentType: file.type, upsert: false })
+
+      if (uploadError) throw new Error(uploadError.message)
+
+      setProgress('Saving to the library…')
+
+      const res = await fetch('/api/documents/record', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tenantId,
+          storagePath,
+          name: name || file.name.replace(/\.[^.]+$/, ''),
+          category,
+          accessLevel,
+          description,
+          mimeType: file.type,
+          fileSize: file.size,
+          durationSeconds: duration,
+        }),
+      })
       const result = await res.json()
-      if (!res.ok) throw new Error(result.error || 'Upload failed')
+
+      if (!res.ok) {
+        // The file landed but the row didn't. Clean up so the bucket
+        // doesn't hold an object nothing references.
+        await supabase.storage.from('documents').remove([storagePath])
+        throw new Error(result.error || 'Could not save the document.')
+      }
+
       reset()
       setOpen(false)
       router.refresh()
@@ -43,6 +140,7 @@ export function DocumentUploadButton({ tenantId }: { tenantId: string }) {
       setError(err.message)
     } finally {
       setUploading(false)
+      setProgress('')
     }
   }
 
@@ -62,17 +160,35 @@ export function DocumentUploadButton({ tenantId }: { tenantId: string }) {
             </div>
 
             <div>
-              <label style={labelStyle}>File (PDF, Word, or image · max 25MB)</label>
+              <label style={labelStyle}>File · PDF, Word, image, video or audio · max 500MB</label>
               <input
                 type="file"
-                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
+                accept={ACCEPT}
                 onChange={e => {
                   const f = e.target.files?.[0] ?? null
                   setFile(f)
                   if (f && !name) setName(f.name.replace(/\.[^.]+$/, '')) // pre-fill a sensible name from the filename, still editable
+                  // Training material is nearly always what a video is for.
+                  if (f?.type.startsWith('video/')) setCategory('Training')
                 }}
                 style={{ ...inputStyle, padding: '7px 10px' }}
               />
+              {file && (
+                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.6rem', color: '#B8B0A0', marginTop: 6 }}>
+                  {formatBytes(file.size)} · {file.type || 'unknown type'}
+                </div>
+              )}
+              {/* .mov is what an iPhone produces, and Chrome/Firefox on
+                  Android often cannot play its HEVC variant. Accepting
+                  it and warning is better than rejecting a file the
+                  officer just recorded — but they should know before
+                  half the lodge reports a black screen. */}
+              {file?.type === 'video/quicktime' && (
+                <div style={{ fontSize: '0.75rem', color: '#C9A84C', marginTop: 6, lineHeight: 1.5 }}>
+                  QuickTime (.mov) does not play in every browser. Converting to MP4 first will reach
+                  more brothers.
+                </div>
+              )}
             </div>
 
             <div>
@@ -104,6 +220,11 @@ export function DocumentUploadButton({ tenantId }: { tenantId: string }) {
             </div>
 
             {error && <div style={{ color: '#E74C3C', fontSize: '0.78rem' }}>{error}</div>}
+            {progress && !error && (
+              <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.62rem', color: '#C9A84C', letterSpacing: '0.08em' }}>
+                {progress}
+              </div>
+            )}
 
             <button type="submit" disabled={uploading} className="btn-gold" style={{ opacity: uploading ? 0.6 : 1 }}>
               {uploading ? 'Uploading…' : 'Upload'}
@@ -112,6 +233,95 @@ export function DocumentUploadButton({ tenantId }: { tenantId: string }) {
         </div>
       )}
     </>
+  )
+}
+
+/**
+ * Inline player for video/audio documents.
+ *
+ * Fetches the same short-lived signed URL the download link uses, so
+ * playback goes through the identical degree-based access check —
+ * there is no second, weaker path to the file just because it happens
+ * to be a video.
+ *
+ * The URL is signed for 5 minutes server-side. That is ample to START
+ * playback, and browsers keep streaming from an already-open connection
+ * past expiry, but seeking far ahead in a long recording after the
+ * window closes can stall. Reopening the player re-signs, which is why
+ * the control stays available while playing.
+ */
+export function DocumentPlayer({
+  documentId,
+  mimeType,
+  name,
+}: {
+  documentId: string
+  mimeType: string
+  name: string
+}) {
+  const [url, setUrl] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const open = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const res = await fetch(`/api/documents/${documentId}/download`)
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error || 'Could not open this recording')
+      setUrl(result.url)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const isVideo = mimeType.startsWith('video/')
+
+  if (!url) {
+    return (
+      <span>
+        <button
+          onClick={open}
+          disabled={loading}
+          style={{
+            fontFamily: 'JetBrains Mono, monospace', fontSize: '0.58rem', color: '#0A0E1A',
+            background: '#C9A84C', border: 'none', padding: '4px 12px',
+            cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1,
+          }}
+        >
+          {loading ? '…' : '▶ Play'}
+        </button>
+        {error && <div style={{ color: '#E74C3C', fontSize: '0.6rem', marginTop: 4 }}>{error}</div>}
+      </span>
+    )
+  }
+
+  return (
+    <div style={{ minWidth: 260, maxWidth: 420 }}>
+      {isVideo ? (
+        <video
+          src={url}
+          controls
+          preload="metadata"
+          style={{ width: '100%', borderRadius: 4, background: '#000', display: 'block' }}
+        >
+          Your browser cannot play this format.
+        </video>
+      ) : (
+        <audio src={url} controls style={{ width: '100%' }} aria-label={name}>
+          Your browser cannot play this format.
+        </audio>
+      )}
+      <button
+        onClick={() => setUrl('')}
+        style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.55rem', color: '#B8B0A0', background: 'transparent', border: 'none', cursor: 'pointer', marginTop: 4, padding: 0 }}
+      >
+        Close
+      </button>
+    </div>
   )
 }
 

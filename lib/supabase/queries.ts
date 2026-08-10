@@ -71,7 +71,7 @@ export const getProfile = cache(async (userId: string) => {
   const supabase = await createClient()
   const { data } = await supabase
     .from('profiles')
-    .select('platform_role, first_name, last_name')
+    .select('platform_role, first_name, last_name, avatar_url')
     .eq('id', userId)
     .single()
   return data

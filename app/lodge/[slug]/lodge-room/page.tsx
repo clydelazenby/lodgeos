@@ -131,7 +131,29 @@ export default function LodgeRoomPage() {
         {/* Floor plan */}
         <div style={{ background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '2rem 1.5rem' }}>
           <div style={{ fontFamily: T.mono, fontSize: '10px', letterSpacing: '0.15em', color: T.inkFaint, textAlign: 'center', marginBottom: '0.5rem' }}>EAST</div>
-          <div style={{ position: 'relative', width: '100%', aspectRatio: '4 / 3', background: 'radial-gradient(ellipse at 50% 10%, rgba(201,168,76,0.06), transparent 60%)', borderRadius: '8px', border: `1px dashed ${T.border}` }}>
+          {/* Scroll wrapper: see .lodgeos-room-plan in globals.css for why
+              the plan is given a floor width on phones rather than being
+              allowed to shrink with the screen. */}
+          <div className="lodgeos-room-scroll">
+          <div
+            className="lodgeos-room-plan"
+            style={{
+              position: 'relative', width: '100%', aspectRatio: '4 / 3', borderRadius: '8px',
+              border: `1px dashed ${T.border}`, overflow: 'hidden',
+              // The same photograph used on the sign-in screen, so the
+              // room reads as a continuation of the same place rather
+              // than a diagram on a flat panel. Heavily darkened — this
+              // is a backdrop, and the officer avatars and station
+              // labels on top of it have to stay first to the eye.
+              backgroundImage:
+                'radial-gradient(ellipse at 50% 10%, rgba(201,168,76,0.10), transparent 60%),' +
+                'linear-gradient(rgba(6,11,22,0.86), rgba(6,11,22,0.92)),' +
+                "url('/assets/lodgeos/images/login-bg.png')",
+              backgroundSize: 'auto, auto, cover',
+              backgroundPosition: 'center, center, center',
+              backgroundRepeat: 'no-repeat',
+            }}
+          >
             {LAYOUT.map(layout => {
               const holders = holderByStation[layout.station]
               const holder = holders[0] // display first holder; more-than-one is a data-consistency signal same as the dashboard/bench pages, not hidden
@@ -170,6 +192,7 @@ export default function LodgeRoomPage() {
                 </div>
               )
             })}
+          </div>
           </div>
           <div style={{ fontFamily: T.mono, fontSize: '10px', letterSpacing: '0.15em', color: T.inkFaint, textAlign: 'center', marginTop: '0.5rem' }}>WEST · ENTRANCE</div>
         </div>

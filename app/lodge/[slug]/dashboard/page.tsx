@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
-import { getTenantBySlug } from '@/lib/supabase/queries'
+import { getTenantBySlug, getSessionUser, getProfile, getMembership } from '@/lib/supabase/queries'
+import { DashboardGreeting } from '@/components/lodge/DashboardGreeting'
 import { notFound } from 'next/navigation'
 import { format, formatDistanceToNow } from 'date-fns'
 import Link from 'next/link'
@@ -44,6 +45,15 @@ export default async function LodgeDashboardPage({ params }: { params: { slug: s
   // same render pass, so this costs no round trip.
   const tenant = await getTenantBySlug(params.slug)
   if (!tenant) notFound()
+
+  // Who is reading this dashboard, for the greeting. All three helpers
+  // are cache()-wrapped and were already called by the lodge layout in
+  // this same render pass, so this costs no additional round trip.
+  const viewer = await getSessionUser()
+  const [viewerProfile, viewerMembership] = await Promise.all([
+    viewer ? getProfile(viewer.id) : Promise.resolve(null),
+    viewer ? getMembership(tenant.id, viewer.id) : Promise.resolve(null),
+  ])
 
   const [
     { count: memberCount },
@@ -142,14 +152,16 @@ export default async function LodgeDashboardPage({ params }: { params: { slug: s
 
   return (
     <div style={{ background: T.bg, minHeight: '100%' }}>
-      <div style={{ marginBottom: '1.75rem' }}>
-        <h1 style={{ fontFamily: T.display, fontSize: '1.65rem', fontWeight: 600, color: T.ink, margin: 0 }}>
-          Good Evening, {tenant.name} #{tenant.number}
-        </h1>
-        <p style={{ fontFamily: T.body, color: T.inkFaint, margin: '4px 0 0', fontSize: '0.9rem' }}>
-          {tenant.city ? `${tenant.city}, ${tenant.state}` : 'Lodge Admin Dashboard'} · {tenant.plan} plan
-        </p>
-      </div>
+      <DashboardGreeting
+        firstName={viewerProfile?.first_name ?? null}
+        lastName={viewerProfile?.last_name ?? null}
+        avatarUrl={viewerProfile?.avatar_url ?? null}
+        lodgeRole={(viewerMembership as any)?.lodge_role ?? null}
+        tenantRole={(viewerMembership as any)?.tenant_role ?? null}
+        lodgeName={tenant.name}
+        lodgeNumber={tenant.number}
+        subline={tenant.city ? `${tenant.city}, ${tenant.state}` : 'Lodge Admin Dashboard'}
+      />
 
       {/* KPI cards — icon-badge style matching the reference: a circular
           gold-tinted icon badge, large headline number, label + sub-label. */}
