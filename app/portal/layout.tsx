@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import Link from 'next/link'
 import { Toaster } from '@/components/ui/Toaster'
+import { PortalNav } from '@/components/portal/PortalNav'
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -41,37 +41,10 @@ export default async function PortalLayout({ children }: { children: React.React
           <div style={{ fontFamily: 'Cinzel, serif', fontSize: '0.82rem', color: '#C9A84C', letterSpacing: '0.08em' }}>{tenant?.name} #{tenant?.number}</div>
           <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.55rem', color: '#B8B0A0', letterSpacing: '0.1em' }}>BROTHER PORTAL</div>
         </div>
-        <div className="lodgeos-portal-nav" style={{ display: 'flex', gap: '1.25rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          {/* 'Events' pointed at /portal/events, which does not exist —
-              a 404 sitting in the main navigation. Upcoming events are
-              already listed on the portal dashboard, so the dead link is
-              removed rather than replaced. */}
-          {[
-            ['Dashboard', '/portal'],
-            ['Check In', '/portal/check-in'],
-            ['Documents', '/portal/documents'],
-            ['Dues', '/portal/dues'],
-            ['Profile', '/portal/profile'],
-          ].map(([l, h]) => (
-            <Link key={l} href={h} style={{ fontFamily: 'Cinzel, serif', fontSize: '0.68rem', color: '#B8B0A0', textDecoration: 'none', letterSpacing: '0.05em' }}>{l}</Link>
-          ))}
-          {showLodgeLink && (
-            <Link
-              href={`/lodge/${tenant.slug}/dashboard`}
-              style={{
-                fontFamily: 'Cinzel, serif', fontSize: '0.66rem', color: '#C9A84C',
-                textDecoration: 'none', letterSpacing: '0.05em',
-                border: '1px solid rgba(201,168,76,0.3)', padding: '6px 12px', borderRadius: 4,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              Lodge Administration →
-            </Link>
-          )}
-          <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.6rem', color: '#C9A84C' }}>
-            {profile?.first_name}
-          </span>
-        </div>
+        <PortalNav
+          firstName={profile?.first_name}
+          lodgeHref={showLodgeLink ? `/lodge/${tenant.slug}/dashboard` : undefined}
+        />
       </header>
       <Toaster />
       <main className="lodgeos-app-main" style={{ maxWidth: '900px', margin: '0 auto', padding: '2rem' }}>
