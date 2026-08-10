@@ -15,9 +15,19 @@ import { useEffect, useRef, useState } from 'react'
  * smaller, so shipping the 12-megapixel original a phone camera
  * produces wastes the lodge's storage and the brother's data on every
  * page that shows his face.
+ *
+ * THE SIZE IS PER-USE, because 512 is right for one caller and wrong
+ * for the other. An avatar is looked at on a profile page and wants
+ * room for a retina display. The lodge crest is rendered at exactly
+ * 120px in an email header and nowhere else — at 512/q0.9 it came out
+ * at 165KB, downloaded afresh by every brother on every notice the
+ * lodge sends. That is the same picture four or five times over,
+ * carried on whatever signal he happens to have.
  */
 
-const OUTPUT_SIZE = 512
+/** Avatars: generous, because a face is looked at closely. */
+const DEFAULT_OUTPUT_SIZE = 512
+const DEFAULT_QUALITY = 0.9
 const VIEWPORT = 260
 
 export function ImageCropper({
@@ -26,6 +36,8 @@ export function ImageCropper({
   onCropped,
   busy = false,
   shape = 'circle',
+  outputSize = DEFAULT_OUTPUT_SIZE,
+  quality = DEFAULT_QUALITY,
 }: {
   file: File
   onCancel: () => void
@@ -33,6 +45,13 @@ export function ImageCropper({
   busy?: boolean
   /** Only the preview mask differs — the export is square either way. */
   shape?: 'circle' | 'square'
+  /**
+   * Pixels square. Set it from where the image is actually DISPLAYED,
+   * times two or three for retina — not from what the camera produced.
+   */
+  outputSize?: number
+  /** JPEG quality, 0-1. */
+  quality?: number
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const imageRef = useRef<HTMLImageElement | null>(null)
@@ -110,22 +129,30 @@ export function ImageCropper({
     const img = imageRef.current
     if (!img) return
     const out = document.createElement('canvas')
-    out.width = OUTPUT_SIZE
-    out.height = OUTPUT_SIZE
+    out.width = outputSize
+    out.height = outputSize
     const ctx = out.getContext('2d')
     if (!ctx) return
 
+    // Downscaling a phone photo to a few hundred pixels in one step
+    // leaves it visibly gritty in Chrome and Safari, which use a cheap
+    // filter by default. Two lines to ask for the good one, and it is
+    // the difference between a crest that looks engraved and one that
+    // looks photocopied.
+    ctx.imageSmoothingEnabled = true
+    ctx.imageSmoothingQuality = 'high'
+
     // Same geometry as the preview, scaled up to the output size, so
     // what he framed is exactly what gets saved.
-    const ratio = OUTPUT_SIZE / VIEWPORT
+    const ratio = outputSize / VIEWPORT
     const scale = coverScale() * zoom * ratio
     const w = img.width * scale
     const h = img.height * scale
     ctx.fillStyle = '#0A0E1A'
-    ctx.fillRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE)
-    ctx.drawImage(img, (OUTPUT_SIZE - w) / 2 + offset.x * ratio, (OUTPUT_SIZE - h) / 2 + offset.y * ratio, w, h)
+    ctx.fillRect(0, 0, outputSize, outputSize)
+    ctx.drawImage(img, (outputSize - w) / 2 + offset.x * ratio, (outputSize - h) / 2 + offset.y * ratio, w, h)
 
-    out.toBlob((blob) => { if (blob) onCropped(blob) }, 'image/jpeg', 0.9)
+    out.toBlob((blob) => { if (blob) onCropped(blob) }, 'image/jpeg', quality)
   }
 
   const labelStyle = { fontFamily: 'JetBrains Mono, monospace', fontSize: '0.6rem', letterSpacing: '0.2em', color: '#C9A84C', textTransform: 'uppercase' as const, marginBottom: 6, display: 'block' }
