@@ -84,22 +84,34 @@ export function assignmentStatus(
 }
 
 /**
- * Whether the brother may SUBMIT this — which every assignment now
- * allows, task or degree work alike.
+ * Whether the brother SENDS THIS FOR SIGN-OFF rather than simply
+ * finishing it. Degree work only.
  *
- * Submitting is not completing. He is saying he has done it; an officer
- * decides whether it stands. That distinction is the whole point of the
- * flow: a proficiency the candidate marks off himself is not a
- * proficiency, and a task nobody was told about might as well not have
- * been finished.
+ * A proficiency is not a proficiency unless somebody else heard it, so
+ * a curriculum step goes to an officer and waits. A plain task is not
+ * like that at all — "look into the roof quotes" is done when the man
+ * who was asked says it is done, and routing it through an approval
+ * queue would add a step for the officer and a wait for the brother in
+ * exchange for nothing. The lodge asked for exactly this split and it
+ * is the right one.
  */
+export function needsSignOff(a: Assignment): boolean {
+  return !!a.step_id
+}
+
 export function canSubmit(a: Assignment, status: AssignmentStatus): boolean {
+  if (!needsSignOff(a)) return false
   return status === 'open' || status === 'overdue' || status === 'declined'
 }
 
-/** Whether the assignee may mark this done outright. Nothing, now. */
-export function selfCompletable(a: Assignment): boolean {
-  return !a.step_id
+/**
+ * Whether he may mark it done outright. The mirror of the above: plain
+ * tasks, and only while they are still open.
+ */
+export function selfCompletable(a: Assignment, status?: AssignmentStatus): boolean {
+  if (needsSignOff(a)) return false
+  if (!status) return true
+  return status === 'open' || status === 'overdue' || status === 'completed'
 }
 
 export function statusPill(status: AssignmentStatus): string {
@@ -113,9 +125,17 @@ export function statusPill(status: AssignmentStatus): string {
   }
 }
 
-export function statusLabel(status: AssignmentStatus): string {
+/**
+ * The pill's words.
+ *
+ * 'completed' needs the assignment to word it honestly: a proficiency
+ * an officer accepted IS signed off, and a task the brother ticked
+ * himself is merely done. Calling the second one "signed off" would
+ * credit an approval that never happened.
+ */
+export function statusLabel(status: AssignmentStatus, a?: Assignment): string {
   switch (status) {
-    case 'completed': return 'Signed off'
+    case 'completed': return a && !needsSignOff(a) ? 'Done' : 'Signed off'
     case 'overdue': return 'Overdue'
     case 'declined': return 'Sent back'
     case 'awaiting': return 'Awaiting sign-off'

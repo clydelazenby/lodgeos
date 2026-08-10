@@ -260,6 +260,11 @@ export async function PATCH(request: Request) {
     const brother = a.profiles
     const brotherName = `${brother?.first_name ?? ''} ${brother?.last_name ?? ''}`.trim() || 'A brother'
 
+    const slugFor = async () => {
+      const { data } = await supabase.from('tenants').select('slug').eq('id', tenantId).maybeSingle()
+      return (data as any)?.slug ?? ''
+    }
+
     const brandFor = async () => {
       const { data: tenant } = await supabase
         .from('tenants').select(LODGE_BRAND_COLUMNS).eq('id', tenantId).maybeSingle()
@@ -269,8 +274,80 @@ export async function PATCH(request: Request) {
       }
     }
 
-    // ── The brother says he has done it ──
+    // ── A plain task: he finishes it, and that is that ──
+    //
+    // No approval queue. "Look into the roof quotes" is done when the
+    // man who was asked says it is done, and routing that through an
+    // officer would add a step for one and a wait for the other in
+    // exchange for nothing. The officer is still TOLD — that is the
+    // half worth keeping — but nothing waits on him.
+    if (action === 'complete' || action === 'reopen') {
+      if (a.step_id) {
+        return NextResponse.json(
+          { error: 'This is degree work. Mark it done and an officer signs it off — see the submit action.' },
+          { status: 400 }
+        )
+      }
+      if (!mine) {
+        const officer = await requireTenantAdmin(tenantId)
+        if (!officer.ok) return officer.response
+      }
+
+      const completing = action === 'complete'
+      const { error } = await supabase
+        .from('assignments')
+        .update({
+          completed_at: completing ? new Date().toISOString() : null,
+          submitted_at: null,
+        })
+        .eq('id', assignmentId)
+        .eq('tenant_id', tenantId)
+
+      if (error) throw error
+
+      /**
+       * Told, not asked. The officer who gave it out wanted to know
+       * when it was finished; he does not have to do anything about it.
+       * Only on the way to done, never on reopening, and never when an
+       * officer completes it on the brother's behalf — he would be
+       * emailing himself.
+       */
+      let emailed = false
+      if (completing && mine && a.assigned_by) {
+        try {
+          const { data: officer } = await supabase
+            .from('profiles').select('first_name, email').eq('id', a.assigned_by).maybeSingle()
+
+          if ((officer as any)?.email) {
+            const { lodgeName, brand } = await brandFor()
+            await sendAssignmentSubmittedEmail({
+              to: (officer as any).email,
+              officerFirstName: (officer as any).first_name || 'Brother',
+              brotherName,
+              lodgeName,
+              title: a.title,
+              needsAction: false,
+              reviewUrl: `${APP_URL}/lodge/${await slugFor()}/assignments`,
+              brand,
+            })
+            emailed = true
+          }
+        } catch (mailErr: any) {
+          console.error('Completion notice failed:', mailErr?.message)
+        }
+      }
+
+      return NextResponse.json({ success: true, completed: completing, emailed })
+    }
+
+    // ── Degree work: he says he is ready, an officer decides ──
     if (action === 'submit' || action === 'unsubmit') {
+      if (!a.step_id) {
+        return NextResponse.json(
+          { error: 'A plain task does not need signing off — mark it complete instead.' },
+          { status: 400 }
+        )
+      }
       if (!mine) {
         return NextResponse.json(
           { error: 'Only the brother it was given to can say he has done it.' },
@@ -320,8 +397,8 @@ export async function PATCH(request: Request) {
               brotherName,
               lodgeName,
               title: a.title,
-              isDegreeWork: !!a.step_id,
-              reviewUrl: `${APP_URL}/lodge/${(await supabase.from('tenants').select('slug').eq('id', tenantId).maybeSingle()).data?.slug ?? ''}/assignments`,
+              needsAction: true,
+              reviewUrl: `${APP_URL}/lodge/${await slugFor()}/assignments`,
               brand,
             })
             emailed = true
@@ -476,7 +553,7 @@ export async function PATCH(request: Request) {
     }
 
     return NextResponse.json(
-      { error: `Unknown action "${action}". Expected submit, signoff, decline or cancel.` },
+      { error: `Unknown action "${action}". Expected complete, submit, signoff, decline or cancel.` },
       { status: 400 }
     )
   } catch (error: any) {

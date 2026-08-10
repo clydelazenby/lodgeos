@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { assignmentStatus, statusPill, statusLabel, dueLabel, canSubmit, type Assignment } from '@/lib/assignments'
+import { assignmentStatus, statusPill, statusLabel, dueLabel, canSubmit, selfCompletable, needsSignOff, type Assignment } from '@/lib/assignments'
 import { callApi, errorMessage } from '@/lib/clientFetch'
 
 /**
@@ -33,15 +33,23 @@ export function MyAssignments({
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [locallySubmitted, setLocallySubmitted] = useState<Record<string, boolean>>({})
+  const [locallyCompleted, setLocallyCompleted] = useState<Record<string, boolean>>({})
   const [notice, setNotice] = useState('')
 
   const done = new Set(signedOffStepIds)
 
   const withStatus = assignments.map((a) => {
-    const override = locallySubmitted[a.id]
-    const effective = override === undefined
-      ? a
-      : { ...a, submitted_at: override ? new Date().toISOString() : null }
+    const submittedOverride = locallySubmitted[a.id]
+    const completedOverride = locallyCompleted[a.id]
+    const effective = {
+      ...a,
+      ...(submittedOverride === undefined
+        ? {}
+        : { submitted_at: submittedOverride ? new Date().toISOString() : null }),
+      ...(completedOverride === undefined
+        ? {}
+        : { completed_at: completedOverride ? new Date().toISOString() : null }),
+    }
     return { a: effective, status: assignmentStatus(effective, done) }
   })
 
@@ -58,6 +66,30 @@ export function MyAssignments({
    * finished, and a proficiency the candidate marks off himself is not
    * a proficiency.
    */
+  /**
+   * A plain task, finished. No queue, no wait — the man who was asked
+   * is the man who knows. The officer who gave it out is emailed so he
+   * knows too, but nothing waits on him.
+   */
+  const complete = async (a: Assignment, done: boolean) => {
+    setBusy(a.id)
+    setError('')
+    setNotice('')
+    setLocallyCompleted((p) => ({ ...p, [a.id]: done }))
+    try {
+      await callApi('/api/assignments', {
+        method: 'PATCH',
+        body: { tenantId, assignmentId: a.id, action: done ? 'complete' : 'reopen' },
+      })
+      router.refresh()
+    } catch (e) {
+      setLocallyCompleted((p) => ({ ...p, [a.id]: !done }))
+      setError(errorMessage(e, 'Could not record that.'))
+    } finally {
+      setBusy(null)
+    }
+  }
+
   const submit = async (a: Assignment) => {
     setBusy(a.id)
     setError('')
@@ -83,9 +115,25 @@ export function MyAssignments({
     const isDone = status === 'completed'
     return (
       <div style={{ padding: '0.9rem 1.4rem', borderBottom: '1px solid rgba(201,168,76,0.05)', display: 'flex', gap: '0.9rem', alignItems: 'flex-start', flexWrap: 'wrap', opacity: busy === a.id ? 0.55 : 1 }}>
-        <span aria-hidden="true" style={{ color: isDone ? '#5DBE85' : status === 'awaiting' ? '#C9A84C' : '#3A4155', marginTop: 2 }}>
-          {isDone ? '✓' : status === 'awaiting' ? '⏳' : '○'}
-        </span>
+        {/* A TASK HAS A CHECKBOX; DEGREE WORK DOES NOT.
+            The tick is the whole interaction for something he finishes
+            himself. For a proficiency there is nothing to tick — it
+            goes to an officer — so offering a box he cannot use would
+            read as broken. */}
+        {selfCompletable(a) ? (
+          <input
+            type="checkbox"
+            checked={isDone}
+            disabled={busy === a.id}
+            onChange={(e) => complete(a, e.target.checked)}
+            aria-label={a.title}
+            style={{ accentColor: '#C9A84C', marginTop: 4 }}
+          />
+        ) : (
+          <span aria-hidden="true" style={{ color: isDone ? '#5DBE85' : status === 'awaiting' ? '#C9A84C' : '#3A4155', marginTop: 2 }}>
+            {isDone ? '✓' : status === 'awaiting' ? '⏳' : '○'}
+          </span>
+        )}
 
         <div style={{ flex: 1, minWidth: 180 }}>
           <div style={{ fontFamily: 'Cinzel, serif', fontSize: '0.88rem', color: isDone ? '#918879' : '#F5F0E8', textDecoration: isDone ? 'line-through' : 'none' }}>
@@ -112,7 +160,7 @@ export function MyAssignments({
           <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.56rem', color: '#918879', marginTop: 3 }}>
             {a.assigned_by_name ? `ASKED BY ${a.assigned_by_name.toUpperCase()}` : 'FROM THE LODGE'}
             {dueLabel(a.due_date) ? ` · ${dueLabel(a.due_date)!.toUpperCase()}` : ''}
-            {a.step_id ? ' · DEGREE WORK' : ''}
+            {needsSignOff(a) ? ' · DEGREE WORK · AN OFFICER SIGNS THIS OFF' : ''}
           </div>
 
           {material && (
@@ -144,7 +192,7 @@ export function MyAssignments({
           )}
         </div>
 
-        <span className={`pill ${statusPill(status)}`}>{statusLabel(status)}</span>
+        <span className={`pill ${statusPill(status)}`}>{statusLabel(status, a)}</span>
       </div>
     )
   }
