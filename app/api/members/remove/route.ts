@@ -3,6 +3,8 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { requireTenantRole } from '@/lib/auth/requireTenantAdmin'
 import { sendMembershipRemovedEmail } from '@/lib/email'
 import { LODGE_BRAND_COLUMNS, toLodgeBrand } from '@/lib/email/brand'
+import { REMOVAL_STATUSES, statusLabel } from '@/lib/membership'
+import { recordAudit, actorName } from '@/lib/audit'
 
 // The tiers that count as the lodge's administrative office. Kept as
 // one set so the last-officer guard below cannot drift from the list
@@ -12,30 +14,31 @@ import { LODGE_BRAND_COLUMNS, toLodgeBrand } from '@/lib/email/brand'
 const ADMIN_TIER_ROLES = new Set(['admin', 'secretary', 'grand_master'])
 
 /**
- * Removes a brother from a lodge roster.
+ * Takes a brother off a lodge roster, and records why.
  *
- * WHAT THIS DELETES, AND WHAT IT DELIBERATELY DOES NOT
+ * THIS NO LONGER DELETES THE MEMBERSHIP ROW.
  *
- * This deletes the `tenant_members` row — the brother's membership in
- * THIS lodge. It does not delete their `profiles` row or their auth
- * user, and it does not touch `attendance`, `payments`, or
- * `degree_progress`.
+ * It used to, and the reasoning above it was half right: attendance,
+ * payments and degree history key off profiles.id rather than the
+ * membership row, so they survived the delete — which they must.
+ * Attendance figures for a past year should not silently change
+ * because someone came off the roster today.
  *
- * That is the correct shape for a lodge, not a shortcut. Those history
- * tables key off profiles.id and tenant_id rather than the membership
- * row, so the records survive removal — which they must. Attendance
- * figures for a past year should not silently change because someone
- * was removed from the roster today, and a payment that was genuinely
- * received is part of the lodge's financial record regardless of who
- * is currently on the rolls. A secretary removing a demitted brother
- * is not asking to rewrite five years of minutes.
+ * But the membership itself did not survive, and that was the one fact
+ * a Grand Lodge annual return actually asks for: this man was a member,
+ * on this date he ceased to be, and this is the reason. Deleting the row
+ * threw all three away and left the return to be reconstructed from
+ * memory once a year.
  *
- * A brother who leaves and later returns can simply be invited again;
- * their history reattaches, because it was never detached.
+ * So the row stays. `is_active` goes false — every existing query and
+ * every RLS policy still keys off it, so nothing about access changes —
+ * and `membership_status` records which of the four Masonically distinct
+ * things happened: a demit, a suspension, an expulsion, a death. Plus
+ * 'removed' for a duplicate row or a typo, which is none of them and
+ * must not be reported as though it were.
  *
- * If a lodge genuinely needs the destructive version — a mistaken
- * duplicate entry, or a legal erasure request — that is a deliberate
- * database operation, not a button in a roster table.
+ * A brother who returns is reinstated rather than re-invited, and his
+ * history was never detached in the first place.
  *
  * GUARDS
  *
@@ -49,11 +52,29 @@ const ADMIN_TIER_ROLES = new Set(['admin', 'secretary', 'grand_master'])
  */
 export async function POST(request: Request) {
   try {
-    const { tenantId, memberId, notify = true, note } = await request.json()
+    const {
+      tenantId,
+      memberId,
+      notify = true,
+      note,
+      status = 'removed',
+      statusDate,
+      statusNote,
+    } = await request.json()
 
     if (!tenantId || !memberId) {
       return NextResponse.json(
         { error: 'Missing tenantId or memberId.' },
+        { status: 400 }
+      )
+    }
+
+    // Validated against the shared vocabulary, not trusted from the
+    // body — the column has a check constraint and a bad value would
+    // otherwise surface as an opaque database error at the write.
+    if (!REMOVAL_STATUSES.some((s) => s.value === status)) {
+      return NextResponse.json(
+        { error: `"${status}" is not a reason a brother can be taken off the roster.` },
         { status: 400 }
       )
     }
@@ -113,13 +134,38 @@ export async function POST(request: Request) {
       }
     }
 
-    const { error: deleteError } = await supabase
+    /**
+     * The date the thing happened, not the date it was typed in.
+     *
+     * A Secretary recording a death three weeks after the funeral needs
+     * the date of the death — that is the date the annual return asks
+     * for, and defaulting to now() would put the wrong year on it for
+     * anything that happened either side of the turn of the year.
+     */
+    const effectiveDate =
+      typeof statusDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(statusDate)
+        ? statusDate
+        : new Date().toISOString().slice(0, 10)
+
+    const { error: updateError } = await supabase
       .from('tenant_members')
-      .delete()
+      .update({
+        is_active: false,
+        membership_status: status,
+        status_date: effectiveDate,
+        status_note:
+          typeof statusNote === 'string' && statusNote.trim()
+            ? statusNote.trim().slice(0, 500)
+            : null,
+        // The office goes with the membership. Leaving a demitted
+        // brother listed as Junior Warden would keep him on the Lodge
+        // Room floor plan and in the coverage report.
+        lodge_role: null,
+      })
       .eq('id', memberId)
       .eq('tenant_id', tenantId)
 
-    if (deleteError) throw deleteError
+    if (updateError) throw updateError
 
     const p = (target as any).profiles
     const name = p ? `${p.first_name ?? ''} ${p.last_name ?? ''}`.trim() : 'That brother'
@@ -169,11 +215,23 @@ export async function POST(request: Request) {
           ? ' He has been notified by email.'
           : ` He could NOT be notified by email: ${emailError}`
 
+    await recordAudit({
+      tenantId,
+      actorId: auth.userId,
+      actorName: await actorName(auth.userId),
+      action: 'member.removed',
+      summary: `Took ${name} off the roster as ${statusLabel(status).toLowerCase()}, effective ${effectiveDate}`,
+      entityType: 'tenant_member',
+      entityId: memberId,
+      detail: { status, effectiveDate, notified: emailed },
+    })
+
     return NextResponse.json({
       success: true,
       removed: name,
+      status,
       emailed,
-      message: `${name} was removed from the roster. Attendance, dues, and degree history were kept.${mailNote}`,
+      message: `${name} was taken off the roster as ${statusLabel(status).toLowerCase()}, effective ${effectiveDate}. Attendance, dues, and degree history were kept.${mailNote}`,
     })
   } catch (error: any) {
     console.error('Member removal error:', error)

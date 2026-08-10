@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { requireTenantRole } from '@/lib/auth/requireTenantAdmin'
+import { recordAudit, actorName } from '@/lib/audit'
 
 const VALID_STATUSES = new Set(['new', 'under_review', 'approved', 'denied'])
 
@@ -41,6 +42,17 @@ export async function POST(request: Request) {
 
     if (error) throw error
     if (!updated) return NextResponse.json({ error: 'Petition not found for this lodge' }, { status: 404 })
+
+    await recordAudit({
+      tenantId,
+      actorId: auth.userId,
+      actorName: await actorName(auth.userId),
+      action: 'petition.status',
+      summary: `Set the petition of ${(updated as any)?.first_name ?? ''} ${(updated as any)?.last_name ?? ''}`.trim() + ` to ${status}`,
+      entityType: 'petition',
+      entityId: (updated as any)?.id ?? null,
+      detail: { status },
+    })
 
     return NextResponse.json({ success: true, petition: updated })
   } catch (error: any) {

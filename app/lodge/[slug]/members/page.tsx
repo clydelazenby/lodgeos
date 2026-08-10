@@ -10,6 +10,7 @@ import { notify } from '@/lib/toast'
 import { DegreeOptions } from '@/components/DegreeOptions'
 import { OfficeSelect } from '@/components/lodge/OfficeSelect'
 import { roleLabel } from '@/lib/auth/permissions'
+import { REMOVAL_STATUSES, statusDefinition, statusLabel, statusPillClass } from '@/lib/membership'
 
 export default function LodgeMembersPage() {
   const params = useParams()
@@ -26,6 +27,15 @@ export default function LodgeMembersPage() {
   const [removeError, setRemoveError] = useState('')
   const [notifyRemoved, setNotifyRemoved] = useState(true)
   const [removalNote, setRemovalNote] = useState('')
+  // WHY he is coming off the roster, and when it took effect. The
+  // annual return asks for both and neither used to be recorded.
+  const [removalStatus, setRemovalStatus] = useState('demitted')
+  const [removalDate, setRemovalDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [removalStatusNote, setRemovalStatusNote] = useState('')
+  const [reinstating, setReinstating] = useState<any>(null)
+  const [reinstateBusy, setReinstateBusy] = useState(false)
+  const [reinstateError, setReinstateError] = useState('')
+  const [showFormer, setShowFormer] = useState(false)
   const [notice, setNotice] = useState('')
   // Brothers who asked for a login from the public lodge site.
   const [accessRequests, setAccessRequests] = useState<any[]>([])
@@ -201,7 +211,15 @@ export default function LodgeMembersPage() {
       const res = await fetch('/api/members/remove', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenantId: tenant.id, memberId: removing.id, notify: notifyRemoved, note: removalNote }),
+        body: JSON.stringify({
+          tenantId: tenant.id,
+          memberId: removing.id,
+          notify: notifyRemoved,
+          note: removalNote,
+          status: removalStatus,
+          statusDate: removalDate,
+          statusNote: removalStatusNote,
+        }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -211,15 +229,49 @@ export default function LodgeMembersPage() {
         setRemoveError(data.error || 'Could not remove that brother.')
         return
       }
-      setMembers(prev => prev.filter(m => m.id !== removing.id))
+      // He is no longer FILTERED OUT of the list — he moves to the
+      // former brethren section below it. Dropping the row was right
+      // when removal deleted it; now that the lodge keeps the record,
+      // the interface should show the record it keeps.
+      setMembers(prev => prev.map(m => m.id === removing.id
+        ? { ...m, is_active: false, membership_status: removalStatus, status_date: removalDate, lodge_role: null }
+        : m))
       setRemoving(null)
       setRemovalNote('')
+      setRemovalStatusNote('')
       setNotifyRemoved(true)
       setNotice(data.message)
     } catch (err: any) {
       setRemoveError(err?.message || 'Could not remove that brother.')
     } finally {
       setRemoveBusy(false)
+    }
+  }
+
+  const confirmReinstate = async () => {
+    if (!reinstating) return
+    setReinstateBusy(true)
+    setReinstateError('')
+    try {
+      const res = await fetch('/api/members/reinstate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId: tenant.id, memberId: reinstating.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setReinstateError(data.error || 'Could not reinstate that brother.')
+        return
+      }
+      setMembers(prev => prev.map(m => m.id === reinstating.id
+        ? { ...m, is_active: true, membership_status: 'active' }
+        : m))
+      setReinstating(null)
+      setNotice(data.message)
+    } catch (err: any) {
+      setReinstateError(err?.message || 'Could not reinstate that brother.')
+    } finally {
+      setReinstateBusy(false)
     }
   }
 
@@ -237,6 +289,14 @@ export default function LodgeMembersPage() {
   const labelStyle = { fontFamily: 'JetBrains Mono, monospace', fontSize: '0.6rem', letterSpacing: '0.2em', color: '#C9A84C', textTransform: 'uppercase' as const, marginBottom: '6px', display: 'block' }
 
   const dueCount = members.filter(m => m.dues_status === 'due' && m.is_active).length
+
+  // The roster is the men currently on it. Everyone else is history the
+  // lodge now keeps rather than deletes, and history belongs in its own
+  // section — not mixed into the working list an officer scans weekly.
+  const roster = members.filter(m => m.is_active)
+  const former = members
+    .filter(m => !m.is_active)
+    .sort((a, b) => String(b.status_date ?? '').localeCompare(String(a.status_date ?? '')))
 
   return (
     <div>
@@ -373,7 +433,7 @@ export default function LodgeMembersPage() {
               <tr>{['Name', 'Contact', 'Degree', 'Role', 'Dues', 'Portal', 'Status', ''].map((h, i) => <th key={h || `col-${i}`} className="dash-th">{h}</th>)}</tr>
             </thead>
             <tbody>
-              {members.map((m, i) => {
+              {roster.map((m, i) => {
                 const p = m.profiles
                 return (
                   <tr key={m.id}>
@@ -435,7 +495,7 @@ export default function LodgeMembersPage() {
                   : m.tenant_role === 'warden' || m.tenant_role === 'deacon' ? 'pill-ea'
                   : 'pill-new'
                 }`}>{roleLabel(m.tenant_role)}</span></td>
-                    <td className="dash-td"><span className={`pill pill-${m.is_active ? 'active' : 'canceled'}`}>{m.is_active ? 'Active' : 'Inactive'}</span></td>
+                    <td className="dash-td"><span className={`pill ${statusPillClass(m.membership_status)}`}>{statusLabel(m.membership_status)}</span></td>
                     <td className="dash-td" style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                       <button
                         onClick={() => { setRemoveError(''); setRemoving(m) }}
@@ -456,16 +516,120 @@ export default function LodgeMembersPage() {
             </tbody>
           </table>
         )}
-        {!loading && members.length === 0 && <div style={{ padding: '3rem', textAlign: 'center', color: '#B8B0A0', fontStyle: 'italic' }}>No members yet. Invite your first brother above.</div>}
+        {!loading && roster.length === 0 && <div style={{ padding: '3rem', textAlign: 'center', color: '#B8B0A0', fontStyle: 'italic' }}>No members yet. Invite your first brother above.</div>}
       </div>
+
+      {/* FORMER BRETHREN.
+          These rows used to be deleted outright, so this section could
+          not have existed. Now that removal records a reason and a date,
+          the lodge has the material for its own annual return — and a
+          demitted or suspended brother has a way back that does not
+          involve inviting him as though he were a stranger. */}
+      {!loading && former.length > 0 && (
+        <div className="data-box" style={{ marginTop: '1.5rem' }}>
+          <div className="data-box-head">
+            <button
+              onClick={() => setShowFormer(v => !v)}
+              aria-expanded={showFormer}
+              style={{ background: 'none', border: 'none', color: '#F5F0E8', fontFamily: 'Cinzel, serif', fontSize: '0.88rem', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 8 }}
+            >
+              <span aria-hidden="true" style={{ fontSize: '0.55rem', opacity: 0.7, display: 'inline-block', transform: showFormer ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}>▶</span>
+              Former Brethren
+            </button>
+            <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.58rem', color: '#B8B0A0' }}>{former.length}</span>
+          </div>
+
+          {showFormer && (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>{['Name', 'Status', 'Effective', 'Note', ''].map((h, i) => <th key={h || `f-${i}`} className="dash-th">{h}</th>)}</tr>
+                </thead>
+                <tbody>
+                  {former.map((m) => {
+                    const p = m.profiles
+                    const def = statusDefinition(m.membership_status)
+                    return (
+                      <tr key={m.id}>
+                        <td className="dash-td" style={{ fontFamily: 'Cinzel, serif', fontSize: '0.8rem', color: '#F5F0E8' }}>
+                          {p?.first_name} {p?.last_name}
+                        </td>
+                        <td className="dash-td">
+                          <span className={`pill ${statusPillClass(m.membership_status)}`}>{statusLabel(m.membership_status)}</span>
+                        </td>
+                        <td className="dash-td" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.62rem', color: '#B8B0A0' }}>
+                          {m.status_date ?? '—'}
+                        </td>
+                        <td className="dash-td" style={{ fontFamily: 'Crimson Pro, serif', fontSize: '0.85rem', color: '#B8B0A0' }}>
+                          {m.status_note || <span style={{ opacity: 0.5 }}>—</span>}
+                        </td>
+                        <td className="dash-td" style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                          {/* Deliberately absent for an expulsion and a
+                              death. One is a Grand Lodge action the
+                              lodge cannot undo from a roster; the other
+                              is not a thing to offer a button for. */}
+                          {m.membership_status !== 'expelled' && m.membership_status !== 'deceased' && (
+                            <button
+                              onClick={() => { setReinstateError(''); setReinstating(m) }}
+                              style={{
+                                fontFamily: 'JetBrains Mono, monospace', fontSize: '0.58rem',
+                                background: 'transparent', border: '1px solid rgba(201,168,76,0.3)',
+                                color: '#C9A84C', padding: '4px 10px', borderRadius: '3px', cursor: 'pointer',
+                              }}
+                            >
+                              Reinstate
+                            </button>
+                          )}
+                          {m.membership_status === 'expelled' && (
+                            <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.55rem', color: '#918879' }} title={def?.hint}>
+                              GRAND LODGE
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={!!reinstating}
+        title="Put him back on the roster?"
+        confirmLabel="Reinstate"
+        busy={reinstateBusy}
+        error={reinstateError}
+        onCancel={() => { if (!reinstateBusy) { setReinstating(null); setReinstateError('') } }}
+        onConfirm={confirmReinstate}
+        body={
+          <>
+            <p style={{ marginBottom: '0.9rem' }}>
+              <strong style={{ color: '#F5F0E8' }}>
+                Bro. {reinstating?.profiles?.first_name} {reinstating?.profiles?.last_name}
+              </strong>{' '}
+              returns to the roster and regains portal access. He was recorded as{' '}
+              {statusLabel(reinstating?.membership_status).toLowerCase()}
+              {reinstating?.status_date ? ` on ${reinstating.status_date}` : ''}.
+            </p>
+            <p style={{ fontSize: '0.92rem', color: '#918879', fontStyle: 'italic' }}>
+              His attendance, dues and degree history come back with him — they were never
+              detached. His former office is <strong>not</strong> restored; if he is to take a
+              station again, set it on the roster.
+            </p>
+          </>
+        }
+      />
 
       <ConfirmDialog
         open={!!removing}
-        title="Remove from roster?"
-        confirmLabel="Remove Brother"
+        title="Take him off the roster?"
+        confirmLabel="Record and Remove"
         busy={removeBusy}
         error={removeError}
-        onCancel={() => { if (!removeBusy) { setRemoving(null); setRemoveError(''); setRemovalNote(''); setNotifyRemoved(true) } }}
+        onCancel={() => { if (!removeBusy) { setRemoving(null); setRemoveError(''); setRemovalNote(''); setRemovalStatusNote(''); setNotifyRemoved(true) } }}
         onConfirm={confirmRemove}
         body={
           <>
@@ -478,13 +642,74 @@ export default function LodgeMembersPage() {
             <p style={{ marginBottom: '0.9rem' }}>
               Their attendance record, dues payments, and degree history are{' '}
               <strong style={{ color: '#F5F0E8' }}>kept</strong> — past years&apos; reports and
-              analytics will not change. If they return, invite them again and their history
-              reattaches.
+              analytics will not change. The membership itself is kept too, marked with the
+              reason below, so it can be reinstated and so the annual return has the figures.
             </p>
-            <p style={{ fontSize: '0.92rem', color: '#918879', fontStyle: 'italic', marginBottom: '1rem' }}>
-              To suspend a brother temporarily instead, set their status to Inactive rather than
-              removing them.
-            </p>
+
+            {/* THE REASON, WHICH THE LODGE NEEDS AND NEVER USED TO ASK.
+                A demit, a suspension, an expulsion and a death are four
+                different things to a Grand Lodge and the return counts
+                them separately. Asked here, once, at the only moment
+                anyone knows the answer. */}
+            <div style={{ borderTop: '1px solid rgba(201,168,76,0.15)', paddingTop: '0.9rem', marginBottom: '0.9rem' }}>
+              <label style={{ display: 'block', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.58rem', letterSpacing: '0.12em', color: '#C9A84C', marginBottom: '0.5rem' }}>
+                REASON
+              </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {REMOVAL_STATUSES.map((s) => (
+                  <label key={s.value} style={{ display: 'flex', gap: '0.6rem', cursor: 'pointer', alignItems: 'flex-start', padding: '5px 0' }}>
+                    <input
+                      type="radio"
+                      name="removal-status"
+                      value={s.value}
+                      checked={removalStatus === s.value}
+                      onChange={() => {
+                        setRemovalStatus(s.value)
+                        // The default follows the reason rather than
+                        // making the Secretary remember to turn the
+                        // email off for a death every single time.
+                        setNotifyRemoved(s.notifyByDefault)
+                      }}
+                      style={{ accentColor: '#C9A84C', marginTop: 3 }}
+                    />
+                    <span>
+                      <span style={{ fontSize: '0.95rem', color: '#F5F0E8' }}>{s.label}</span>
+                      <span style={{ display: 'block', fontSize: '0.85rem', color: '#918879', fontStyle: 'italic' }}>{s.hint}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', marginTop: '0.8rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.55rem', letterSpacing: '0.1em', color: '#B8B0A0', marginBottom: 4 }}>
+                    EFFECTIVE DATE
+                  </label>
+                  {/* The date it happened, not the date it was typed.
+                      A death recorded three weeks later belongs in the
+                      week it occurred — and either side of New Year
+                      that is a different return entirely. */}
+                  <input
+                    type="date"
+                    value={removalDate}
+                    onChange={e => setRemovalDate(e.target.value)}
+                    style={{ background: '#0A0E1A', border: '1px solid rgba(201,168,76,0.2)', color: '#F5F0E8', padding: '7px 10px', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.72rem', borderRadius: 4 }}
+                  />
+                </div>
+                <div style={{ flex: 1, minWidth: 180 }}>
+                  <label style={{ display: 'block', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.55rem', letterSpacing: '0.1em', color: '#B8B0A0', marginBottom: 4 }}>
+                    LODGE NOTE (NEVER SENT)
+                  </label>
+                  <input
+                    value={removalStatusNote}
+                    onChange={e => setRemovalStatusNote(e.target.value)}
+                    maxLength={500}
+                    placeholder="e.g. Demitted to Corinthian #45"
+                    style={{ width: '100%', background: '#0A0E1A', border: '1px solid rgba(201,168,76,0.2)', color: '#F5F0E8', padding: '7px 10px', fontFamily: 'Crimson Pro, serif', fontSize: '0.9rem', borderRadius: 4 }}
+                  />
+                </div>
+              </div>
+            </div>
 
             {/* Telling him, and the choice not to.
                 A demitted brother should hear it from the lodge. A

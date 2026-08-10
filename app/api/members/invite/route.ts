@@ -5,6 +5,7 @@ import { requireTenantRole, TenantRole } from '@/lib/auth/requireTenantAdmin'
 import { createInviteLink } from '@/lib/auth/inviteLink'
 import { upsertProfilePreservingIdentity } from '@/lib/auth/profile'
 import { LODGE_BRAND_COLUMNS, toLodgeBrand } from '@/lib/email/brand'
+import { recordAudit, actorName } from '@/lib/audit'
 
 const ADMIN_TIER_ROLES = new Set<TenantRole>(['admin', 'secretary', 'grand_master'])
 
@@ -151,6 +152,17 @@ export async function POST(request: Request) {
         warning = `${firstName || 'The brother'} was added to the roster, but the welcome email could not be sent: ${mailErr?.message || 'unknown mail error'}`
       }
     }
+
+    await recordAudit({
+      tenantId,
+      actorId: auth.userId,
+      actorName: await actorName(auth.userId),
+      action: 'member.invited',
+      summary: `Invited ${`${firstName ?? ''} ${lastName ?? ''}`.trim() || email} to the roster as ${tenantRole}`,
+      entityType: 'tenant_member',
+      entityId: null,
+      detail: { email, degree, lodgeRole, tenantRole, emailed, method: invite.method },
+    })
 
     return NextResponse.json({
       success: true,

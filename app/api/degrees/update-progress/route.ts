@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { requireTenantAdmin } from '@/lib/auth/requireTenantAdmin'
+import { recordAudit, actorName } from '@/lib/audit'
 
 export async function POST(request: Request) {
   try {
@@ -44,6 +45,17 @@ export async function POST(request: Request) {
       .single()
 
     if (error) throw error
+    await recordAudit({
+      tenantId,
+      actorId: auth.userId,
+      actorName: await actorName(auth.userId),
+      action: 'degree.progress',
+      summary: `Recorded ${degree} proficiency for a candidate as ${proficiencyPassed ? 'passed' : 'not yet passed'}`,
+      entityType: 'degree_progress',
+      entityId: (updated as any)?.id ?? null,
+      detail: { degree, memberId, proficiencyPassed, justPassed },
+    })
+
     return NextResponse.json({ success: true, progress: updated })
   } catch (error: any) {
     console.error('Update degree progress error:', error)

@@ -145,6 +145,10 @@ export default async function LodgeAdminLayout({
         { label: 'Communications', href: `${base}/communications`, need: 'communications' },
         { label: 'Analytics', href: `${base}/analytics`, need: 'insight' },
         { label: 'Reports', href: `${base}/reports`, need: 'insight' },
+        // Narrower than the section it sits in: the page itself and the
+        // RLS policy behind it restrict the trail to the administrative
+        // office. 'settings' is the closest capability we have to that.
+        { label: 'Audit Trail', href: `${base}/audit`, need: 'settings' },
       ],
     },
     {

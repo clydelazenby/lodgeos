@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { requireTenantRole } from '@/lib/auth/requireTenantAdmin'
 import { sendChargeAddedEmail, APP_URL } from '@/lib/email'
 import { LODGE_BRAND_COLUMNS, toLodgeBrand } from '@/lib/email/brand'
+import { recordAudit, actorName } from '@/lib/audit'
 
 /**
  * Levying, waiving and settling per-brother charges.
@@ -131,6 +132,21 @@ export async function POST(request: Request) {
         console.error('Charge notice failed:', emailError)
       }
     }
+
+    await recordAudit({
+      tenantId,
+      actorId: auth.userId,
+      actorName: await actorName(auth.userId),
+      action: 'dues.charged',
+      summary: `Charged ${`${chargedProfile?.first_name ?? ''} ${chargedProfile?.last_name ?? ''}`.trim() || 'a brother'} $${Number((charge as any).amount)} — ${(charge as any).reason}`,
+      entityType: 'member_charge',
+      entityId: (charge as any).id,
+      detail: {
+        amount: Number((charge as any).amount),
+        reason: (charge as any).reason,
+        chargeType: (charge as any).charge_type,
+      },
+    })
 
     return NextResponse.json({
       success: true,
