@@ -7,6 +7,7 @@ import { T } from '@/lib/designTokens'
 import { ConfirmDialog } from '@/components/lodge/ConfirmDialog'
 import { markNoticesRead } from '@/app/actions/markNoticesRead'
 import { upcomingSince } from '@/lib/dates'
+import { MM_AND_ABOVE, CANDIDATE_DEGREES } from '@/lib/degrees'
 
 /**
  * Communications.
@@ -31,11 +32,13 @@ import { upcomingSince } from '@/lib/dates'
 const GROUP_LABELS: Record<string, string> = {
   all: 'All Brothers',
   mm_only: 'Master Masons Only',
+  selected: 'Chosen Brothers',
   candidates: 'Candidates (EA & FC)',
   dues_outstanding: 'Dues Outstanding',
 }
 
 type Member = {
+  user_id: string
   degree: string
   dues_status: string
   profiles: { first_name: string | null; last_name: string | null; email: string | null } | null
@@ -67,6 +70,9 @@ export default function LodgeCommunicationsPage() {
   const [loading, setLoading] = useState(true)
 
   const [form, setForm] = useState({ subject: '', body: '', recipient_group: 'all' })
+  const [chosenIds, setChosenIds] = useState<string[]>([])
+  const [manualEmails, setManualEmails] = useState('')
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const [scheduleAt, setScheduleAt] = useState('')
   const [eventId, setEventId] = useState('')
   const [meetingUrl, setMeetingUrl] = useState('')
@@ -93,7 +99,7 @@ export default function LodgeCommunicationsPage() {
     const [{ data: m }, { data: c }, { data: problems }, { data: ev }] = await Promise.all([
       supabase
         .from('tenant_members')
-        .select('degree, dues_status, profiles(first_name, last_name, email)')
+        .select('user_id, degree, dues_status, profiles(first_name, last_name, email)')
         .eq('tenant_id', t.id)
         .eq('is_active', true),
       supabase
@@ -164,14 +170,34 @@ export default function LodgeCommunicationsPage() {
   const targeted = useMemo(() => {
     const g = form.recipient_group
     return members.filter((m) => {
-      if (g === 'mm_only') return m.degree === 'MM'
-      if (g === 'candidates') return m.degree === 'EA' || m.degree === 'FC'
+      // MM_AND_ABOVE, not degree === 'MM'. This filter is a mirror of
+      // the server's, and it stopped mirroring it the day appendant
+      // degrees were added: a Royal Arch Mason or a Noble IS a Master
+      // Mason, so the count under this box understated the real
+      // audience while the send itself was correct. Both now read the
+      // same lists from lib/degrees.
+      if (g === 'mm_only') return MM_AND_ABOVE.includes(m.degree)
+      if (g === 'candidates') return CANDIDATE_DEGREES.includes(m.degree)
       if (g === 'dues_outstanding') return m.dues_status === 'due'
+      if (g === 'selected') return chosenIds.includes(m.user_id)
       return true
     })
-  }, [members, form.recipient_group])
+  }, [members, form.recipient_group, chosenIds])
+
+  /** Typed addresses, split on commas, semicolons, spaces or newlines. */
+  const manualList = manualEmails
+    .split(/[\s,;]+/)
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean)
 
   const reachable = targeted.filter((m) => m.profiles?.email)
+  /**
+   * Everyone who will receive it, roster and typed alike. The send
+   * button gates on THIS, not on the roster count — a platform admin
+   * writing only to a visiting brother has no roster recipients at all,
+   * and the button was disabled on him with no explanation.
+   */
+  const recipientCount = () => reachable.length + manualList.length
   const unreachable = targeted.filter((m) => !m.profiles?.email)
 
   const canCompose = form.subject.trim().length > 0 && form.body.trim().length > 0
@@ -191,6 +217,8 @@ export default function LodgeCommunicationsPage() {
           subject: form.subject,
           body: form.body,
           recipientGroup: form.recipient_group,
+          memberIds: form.recipient_group === 'selected' ? chosenIds : undefined,
+          extraEmails: manualList,
           mode,
           draftId,
           // Only meaningful for a real send; a test goes now.
@@ -386,10 +414,70 @@ export default function LodgeCommunicationsPage() {
             </div>
           </div>
 
+          {/* Hand-picked brethren. The ids are re-checked against this
+              lodge's active roster server-side; this list is a
+              convenience, not the authority. */}
+          {form.recipient_group === 'selected' && (
+            <div style={{ background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '1rem', maxHeight: 260, overflowY: 'auto' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem', gap: '1rem', flexWrap: 'wrap' }}>
+                <span style={{ fontFamily: T.mono, fontSize: '0.6rem', letterSpacing: '0.15em', color: T.gold, textTransform: 'uppercase' }}>
+                  Choose Brothers ({chosenIds.length})
+                </span>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button type="button" onClick={() => setChosenIds(members.filter(m => m.profiles?.email).map(m => m.user_id))} style={{ background: 'none', border: 'none', color: T.gold, fontSize: '0.7rem', cursor: 'pointer' }}>All</button>
+                  <button type="button" onClick={() => setChosenIds([])} style={{ background: 'none', border: 'none', color: T.inkFaint, fontSize: '0.7rem', cursor: 'pointer' }}>None</button>
+                </div>
+              </div>
+              {members.map((m) => {
+                const has = m.profiles?.email
+                return (
+                  <label key={m.user_id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '5px 0', cursor: has ? 'pointer' : 'not-allowed', opacity: has ? 1 : 0.45 }}>
+                    <input
+                      type="checkbox"
+                      disabled={!has}
+                      checked={chosenIds.includes(m.user_id)}
+                      onChange={(e) => setChosenIds((prev) => e.target.checked ? [...prev, m.user_id] : prev.filter(id => id !== m.user_id))}
+                      style={{ accentColor: T.gold }}
+                    />
+                    <span style={{ fontFamily: T.body, fontSize: '0.9rem', color: T.ink }}>
+                      {m.profiles?.first_name} {m.profiles?.last_name}
+                    </span>
+                    <span style={{ fontFamily: T.mono, fontSize: '0.6rem', color: T.inkFaint }}>
+                      {has ? m.profiles?.email : 'no email on file'}
+                    </span>
+                  </label>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Addresses that are not on the roster at all.
+              Platform administrators only — the server enforces this
+              independently, and refuses the send if anyone else tries.
+              It is the one path that can carry mail from the lodge's
+              verified domain to somebody nobody has vetted. */}
+          {isSuperAdmin && (
+            <div>
+              <label style={labelStyle}>Additional Addresses (not on the roster)</label>
+              <textarea
+                value={manualEmails}
+                onChange={e => setManualEmails(e.target.value)}
+                rows={2}
+                placeholder="visiting.brother@example.com, grand.secretary@example.com"
+                style={{ ...inputStyle, resize: 'vertical' as const, fontFamily: T.body }}
+              />
+              <p style={{ fontSize: '0.78rem', color: T.inkFainter, fontStyle: 'italic', marginTop: 4 }}>
+                Separate with commas or new lines. Up to 25. These go out under the lodge's name to people
+                who never joined it, so they are limited to platform administrators — and to anyone already
+                receiving this notice, they are skipped rather than sent twice.
+              </p>
+            </div>
+          )}
+
           {/* The count an officer needs before committing, not after. */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', fontFamily: 'Crimson Pro, serif', color: T.inkFaint }}>
             <span>
-              <strong style={{ color: T.ink }}>{reachable.length}</strong>{' '}
+              <strong style={{ color: T.ink }}>{reachable.length + manualList.length}</strong>{' '}
               {reachable.length === 1 ? 'brother' : 'brothers'} will receive this
               {unreachable.length > 0 && (
                 <span style={{ color: T.danger }}> · {unreachable.length} have no email on file</span>
@@ -540,15 +628,15 @@ export default function LodgeCommunicationsPage() {
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
             <button
               onClick={() => setConfirmOpen(true)}
-              disabled={!canCompose || reachable.length === 0 || busy !== ''}
+              disabled={!canCompose || recipientCount() === 0 || busy !== ''}
               className="btn-gold"
-              style={{ fontSize: '0.7rem', cursor: !canCompose || reachable.length === 0 ? 'not-allowed' : 'pointer', opacity: !canCompose || reachable.length === 0 ? 0.5 : 1 }}
+              style={{ fontSize: '0.7rem', cursor: !canCompose || recipientCount() === 0 ? 'not-allowed' : 'pointer', opacity: !canCompose || recipientCount() === 0 ? 0.5 : 1 }}
             >
               {busy === 'send'
                 ? (scheduleAt ? 'Scheduling…' : 'Sending…')
                 : scheduleAt
-                  ? `Schedule for ${reachable.length} ${reachable.length === 1 ? 'Brother' : 'Brothers'}`
-                  : `Send to ${reachable.length} ${reachable.length === 1 ? 'Brother' : 'Brothers'}`}
+                  ? `Schedule for ${recipientCount()} ${recipientCount() === 1 ? 'Brother' : 'Brothers'}`
+                  : `Send to ${recipientCount()} ${recipientCount() === 1 ? 'Brother' : 'Brothers'}`}
             </button>
 
             <button onClick={() => setShowPreview(v => !v)} disabled={!canCompose} style={{ ...ghostButton, opacity: canCompose ? 1 : 0.5 }}>
@@ -697,7 +785,7 @@ export default function LodgeCommunicationsPage() {
       <ConfirmDialog
         open={confirmOpen}
         title="Send to the lodge?"
-        confirmLabel={`Send to ${reachable.length}`}
+        confirmLabel={`Send to ${recipientCount()}`}
         busy={busy === 'send'}
         onCancel={() => { if (busy !== 'send') setConfirmOpen(false) }}
         onConfirm={() => post('send')}
@@ -707,7 +795,7 @@ export default function LodgeCommunicationsPage() {
               <strong style={{ color: T.ink }}>{form.subject}</strong>
             </p>
             <p style={{ marginBottom: '0.9rem' }}>
-              Goes to <strong style={{ color: T.ink }}>{reachable.length}</strong>{' '}
+              Goes to <strong style={{ color: T.ink }}>{recipientCount()}</strong>{' '}
               {reachable.length === 1 ? 'brother' : 'brothers'} in {GROUP_LABELS[form.recipient_group]}.
               Email cannot be recalled once sent.
             </p>
