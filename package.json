@@ -28,6 +28,7 @@
     "slugify": "^1.6.6",
     "stripe": "^16.0.0",
     "svix": "^1.99.1",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zod": "^3.23.8"
   },
   "devDependencies": {

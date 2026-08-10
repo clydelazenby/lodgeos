@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useParams } from 'next/navigation'
 import { T } from '@/lib/designTokens'
+import { StationMemberModal, type StationSelection } from '@/components/lodge/StationMemberModal'
 
 /**
  * The Lodge Room — a real floor-plan visualization of officer stations,
@@ -61,6 +62,7 @@ export default function LodgeRoomPage() {
   const [selectedEventId, setSelectedEventId] = useState('')
   const [attendance, setAttendance] = useState<Record<string, string>>({}) // member user_id -> status
   const [loading, setLoading] = useState(true)
+  const [selected, setSelected] = useState<StationSelection | null>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -117,6 +119,7 @@ export default function LodgeRoomPage() {
 
   return (
     <div style={{ background: T.bg, minHeight: '100%' }}>
+      <StationMemberModal selection={selected} slug={slug} onClose={() => setSelected(null)} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 style={{ fontFamily: T.display, fontSize: '1.5rem', color: T.ink, margin: 0 }}>Lodge Room</h1>
@@ -168,11 +171,21 @@ export default function LodgeRoomPage() {
                 : holder ? T.gold : T.inkFainter
 
               return (
-                <div
+                <button
                   key={layout.station}
+                  type="button"
+                  onClick={() => setSelected({
+                    station: layout.station,
+                    holder: holder ?? null,
+                    status,
+                    meetingLabel: selectedEventId
+                      ? events.find(e => e.id === selectedEventId)?.title
+                      : undefined,
+                  })}
                   title={holder ? `${layout.station}: ${holder.profiles?.first_name} ${holder.profiles?.last_name}${status ? ` (${status})` : ''}` : `${layout.station}: Unassigned`}
+                  aria-label={holder ? `${layout.station}, ${holder.profiles?.first_name} ${holder.profiles?.last_name}` : `${layout.station}, unassigned`}
                   className="lodgeos-room-chair-wrap"
-                  style={{ position: 'absolute', top: layout.top, left: layout.left, transform: 'translate(-50%, -50%)', textAlign: 'center', width: '92px' }}
+                  style={{ position: 'absolute', top: layout.top, left: layout.left, transform: 'translate(-50%, -50%)', textAlign: 'center', width: '92px', background: 'transparent', border: 'none', padding: 0, cursor: 'pointer' }}
                 >
                   <div className="lodgeos-room-chair-circle" style={{
                     width: '46px', height: '46px', borderRadius: '50%', margin: '0 auto',
@@ -195,7 +208,7 @@ export default function LodgeRoomPage() {
                   <div className="lodgeos-room-chair-name" style={{ fontFamily: T.body, fontSize: '10px', color: T.inkFaint, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {holder ? `${holder.profiles?.first_name} ${holder.profiles?.last_name}` : 'Unassigned'}
                   </div>
-                </div>
+                </button>
               )
             })}
           </div>

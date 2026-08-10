@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { ConfirmDialog } from '@/components/lodge/ConfirmDialog'
+import { MemberImport } from '@/components/lodge/MemberImport'
 
 export default function LodgeMembersPage() {
   const params = useParams()
@@ -21,19 +22,23 @@ export default function LodgeMembersPage() {
   const [notice, setNotice] = useState('')
   const supabase = createClient()
 
+  // Hoisted out of the effect so a completed roster import can call it
+  // again — the table has to pick up the newly added brothers without a
+  // manual page refresh.
+  const load = async () => {
+    const { data: t } = await supabase.from('tenants').select('id, name, number').eq('slug', slug).single()
+    if (!t) return
+    setTenant(t)
+    const { data: m } = await supabase
+      .from('tenant_members')
+      .select('*, profiles(first_name, last_name, email, phone, avatar_url)')
+      .eq('tenant_id', t.id)
+      .order('created_at')
+    setMembers(m ?? [])
+    setLoading(false)
+  }
+
   useEffect(() => {
-    const load = async () => {
-      const { data: t } = await supabase.from('tenants').select('id, name, number').eq('slug', slug).single()
-      if (!t) return
-      setTenant(t)
-      const { data: m } = await supabase
-        .from('tenant_members')
-        .select('*, profiles(first_name, last_name, email, phone, avatar_url)')
-        .eq('tenant_id', t.id)
-        .order('created_at')
-      setMembers(m ?? [])
-      setLoading(false)
-    }
     load()
   }, [])
 
@@ -120,6 +125,7 @@ export default function LodgeMembersPage() {
               Send Dues Reminders ({dueCount})
             </button>
           )}
+          {tenant && <MemberImport tenantId={tenant.id} onImported={load} />}
           <button onClick={() => setShowInvite(!showInvite)} className="btn-gold" style={{ fontSize: '0.68rem' }}>
             {showInvite ? 'Cancel' : '+ Invite Brother'}
           </button>
