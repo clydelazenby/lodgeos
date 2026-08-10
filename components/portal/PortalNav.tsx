@@ -37,6 +37,9 @@ export function PortalNav({
   const LINKS: [string, string][] = [
     ['Dashboard', '/portal'],
     ['Check In', '/portal/check-in'],
+    // Second, because "what has the lodge asked of me" is the question
+    // a brother opens the portal to answer more often than any other.
+    ['My Work', '/portal/assignments'],
     ['Events', '/portal/events'],
     ['Notices', '/portal/notices'],
     ['Roster', '/portal/roster'],

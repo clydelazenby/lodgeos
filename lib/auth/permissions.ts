@@ -44,6 +44,9 @@ export type Capability =
   | 'settings'
   /** Read-only analytics, reports, coverage, care register. */
   | 'insight'
+  /** Give a brother a task or put a candidate on a degree plan.
+   *  Enforced by /api/assignments. */
+  | 'assignments'
 
 /**
  * Tiers granted each capability, mirroring the route guards exactly.
@@ -65,6 +68,20 @@ const GRANTS: Record<Capability, TenantRole[]> = {
   meetings: ['admin', 'secretary', 'grand_master', 'worshipful_master', 'treasurer', 'warden', 'deacon'],
   settings: ['admin', 'secretary', 'grand_master'],
   insight: ['admin', 'secretary', 'grand_master', 'worshipful_master', 'treasurer', 'warden', 'deacon'],
+  /**
+   * The Master, the Secretary and the Wardens.
+   *
+   * NOTE ON THE WARDENS. The lodge asked for the SENIOR Warden, and
+   * tenant_role cannot express that — 'warden' is one tier covering
+   * both Senior and Junior, by the deliberate design recorded above.
+   * The exact office lives in lodge_role, which is presentation rather
+   * than permission. Rather than invent a second permission axis for
+   * one grant, both Wardens can assign; a Junior Warden asking a
+   * brother to do something is not an escalation, and the assignment
+   * records who gave it. If a lodge wants it narrowed to the Senior
+   * Warden specifically, that is a lodge_role check at the route.
+   */
+  assignments: ['admin', 'secretary', 'grand_master', 'worshipful_master', 'warden'],
 }
 
 /**
