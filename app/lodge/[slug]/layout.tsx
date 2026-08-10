@@ -1,5 +1,5 @@
 import { redirect, notFound } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { getSessionUser, getTenantBySlug, getMembership, getProfile } from '@/lib/supabase/queries'
 import Link from 'next/link'
 import { AiSecretaryPanel } from '@/components/lodge/AiSecretaryPanel'
 import { ResponsiveNavShell } from '@/components/lodge/ResponsiveNavShell'
@@ -12,34 +12,41 @@ export default async function LodgeAdminLayout({
   children: React.ReactNode
   params: { slug: string }
 }) {
-const cookieStore = await cookies()
+  // getSessionUser() and getTenantBySlug() are independent of each
+  // other — the session doesn't determine which lodge the URL names —
+  // so they run concurrently rather than one after the other. Both are
+  // cache()-wrapped, so the page rendered inside this layout reuses
+  // these exact results instead of re-querying.
+  const [user, tenant] = await Promise.all([
+    getSessionUser(),
+    getTenantBySlug(params.slug),
+  ])
 
-const userId =
-  cookieStore.get('lodgeos_user_id')?.value
+  // PRODUCTION INCIDENT FIX: this previously gated entry on the
+  // lodgeos_user_id cookie alone, with no live Supabase session check
+  // at all — unlike super-admin/layout.tsx and requireTenantAdmin.ts
+  // (both fixed in this same pass), the real database checks further
+  // below in THIS file were already intact and correct, so this file
+  // was not silently broken the same way — but it shared the same root
+  // weakness: trusting a cookie's mere presence as sufficient, rather
+  // than treating a real session as primary and the cookie as a
+  // fallback identity signal only.
+  const cookieStore = await cookies()
+  const userId = user?.id || cookieStore.get('lodgeos_user_id')?.value
 
-if (!userId) {
-  redirect('/auth/login')
-}
-const supabase = await createClient()
-  // Get tenant by slug
-  const { data: tenant } = await supabase
-    .from('tenants')
-    .select('*')
-    .eq('slug', params.slug)
-    .single()
+  if (!userId) {
+    redirect('/auth/login')
+  }
 
   if (!tenant) notFound()
 
-  // Verify user is admin/secretary of this lodge
-  const { data: membership } = await supabase
-    .from('tenant_members')
-    .select('tenant_role, lodge_role')
-    .eq('tenant_id', tenant.id)
-    .eq('user_id', userId)
-    .single()
-
-  // Allow super admins too
-  const { data: profile } = await supabase.from('profiles').select('platform_role, first_name').eq('id', userId).single()
+  // Membership check and the super-admin escape hatch are likewise
+  // independent lookups, so they also go out together instead of
+  // serially. Both are needed before the access decision below.
+  const [membership, profile] = await Promise.all([
+    getMembership(tenant.id, userId),
+    getProfile(userId),
+  ])
 
   if (!membership && profile?.platform_role !== 'super_admin') {
     redirect('/auth/login')
@@ -50,24 +57,70 @@ const supabase = await createClient()
   }
 
   const base = `/lodge/${params.slug}`
-  const navItems = [
+
+  /**
+   * Seventeen flat links became six top-level entries.
+   *
+   * Grouped by the QUESTION an officer is answering when they reach for
+   * the nav, not by which database table a page happens to read:
+   *
+   * - Dashboard and Dues stay top-level because they are the two pages
+   *   opened most often, and burying a daily destination one click
+   *   deeper to tidy a menu is a bad trade.
+   * - Meetings — everything about running a communication, in the order
+   *   it happens: set the room, run the meeting, record who came, plan
+   *   the next one.
+   * - Brothers — everything about a person: the roster, their degree
+   *   progress, men seeking admission, those in distress, and who is
+   *   covering which station.
+   * - Records — the things you produce or consult rather than act on.
+   *   Analytics and Reports both live here because both answer "what
+   *   happened", differing only in whether the output is a screen or a
+   *   PDF.
+   * - Lodge — configuration and the annual officer handover. Rarely
+   *   touched, and grouped so it stops competing with daily work.
+   *
+   * Nothing was removed; every one of the seventeen pages is still
+   * reachable and no URL changed.
+   */
+  const navEntries = [
     { label: 'Dashboard', href: `${base}/dashboard` },
-    { label: 'Lodge Room', href: `${base}/lodge-room` },
-    { label: 'Meeting Mode', href: `${base}/meeting` },
-    { label: 'Analytics', href: `${base}/analytics` },
-    { label: 'Members', href: `${base}/members` },
+    {
+      label: 'Meetings',
+      items: [
+        { label: 'Lodge Room', href: `${base}/lodge-room` },
+        { label: 'Meeting Mode', href: `${base}/meeting` },
+        { label: 'Attendance', href: `${base}/attendance` },
+        { label: 'Events', href: `${base}/events` },
+      ],
+    },
+    {
+      label: 'Brothers',
+      items: [
+        { label: 'Members', href: `${base}/members` },
+        { label: 'Degrees', href: `${base}/degrees` },
+        { label: 'Petitions', href: `${base}/petitions` },
+        { label: 'Care', href: `${base}/care` },
+        { label: 'Coverage', href: `${base}/bench` },
+      ],
+    },
     { label: 'Dues', href: `${base}/dues` },
-    { label: 'Petitions', href: `${base}/petitions` },
-    { label: 'Events', href: `${base}/events` },
-    { label: 'Attendance', href: `${base}/attendance` },
-    { label: 'Care', href: `${base}/care` },
-    { label: 'Communications', href: `${base}/communications` },
-    { label: 'Documents', href: `${base}/documents` },
-    { label: 'Degrees', href: `${base}/degrees` },
-    { label: 'Coverage', href: `${base}/bench` },
-    { label: 'Reports', href: `${base}/reports` },
-    { label: 'Transition', href: `${base}/transition` },
-    { label: 'Settings', href: `${base}/settings` },
+    {
+      label: 'Records',
+      items: [
+        { label: 'Documents', href: `${base}/documents` },
+        { label: 'Communications', href: `${base}/communications` },
+        { label: 'Analytics', href: `${base}/analytics` },
+        { label: 'Reports', href: `${base}/reports` },
+      ],
+    },
+    {
+      label: 'Lodge',
+      items: [
+        { label: 'Settings', href: `${base}/settings` },
+        { label: 'Transition', href: `${base}/transition` },
+      ],
+    },
   ]
 
   return (
@@ -93,7 +146,7 @@ const supabase = await createClient()
 
       <div style={{ display: 'flex' }}>
         <ResponsiveNavShell
-          navItems={navItems}
+          navEntries={navEntries}
           superAdminHref={profile?.platform_role === 'super_admin' ? '/super-admin' : null}
           homeHref="/"
         >

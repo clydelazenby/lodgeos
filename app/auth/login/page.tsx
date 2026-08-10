@@ -1,24 +1,18 @@
 ﻿'use client'
 
 import React, { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 
 export default function LoginPage() {
-  const router = useRouter()
-
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [debug, setDebug] = useState('Waiting for login...')
 
  const handleLogin = async function (event: any) {
   event.preventDefault()
 
   setLoading(true)
   setError('')
-  setDebug('Logging in...')
 
   try {
   const res = await fetch('/api/auth/login', {
@@ -35,22 +29,20 @@ export default function LoginPage() {
 
     const result = await res.json()
 
-    console.log('LOGIN API RESULT:', result)
-
     if (!res.ok) {
       setError(result.error || 'Login failed.')
-      setDebug('Login failed.')
       setLoading(false)
       return
     }
 
-    setDebug('Login successful. Redirecting...')
-
+    // Full document navigation rather than router.push, so the new
+    // session cookie is attached to a fresh request to the destination
+    // and its server component tree renders authenticated on the first
+    // pass. replace() also keeps the login page out of history.
     window.location.replace(result.redirectTo || '/portal')
   } catch (err: any) {
-    console.error('LOGIN CRASH:', err)
+    console.error('Login request failed:', err)
     setError(err?.message || 'Something went wrong signing in.')
-    setDebug('Login crashed. Check console.')
     setLoading(false)
   }
 }
@@ -276,21 +268,6 @@ style: {
             },
             loading ? 'Signing in...' : 'Sign In'
           )
-        ),
-        React.createElement(
-          'div',
-          {
-            style: {
-              marginTop: '1rem',
-              padding: '10px',
-              borderRadius: '4px',
-              background: 'rgba(255,255,255,0.04)',
-              color: '#B8B0A0',
-              fontSize: '0.75rem',
-              fontFamily: 'JetBrains Mono, monospace',
-            },
-          },
-          'Debug: ' + debug
         ),
         React.createElement(
           'p',

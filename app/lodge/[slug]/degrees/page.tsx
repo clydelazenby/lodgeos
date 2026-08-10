@@ -1,11 +1,14 @@
 import { createClient } from '@/lib/supabase/server'
+import { getTenantBySlug } from '@/lib/supabase/queries'
 import { notFound } from 'next/navigation'
 import { format } from 'date-fns'
 import { ProficiencyControl } from '@/components/lodge/ProficiencyControl'
 
 export default async function LodgeDegreesPage({ params }: { params: { slug: string } }) {
   const supabase = await createClient()
-  const { data: tenant } = await supabase.from('tenants').select('id').eq('slug', params.slug).single()
+  // Deduped against the identical lookup in lodge/[slug]/layout.tsx —
+  // same render pass, so this costs no round trip.
+  const tenant = await getTenantBySlug(params.slug)
   if (!tenant) notFound()
 
   const { data: members } = await supabase

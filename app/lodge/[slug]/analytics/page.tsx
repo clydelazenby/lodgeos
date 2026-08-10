@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getTenantBySlug } from '@/lib/supabase/queries'
 import { notFound } from 'next/navigation'
 import { T } from '@/lib/designTokens'
 import { AnalyticsCharts } from '@/components/lodge/AnalyticsCharts'
@@ -7,7 +8,9 @@ const monthLabel = (m: number) => new Date(2000, m, 1).toLocaleString('en-US', {
 
 export default async function LodgeAnalyticsPage({ params }: { params: { slug: string } }) {
   const supabase = await createClient()
-  const { data: tenant } = await supabase.from('tenants').select('*').eq('slug', params.slug).single()
+  // Deduped against the identical lookup in lodge/[slug]/layout.tsx —
+  // same render pass, so this costs no round trip.
+  const tenant = await getTenantBySlug(params.slug)
   if (!tenant) notFound()
 
   const yearStart = `${new Date().getFullYear()}-01-01`

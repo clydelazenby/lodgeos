@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
+import { ConfirmDialog } from '@/components/lodge/ConfirmDialog'
 
 export default function LodgeMembersPage() {
   const params = useParams()
@@ -14,6 +15,10 @@ export default function LodgeMembersPage() {
   const [inviteForm, setInviteForm] = useState({ firstName: '', lastName: '', email: '', degree: 'MM', lodgeRole: '', tenantRole: 'member' })
   const [inviting, setInviting] = useState(false)
   const [inviteMsg, setInviteMsg] = useState('')
+  const [removing, setRemoving] = useState<any>(null)
+  const [removeBusy, setRemoveBusy] = useState(false)
+  const [removeError, setRemoveError] = useState('')
+  const [notice, setNotice] = useState('')
   const supabase = createClient()
 
   useEffect(() => {
@@ -59,6 +64,34 @@ export default function LodgeMembersPage() {
     setMembers(prev => prev.map(m => m.id === memberId ? { ...m, [field]: value } : m))
   }
 
+  const confirmRemove = async () => {
+    if (!removing) return
+    setRemoveBusy(true)
+    setRemoveError('')
+    try {
+      const res = await fetch('/api/members/remove', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId: tenant.id, memberId: removing.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        // Server-side guards (last admin, self-removal) come back here.
+        // They're kept in the dialog rather than dismissing it, so the
+        // secretary reads why it was refused.
+        setRemoveError(data.error || 'Could not remove that brother.')
+        return
+      }
+      setMembers(prev => prev.filter(m => m.id !== removing.id))
+      setRemoving(null)
+      setNotice(data.message)
+    } catch (err: any) {
+      setRemoveError(err?.message || 'Could not remove that brother.')
+    } finally {
+      setRemoveBusy(false)
+    }
+  }
+
   const sendReminder = async () => {
     const res = await fetch('/api/dues/remind', {
       method: 'POST',
@@ -92,6 +125,13 @@ export default function LodgeMembersPage() {
           </button>
         </div>
       </div>
+
+      {notice && (
+        <div style={{ background: 'rgba(93,190,133,0.12)', border: '1px solid rgba(93,190,133,0.3)', color: '#5DBE85', padding: '10px 14px', borderRadius: '4px', marginBottom: '1.5rem', fontFamily: 'Crimson Pro, serif', display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+          <span>{notice}</span>
+          <button onClick={() => setNotice('')} aria-label="Dismiss" style={{ background: 'none', border: 'none', color: '#5DBE85', cursor: 'pointer' }}>×</button>
+        </div>
+      )}
 
       {/* Invite form */}
       {showInvite && (
@@ -143,7 +183,7 @@ export default function LodgeMembersPage() {
         {loading ? <div style={{ padding: '2rem', textAlign: 'center', color: '#B8B0A0' }}>Loading...</div> : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr>{['Name', 'Contact', 'Degree', 'Role', 'Dues', 'Portal', 'Status'].map(h => <th key={h} className="dash-th">{h}</th>)}</tr>
+              <tr>{['Name', 'Contact', 'Degree', 'Role', 'Dues', 'Portal', 'Status', ''].map((h, i) => <th key={h || `col-${i}`} className="dash-th">{h}</th>)}</tr>
             </thead>
             <tbody>
               {members.map((m, i) => {
@@ -200,6 +240,20 @@ export default function LodgeMembersPage() {
                   : 'pill-new'
                 }`}>{m.tenant_role === 'worshipful_master' ? 'Worshipful Master' : m.tenant_role}</span></td>
                     <td className="dash-td"><span className={`pill pill-${m.is_active ? 'active' : 'canceled'}`}>{m.is_active ? 'Active' : 'Inactive'}</span></td>
+                    <td className="dash-td" style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <button
+                        onClick={() => { setRemoveError(''); setRemoving(m) }}
+                        title="Remove from roster"
+                        aria-label={`Remove ${p?.first_name ?? ''} ${p?.last_name ?? ''} from roster`}
+                        style={{
+                          fontFamily: 'JetBrains Mono, monospace', fontSize: '0.58rem',
+                          background: 'transparent', border: '1px solid rgba(231,76,60,0.25)',
+                          color: '#E74C3C', padding: '4px 10px', borderRadius: '3px', cursor: 'pointer',
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </td>
                   </tr>
                 )
               })}
@@ -208,6 +262,36 @@ export default function LodgeMembersPage() {
         )}
         {!loading && members.length === 0 && <div style={{ padding: '3rem', textAlign: 'center', color: '#B8B0A0', fontStyle: 'italic' }}>No members yet. Invite your first brother above.</div>}
       </div>
+
+      <ConfirmDialog
+        open={!!removing}
+        title="Remove from roster?"
+        confirmLabel="Remove Brother"
+        busy={removeBusy}
+        error={removeError}
+        onCancel={() => { if (!removeBusy) { setRemoving(null); setRemoveError('') } }}
+        onConfirm={confirmRemove}
+        body={
+          <>
+            <p style={{ marginBottom: '0.9rem' }}>
+              <strong style={{ color: '#F5F0E8' }}>
+                Bro. {removing?.profiles?.first_name} {removing?.profiles?.last_name}
+              </strong>{' '}
+              will be taken off this lodge&apos;s roster and will lose portal access.
+            </p>
+            <p style={{ marginBottom: '0.9rem' }}>
+              Their attendance record, dues payments, and degree history are{' '}
+              <strong style={{ color: '#F5F0E8' }}>kept</strong> — past years&apos; reports and
+              analytics will not change. If they return, invite them again and their history
+              reattaches.
+            </p>
+            <p style={{ fontSize: '0.92rem', color: '#6B6355', fontStyle: 'italic', margin: 0 }}>
+              To suspend a brother temporarily instead, set their status to Inactive rather than
+              removing them.
+            </p>
+          </>
+        }
+      />
     </div>
   )
 }

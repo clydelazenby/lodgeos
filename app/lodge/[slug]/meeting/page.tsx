@@ -34,6 +34,19 @@ export default function MeetingModePage() {
   const [actionError, setActionError] = useState('')
   const [busy, setBusy] = useState(false)
 
+  // Inline meeting creation. Defaults to today and to a stated
+  // communication, because the overwhelmingly common case is "the lodge
+  // is meeting right now and no event exists for it."
+  const today = new Date().toISOString().split('T')[0]
+  const [showCreate, setShowCreate] = useState(false)
+  const [createForm, setCreateForm] = useState({
+    title: 'Stated Communication',
+    eventDate: today,
+    eventTime: '',
+    eventType: 'stated_communication',
+  })
+  const [creating, setCreating] = useState(false)
+
   const loadMeetingState = useCallback(async (eventId: string) => {
     const [{ data: ev }, { data: items }, { data: att }] = await Promise.all([
       supabase.from('lodge_events').select('*').eq('id', eventId).single(),
@@ -52,13 +65,11 @@ export default function MeetingModePage() {
       const { data: t } = await supabase.from('tenants').select('id, name, number').eq('slug', slug).single()
       if (!t) { setLoading(false); return }
       setTenant(t)
-      console.log('TENANT', t)
       const [{ data: e }, { data: m }] = await Promise.all([
         supabase.from('lodge_events').select('id, title, event_date, opened_at, closed_at').eq('tenant_id', t.id).order('event_date', { ascending: false }).limit(20),
         supabase.from('tenant_members').select('user_id').eq('tenant_id', t.id).eq('is_active', true),
       ])
       setEvents(e ?? [])
-      console.log('EVENTS LOADED', e)
       setMembers(m ?? [])
 
       // Auto-select whichever meeting is currently open, if any, rather
@@ -90,6 +101,16 @@ export default function MeetingModePage() {
     return () => clearInterval(interval)
   }, [activeEvent?.opened_at, activeEvent?.closed_at])
 
+  const createInput = {
+    width: '100%', background: T.bg, border: `1px solid ${T.border}`, color: T.ink,
+    padding: '9px 12px', borderRadius: '6px', fontFamily: T.body, fontSize: '0.85rem',
+    outline: 'none', boxSizing: 'border-box' as const,
+  }
+  const createLabel = {
+    fontFamily: T.mono, fontSize: '0.58rem', letterSpacing: '0.15em', color: T.gold,
+    textTransform: 'uppercase' as const, marginBottom: '5px', display: 'block',
+  }
+
   const formatElapsed = (s: number) => {
     const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
@@ -107,6 +128,40 @@ export default function MeetingModePage() {
     if (!res.ok) setActionError(result.error)
     else await loadMeetingState(selectedEventId)
     setBusy(false)
+  }
+
+  const createMeeting = async (openNow: boolean) => {
+    setCreating(true)
+    setActionError('')
+    try {
+      const res = await fetch('/api/meeting/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId: tenant.id, ...createForm, openNow }),
+      })
+      const result = await res.json()
+
+      if (!res.ok) {
+        setActionError(result.error || 'Could not create the meeting.')
+        return
+      }
+
+      const ev = result.event
+      // Prepend rather than append: the events list is ordered newest
+      // first, and a meeting created here is almost always the newest.
+      setEvents(prev => [
+        { id: ev.id, title: ev.title, event_date: ev.event_date, opened_at: ev.opened_at, closed_at: ev.closed_at },
+        ...prev,
+      ])
+      setSelectedEventId(ev.id)
+      await loadMeetingState(ev.id)
+      setShowCreate(false)
+      setCreateForm({ title: 'Stated Communication', eventDate: today, eventTime: '', eventType: 'stated_communication' })
+    } catch (err: any) {
+      setActionError(err?.message || 'Could not create the meeting.')
+    } finally {
+      setCreating(false)
+    }
   }
 
   const closeMeeting = async () => {
@@ -152,26 +207,121 @@ export default function MeetingModePage() {
           <h1 style={{ fontFamily: T.display, fontSize: '1.5rem', color: T.ink, margin: 0 }}>Meeting Mode</h1>
           <p style={{ fontFamily: T.body, color: T.inkFaint, fontSize: '0.85rem', margin: '4px 0 0' }}>Run a live meeting — timer, roll call, and agenda in one place</p>
         </div>
-        <select
-          value={selectedEventId}
-          onChange={e => setSelectedEventId(e.target.value)}
-          disabled={isOpen}
-          style={{ background: T.bgCard, border: `1px solid ${T.border}`, color: T.ink, padding: '9px 14px', borderRadius: '6px', fontFamily: T.body, fontSize: '0.85rem', outline: 'none', cursor: isOpen ? 'not-allowed' : 'pointer', minWidth: '220px', opacity: isOpen ? 0.6 : 1 }}
-        >
-          <option value="">— Select a meeting —</option>
-          {events.map(e => (
-            <option key={e.id} value={e.id}>
-              {new Date(e.event_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} — {e.title}{e.opened_at && !e.closed_at ? ' (OPEN)' : ''}
-            </option>
-          ))}
-        </select>
+        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <select
+            value={selectedEventId}
+            onChange={e => setSelectedEventId(e.target.value)}
+            disabled={isOpen}
+            style={{ background: T.bgCard, border: `1px solid ${T.border}`, color: T.ink, padding: '9px 14px', borderRadius: '6px', fontFamily: T.body, fontSize: '0.85rem', outline: 'none', cursor: isOpen ? 'not-allowed' : 'pointer', minWidth: '220px', opacity: isOpen ? 0.6 : 1 }}
+          >
+            <option value="">— Select a meeting —</option>
+            {events.map(e => (
+              <option key={e.id} value={e.id}>
+                {new Date(e.event_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} — {e.title}{e.opened_at && !e.closed_at ? ' (OPEN)' : ''}
+              </option>
+            ))}
+          </select>
+
+          {/* Hidden while a meeting is live: creating a second meeting
+              mid-session can't be acted on anyway, since only one lodge
+              meeting may be open at a time. */}
+          {!isOpen && (
+            <button
+              onClick={() => { setActionError(''); setShowCreate(v => !v) }}
+              style={{ background: 'transparent', border: `1px solid ${T.goldBorder}`, color: T.gold, padding: '9px 16px', borderRadius: '6px', fontFamily: T.body, fontSize: '0.85rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
+            >
+              {showCreate ? 'Cancel' : '+ New Meeting'}
+            </button>
+          )}
+        </div>
       </div>
 
       {actionError && <div style={{ background: 'rgba(231,76,60,0.1)', border: '1px solid rgba(231,76,60,0.3)', color: T.danger, padding: '10px 16px', borderRadius: '6px', marginBottom: '1.25rem', fontSize: '0.85rem' }}>{actionError}</div>}
 
-      {!selectedEventId && (
+      {showCreate && !isOpen && (
+        <div style={{ background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '1.5rem', marginBottom: '1.25rem' }}>
+          <div style={{ fontFamily: T.display, fontSize: '1.05rem', color: T.ink, marginBottom: '0.35rem' }}>New Meeting</div>
+          <p style={{ fontFamily: T.body, fontSize: '0.82rem', color: T.inkFaint, marginTop: 0, marginBottom: '1.25rem' }}>
+            For a communication that isn&apos;t on the calendar yet. Meetings created here stay off the
+            public lodge page — use Events to announce something publicly.
+          </p>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
+            <div>
+              <label style={createLabel}>Title</label>
+              <input
+                value={createForm.title}
+                onChange={e => setCreateForm(p => ({ ...p, title: e.target.value }))}
+                placeholder="Stated Communication"
+                style={createInput}
+              />
+            </div>
+            <div>
+              <label style={createLabel}>Date</label>
+              <input
+                type="date"
+                value={createForm.eventDate}
+                onChange={e => setCreateForm(p => ({ ...p, eventDate: e.target.value }))}
+                style={createInput}
+              />
+            </div>
+            <div>
+              <label style={createLabel}>Time (optional)</label>
+              <input
+                type="time"
+                value={createForm.eventTime}
+                onChange={e => setCreateForm(p => ({ ...p, eventTime: e.target.value }))}
+                style={createInput}
+              />
+            </div>
+            <div>
+              <label style={createLabel}>Type</label>
+              <select
+                value={createForm.eventType}
+                onChange={e => setCreateForm(p => ({ ...p, eventType: e.target.value }))}
+                style={{ ...createInput, cursor: 'pointer' }}
+              >
+                <option value="stated_communication">Stated Communication</option>
+                <option value="degree">Degree Work</option>
+                <option value="grand_lodge">Grand Lodge</option>
+                <option value="social">Social</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            {/* The primary action, because the reason to create a meeting
+                from this page is that it's starting now. */}
+            <button
+              onClick={() => createMeeting(true)}
+              disabled={creating || !createForm.title.trim() || !createForm.eventDate}
+              style={{
+                background: T.gold, color: T.bg, border: 'none', padding: '11px 24px', borderRadius: '6px',
+                fontFamily: T.display, fontSize: '0.85rem', fontWeight: 600,
+                cursor: creating ? 'not-allowed' : 'pointer', opacity: creating ? 0.6 : 1,
+              }}
+            >
+              {creating ? 'Working…' : '⚒ Create & Open Lodge'}
+            </button>
+            <button
+              onClick={() => createMeeting(false)}
+              disabled={creating || !createForm.title.trim() || !createForm.eventDate}
+              style={{
+                background: 'transparent', border: `1px solid ${T.border}`, color: T.inkFaint,
+                padding: '11px 20px', borderRadius: '6px', fontFamily: T.body, fontSize: '0.85rem',
+                cursor: creating ? 'not-allowed' : 'pointer', opacity: creating ? 0.6 : 1,
+              }}
+            >
+              Create Without Opening
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!selectedEventId && !showCreate && (
         <div style={{ background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '3rem', textAlign: 'center', color: T.inkFaint, fontStyle: 'italic' }}>
-          Select a meeting above to open the lodge or view a session already in progress.
+          Select a meeting above to open the lodge, or create one if tonight&apos;s communication isn&apos;t on the calendar.
         </div>
       )}
 

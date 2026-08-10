@@ -62,17 +62,11 @@ export async function POST(request: NextRequest) {
 
   const user = authData.user
 
-  console.log('LOGIN ROUTE USER ID:', user.id)
-  console.log('LOGIN ROUTE USER EMAIL:', user.email)
-
   const { data: profile, error: profileError } = await admin
     .from('profiles')
     .select('id, email, platform_role')
     .eq('id', user.id)
     .maybeSingle()
-
-  console.log('LOGIN ROUTE PROFILE:', profile)
-  console.log('LOGIN ROUTE PROFILE ERROR:', profileError)
 
   if (profileError) {
     return NextResponse.json(
@@ -94,8 +88,12 @@ export async function POST(request: NextRequest) {
       .limit(1)
       .maybeSingle()
 
-    console.log('LOGIN ROUTE MEMBERSHIP:', membership)
-    console.log('LOGIN ROUTE MEMBERSHIP ERROR:', membershipError)
+    if (membershipError) {
+      // A membership lookup failure is not the same as "no membership".
+      // Falling through silently would route a real officer to the
+      // new-lodge onboarding flow, so surface it instead.
+      return NextResponse.json({ error: membershipError.message }, { status: 500 })
+    }
 
     if (membership) {
       const slug = (membership.tenants as any)?.slug
@@ -116,7 +114,6 @@ export async function POST(request: NextRequest) {
       }
     }
   }
-console.log('COOKIES TO SET', cookiesToSet)
 const response = NextResponse.json({
   redirectTo,
 })

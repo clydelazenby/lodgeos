@@ -1,4 +1,44 @@
-﻿.env.local
+# NOTE: this file must not begin with a UTF-8 BOM.
+# It previously did (bytes ef bb bf), which made git read the first
+# pattern as "﻿.env.local" rather than ".env.local" — so the
+# pattern matched nothing and .env.local was NOT ignored. That file
+# holds the Supabase service-role key, the Resend API key and webhook
+# signing secret, the Anthropic API key, and CRON_SECRET. Keep this
+# file BOM-less, and re-check with `git check-ignore -v .env.local`
+# after editing it in any editor that adds one.
+
+# Environment / secrets
 .env
+.env.local
+.env.*.local
+.env.production
+.env.development
+
+# Dependencies
 node_modules/
+
+# Build output
 .next/
+out/
+build/
+dist/
+
+# Vercel
+.vercel
+
+# Logs — error.log in this repo is captured dev-server output, not source
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts

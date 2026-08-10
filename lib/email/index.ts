@@ -8,7 +8,32 @@ function getResend() {
   return new Resend(process.env.RESEND_API_KEY)
 }
 const FROM = process.env.EMAIL_FROM || 'onboarding@resend.dev'
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://psalmslodge1827.com'
+// The canonical origin is the WWW host. The bare domain 308-redirects
+// to it, which browsers follow silently but server-to-server callers
+// (webhooks, RSVP link checkers, some mail-security scanners) do not.
+// Keeping the fallback on www means a missing env var degrades to a
+// working URL rather than a redirecting one.
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://www.psalmslodge1827.com'
+
+/**
+ * Escapes text before it is interpolated into an email's HTML.
+ *
+ * Lodge notices are composed by officers, so this is not primarily an
+ * anti-attacker measure — it's a correctness one. A secretary writing
+ * "Dues & Refreshments" or "Bring your ID <before> 7pm" would otherwise
+ * produce malformed HTML that renders wrong or swallows the rest of the
+ * line, and there is no way to preview that in a sent email. Escaping
+ * also means a pasted snippet of HTML shows up as the text it looks
+ * like rather than silently becoming markup in every brother's inbox.
+ */
+export function escapeHtml(input: string): string {
+  return input
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
 
 // ── Welcome email when brother is invited ──
 export async function sendWelcomeEmail({
@@ -49,7 +74,22 @@ export async function sendWelcomeEmail({
   })
 }
 
-// ── General lodge notice (used by Communications — arbitrary subject/body to a recipient group) ──
+/**
+ * @deprecated Superseded by lib/email/lodgeNotice.ts.
+ *
+ * This sent ONE notice per call, which meant the Communications route
+ * awaited it once per brother in a loop — slow enough to hit the
+ * serverless timeout on a large lodge, and well past Resend's rate
+ * limit. It also interpolated subject and body into HTML unescaped, so
+ * an ampersand or angle bracket in a secretary's message produced
+ * malformed markup in every inbox.
+ *
+ * `sendLodgeNoticeBatch` replaces it: escaped, batched 100 per request,
+ * with a plain-text alternative and a real Reply-To.
+ *
+ * Kept only so nothing breaks if an older caller surfaces. It has no
+ * callers as of this change — delete it once that stays true.
+ */
 export async function sendLodgeNoticeEmail({
   to, firstName, lodgeName, subject, body, sentByName,
 }: { to: string; firstName: string; lodgeName: string; subject: string; body: string; sentByName?: string }) {

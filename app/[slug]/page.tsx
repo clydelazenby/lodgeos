@@ -16,6 +16,50 @@ import {
   Users,
 } from 'lucide-react'
 
+/**
+ * INCREMENTAL STATIC REGENERATION
+ *
+ * This is the public, anonymous-visitor face of a lodge — the page a
+ * prospective petitioner lands on. It was fully dynamic, meaning every
+ * visit re-ran the tenant query plus the events and officers lookups
+ * below, even though the content only changes when a secretary edits
+ * lodge settings.
+ *
+ * Rendered at build time for known lodges and re-rendered at most once
+ * an hour after that. An explicit revalidatePath (app/actions/
+ * revalidate.ts, called from the settings page) makes real edits appear
+ * immediately, so the hour is only a backstop for changes made outside
+ * the settings form — direct database edits, or an event added by
+ * another officer.
+ */
+export const revalidate = 3600
+
+/**
+ * Pre-renders every existing lodge at build time.
+ *
+ * dynamicParams defaults to true and is deliberately left that way: a
+ * lodge that signs up AFTER this build still renders on first request
+ * and is cached from then on. Without that, new lodges would 404 until
+ * the next deploy.
+ *
+ * Uses the service client because this runs at build time, where there
+ * is no user session for RLS to evaluate against. It reads nothing but
+ * the slug column.
+ */
+export async function generateStaticParams() {
+  try {
+    const supabase = createServiceClient()
+    const { data } = await supabase.from('tenants').select('slug')
+    return (data ?? []).map((t: { slug: string }) => ({ slug: t.slug }))
+  } catch {
+    // A build should not fail because the database was briefly
+    // unreachable. Returning nothing means every lodge page is rendered
+    // on first request instead of at build time — slower for the first
+    // visitor, but the site still builds and still works.
+    return []
+  }
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -51,9 +95,6 @@ const result = await supabase
   .select('*')
   .eq('slug', params.slug)
   .single()
-
-console.log('SLUG', params.slug)
-console.log('RESULT', result)
 
 const tenant = result.data
 

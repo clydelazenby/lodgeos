@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(awk -F= '{ key=$1; val=substr\\($0, index\\($0,\"=\"\\)+1\\); if \\(key ~ /^[[:space:]]*#/ || key==\"\"\\) { print NR\": \"$0; next } ; printf \"%d: %s = [len=%d] %.30s...\\\\n\", NR, key, length\\(val\\), val }' .env.local)",
+      "mcp__57c64d2d-c444-42aa-9b9c-2c15e5a48914__execute_sql",
+      "Bash(lsof -ti:3000)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" -m 5 http://localhost:3000/)",
+      "Bash(curl -s -o /dev/null -w \"final=%{url_effective} code=%{http_code}\\\\n\" -L -m 15 http://localhost:3000/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" -m 10 http://localhost:3000/auth/login)",
+      "Bash(node -e \"console.log\\('@supabase/ssr', require\\('./node_modules/@supabase/ssr/package.json'\\).version\\); console.log\\('@supabase/supabase-js', require\\('./node_modules/@supabase/supabase-js/package.json'\\).version\\)\")",
+      "Bash(npm view *)",
+      "Bash(npm install *)",
+      "Bash(node -e \"console.log\\('storage-js', require\\('./node_modules/@supabase/storage-js/package.json'\\).version\\)\")",
+      "Bash(npm ls *)",
+      "Bash(git commit *)",
+      "Bash(git reset *)",
+      "Bash(git add *)",
+      "Bash(git checkout *)",
+      "Bash(python3 -)"
+    ]
+  }
+}

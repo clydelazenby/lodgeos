@@ -2,7 +2,6 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/client'
 
 export default function SignupPage() {
   const [step, setStep] = useState<'account' | 'lodge'>('account')
@@ -15,17 +14,19 @@ export default function SignupPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
-    const supabase = createClient()
-    const { error: err } = await supabase.auth.signUp({
-      email: account.email,
-      password: account.password,
-      options: {
-        data: { first_name: account.firstName, last_name: account.lastName },
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
+    const res = await fetch('/api/auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: account.email,
+        password: account.password,
+        firstName: account.firstName,
+        lastName: account.lastName,
+      }),
     })
-    if (err) { setError(err.message); setLoading(false); return }
-    router.push('/onboarding/setup')
+    const result = await res.json()
+    if (!res.ok) { setError(result.error || 'Something went wrong creating your account.'); setLoading(false); return }
+    router.push(result.redirectTo || '/onboarding/setup')
   }
 
   const inputStyle = { width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(201,168,76,0.2)', color: '#F5F0E8', padding: '12px 16px', fontFamily: 'Crimson Pro, serif', fontSize: '1.1rem', outline: 'none', borderRadius: '4px', transition: 'border-color 0.2s' }

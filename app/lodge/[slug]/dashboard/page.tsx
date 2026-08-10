@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getTenantBySlug } from '@/lib/supabase/queries'
 import { notFound } from 'next/navigation'
 import { format, formatDistanceToNow } from 'date-fns'
 import Link from 'next/link'
@@ -38,7 +39,9 @@ export default async function LodgeDashboardPage({ params }: { params: { slug: s
   const today = new Date().toISOString().split('T')[0]
   const yearStart = `${new Date().getFullYear()}-01-01`
 
-  const { data: tenant } = await supabase.from('tenants').select('*').eq('slug', params.slug).single()
+  // Deduped against the identical lookup in lodge/[slug]/layout.tsx —
+  // same render pass, so this costs no round trip.
+  const tenant = await getTenantBySlug(params.slug)
   if (!tenant) notFound()
 
   const [

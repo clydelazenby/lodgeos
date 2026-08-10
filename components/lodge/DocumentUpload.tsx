@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { ConfirmDialog } from '@/components/lodge/ConfirmDialog'
 
 const CATEGORIES = ['Degree Materials', 'Minutes', 'Administration', 'Grand Lodge', 'Other']
 
@@ -147,5 +148,81 @@ export function DocumentDownloadLink({ documentId, label = 'View' }: { documentI
       </button>
       {error && <div style={{ color: '#E74C3C', fontSize: '0.6rem', marginTop: '4px' }}>{error}</div>}
     </span>
+  )
+}
+
+/**
+ * Delete control for a single document. Requires the document's name to
+ * be typed before it enables — this destroys the stored file, and there
+ * is no recycle bin behind it.
+ */
+export function DocumentDeleteButton({
+  documentId,
+  documentName,
+}: {
+  documentId: string
+  documentName: string
+}) {
+  const router = useRouter()
+  const [open, setOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  const remove = async () => {
+    setBusy(true)
+    setError('')
+    try {
+      const res = await fetch(`/api/documents/${documentId}`, { method: 'DELETE' })
+      const result = await res.json()
+      if (!res.ok) {
+        setError(result.error || 'Could not delete this document.')
+        return
+      }
+      setOpen(false)
+      router.refresh()
+    } catch (err: any) {
+      setError(err?.message || 'Could not delete this document.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <>
+      <button
+        onClick={() => { setError(''); setOpen(true) }}
+        title="Delete document"
+        aria-label={`Delete ${documentName}`}
+        style={{
+          fontFamily: 'JetBrains Mono, monospace', fontSize: '0.58rem', color: '#E74C3C',
+          background: 'transparent', border: '1px solid rgba(231,76,60,0.25)',
+          padding: '4px 10px', cursor: 'pointer', marginLeft: '6px',
+        }}
+      >
+        Delete
+      </button>
+
+      <ConfirmDialog
+        open={open}
+        title="Delete this document?"
+        confirmLabel="Delete Permanently"
+        requireTyping={documentName}
+        busy={busy}
+        error={error}
+        onCancel={() => { if (!busy) { setOpen(false); setError('') } }}
+        onConfirm={remove}
+        body={
+          <>
+            <p style={{ marginBottom: '0.9rem' }}>
+              <strong style={{ color: '#F5F0E8' }}>{documentName}</strong> will be removed from the
+              library and the stored file will be destroyed.
+            </p>
+            <p style={{ margin: 0 }}>
+              This cannot be undone. If this is the lodge&apos;s only copy, download it first.
+            </p>
+          </>
+        }
+      />
+    </>
   )
 }

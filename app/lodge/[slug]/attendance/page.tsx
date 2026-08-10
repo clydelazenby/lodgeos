@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useParams } from 'next/navigation'
 import { format } from 'date-fns'
 import { QrCheckinScanner } from '@/components/lodge/QrCheckinScanner'
+import { AttendanceImport } from '@/components/lodge/AttendanceImport'
 
 type Status = 'present' | 'absent' | 'excused'
 
@@ -26,18 +27,22 @@ export default function LodgeAttendancePage() {
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState('')
 
+  // Pulled out of the useEffect so a completed CSV import can call it
+  // again — an import creates meetings, and the event dropdown has to
+  // pick them up without a manual page refresh.
+  const load = async () => {
+    const { data: t } = await supabase.from('tenants').select('id, name').eq('slug', slug).single()
+    if (!t) return
+    setTenant(t)
+
+    const { data: e } = await supabase.from('lodge_events').select('id, title, event_date').eq('tenant_id', t.id).order('event_date', { ascending: false })
+    setEvents(e ?? [])
+
+    const { data: m } = await supabase.from('tenant_members').select('user_id, profiles(first_name, last_name)').eq('tenant_id', t.id).eq('is_active', true)
+    setMembers(m ?? [])
+  }
+
   useEffect(() => {
-    const load = async () => {
-      const { data: t } = await supabase.from('tenants').select('id, name').eq('slug', slug).single()
-      if (!t) return
-      setTenant(t)
-
-      const { data: e } = await supabase.from('lodge_events').select('id, title, event_date').eq('tenant_id', t.id).order('event_date', { ascending: false })
-      setEvents(e ?? [])
-
-      const { data: m } = await supabase.from('tenant_members').select('user_id, profiles(first_name, last_name)').eq('tenant_id', t.id).eq('is_active', true)
-      setMembers(m ?? [])
-    }
     load()
   }, [])
 
@@ -89,6 +94,8 @@ export default function LodgeAttendancePage() {
       </div>
 
       {tenant && <QrCheckinScanner tenantId={tenant.id} />}
+
+      {tenant && <AttendanceImport tenantId={tenant.id} onImported={load} />}
 
       <div style={{ marginBottom: '2rem' }}>
         <label style={labelStyle}>Select Event</label>

@@ -1,26 +1,41 @@
 import { createClient } from '@/lib/supabase/server'
+import { getTenantBySlug } from '@/lib/supabase/queries'
 import { notFound } from 'next/navigation'
 import { format } from 'date-fns'
+import { T } from '@/lib/designTokens'
+import { DuesReminderButton } from '@/components/lodge/DuesReminderButton'
 
-// Ledger-system tokens, matching tailwind.config.ts. Inlined as literals
-// here rather than Tailwind classes because every other page in this
-// app currently does the same — this page proves the new system works
-// in place; a follow-up pass converts pages to actual `bg-vellum` /
-// `text-ink` classes once the visual direction is confirmed.
-const T = {
-  vellum: '#F7F3E8', vellumDim: '#EDE6D3',
-  ink: '#1C1810', inkFaint: '#6B6252', inkFainter: '#A39A87',
-  seal: '#8B1E1E', sealDim: '#F1E1DD',
-  ledger: '#2F4538', ledgerDim: '#E2E8DE',
-  brass: '#B8923F', brassDim: '#EFE6CC',
-  display: "'Fraunces', Georgia, serif",
-  body: "'Source Sans 3', -apple-system, system-ui, sans-serif",
-  figure: "'Spectral', Georgia, serif",
-}
-
+/**
+ * REBUILT ON THE SHARED DESIGN SYSTEM.
+ *
+ * This page was the last one still rendering the abandoned "vellum"
+ * palette — cream #F7F3E8 backgrounds, brass rules, Fraunces/Spectral
+ * type — declared in a local `const T = {...}` block at the top of the
+ * file. Every other page in the app uses the navy/gold system in
+ * lib/designTokens.ts. The old block's own comment admitted it was
+ * provisional ("a follow-up pass converts pages… once the visual
+ * direction is confirmed"), and designTokens.ts records that the
+ * direction was in fact confirmed as a full replacement. Clicking from
+ * Members to Dues looked like leaving the application.
+ *
+ * WHAT CHANGED BEYOND THE PALETTE
+ *
+ * - Six equally-weighted stat cells became three figures plus a
+ *   collection bar. Paid/Due/Exempt were three big numerals restating
+ *   what the member table below already lists row by row; they are now
+ *   a single subordinate line, and the space went to the one thing a
+ *   treasurer actually wants at a glance — how close the lodge is to
+ *   collecting the year.
+ * - Tables use the shared .data-box/.dash-th/.dash-td classes instead
+ *   of per-cell inline styles. Those classes already carry the mobile
+ *   horizontal-scroll behavior this page was hand-rolling in a <style>
+ *   block, so that block is gone too.
+ * - The Send Reminders control is now a real client component. See
+ *   components/lodge/DuesReminderButton.tsx for what was wrong with it.
+ */
 export default async function LodgeDuesPage({ params }: { params: { slug: string } }) {
   const supabase = await createClient()
-  const { data: tenant } = await supabase.from('tenants').select('*').eq('slug', params.slug).single()
+  const tenant = await getTenantBySlug(params.slug)
   if (!tenant) notFound()
 
   const [{ data: members }, { data: payments }] = await Promise.all([
@@ -28,137 +43,147 @@ export default async function LodgeDuesPage({ params }: { params: { slug: string
     supabase.from('payments').select('*, profiles(first_name, last_name)').eq('tenant_id', tenant.id).eq('status', 'succeeded').order('created_at', { ascending: false }).limit(20),
   ])
 
+  const rate = tenant.dues_amount ?? 60
   const paid = members?.filter((m: any) => m.dues_status === 'paid') ?? []
   const due = members?.filter((m: any) => m.dues_status === 'due') ?? []
   const exempt = members?.filter((m: any) => m.dues_status === 'exempt') ?? []
-  const collected = paid.reduce((a: number, m: any) => a + (tenant.dues_amount ?? 60), 0)
-  const outstanding = due.reduce((a: number, m: any) => a + (tenant.dues_amount ?? 60), 0)
 
-  const statusTone: Record<string, { bg: string; text: string; border: string }> = {
-    paid: { bg: T.ledgerDim, text: T.ledger, border: T.ledger },
-    due: { bg: T.sealDim, text: T.seal, border: T.seal },
-    exempt: { bg: T.brassDim, text: '#8A6A24', border: T.brass },
-  }
+  const collected = paid.length * rate
+  const outstanding = due.length * rate
+  const expected = collected + outstanding
+  const pctCollected = expected > 0 ? Math.round((collected / expected) * 100) : 100
+
+  const duesTone: Record<string, string> = { paid: 'pill-active', due: 'pill-new', exempt: 'pill-ea' }
+
+  const money = (n: number) => `$${n.toLocaleString()}`
 
   return (
-    <div style={{ background: T.vellumDim, minHeight: '100%', padding: '0' }}>
-      <div className="lodgeos-dues-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.75rem', flexWrap: 'wrap', gap: '1rem', borderBottom: `2px solid ${T.ink}`, paddingBottom: '1.1rem' }}>
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <div style={{ fontFamily: T.figure, fontSize: '11px', color: T.brass, letterSpacing: '0.12em', textTransform: 'uppercase', fontStyle: 'italic', marginBottom: '4px' }}>
-            Folio · Dues &amp; Finance
+          <h1 style={{ fontFamily: 'Cinzel, serif', fontSize: '1.4rem', color: T.ink, marginBottom: '0.25rem' }}>
+            Dues — {new Date().getFullYear()}
+          </h1>
+          <p style={{ fontFamily: 'Crimson Pro, serif', fontStyle: 'italic', color: T.inkFaint }}>
+            {paid.length} paid · {due.length} outstanding · {exempt.length} exempt
+          </p>
+        </div>
+        <DuesReminderButton tenantId={tenant.id} dueCount={due.length} />
+      </div>
+
+      {/* Three figures, not six. Collected and Outstanding are the
+          decisions; Annual Rate is the context that makes them legible. */}
+      <div className="data-box" style={{ padding: '1.5rem 1.4rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
+          {[
+            { label: 'Collected', value: money(collected), tone: T.success },
+            { label: 'Outstanding', value: money(outstanding), tone: due.length > 0 ? T.danger : T.inkFaint },
+            { label: 'Annual Rate', value: money(rate), tone: T.ink },
+          ].map(({ label, value, tone }) => (
+            <div key={label}>
+              <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.56rem', letterSpacing: '0.2em', color: T.gold, textTransform: 'uppercase', marginBottom: '0.5rem' }}>
+                {label}
+              </div>
+              <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1.7rem', fontWeight: 700, color: tone, lineHeight: 1 }}>
+                {value}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Collection progress — the one number a treasurer is actually
+            tracking through the year, which the old six-cell strip made
+            you compute in your head. */}
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.5rem' }}>
+            <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.56rem', letterSpacing: '0.2em', color: T.gold, textTransform: 'uppercase' }}>
+              Collection Rate
+            </span>
+            <span style={{ fontFamily: 'Cinzel, serif', fontSize: '0.95rem', color: T.ink }}>
+              {pctCollected}% of {money(expected)}
+            </span>
           </div>
-          <h1 style={{ fontFamily: T.display, fontSize: '1.6rem', fontWeight: 600, color: T.ink, margin: 0, letterSpacing: '-0.01em' }}>Dues Ledger — {new Date().getFullYear()}</h1>
-        </div>
-        <form action="/api/dues/remind" method="post">
-          <input type="hidden" name="tenantId" value={tenant.id} />
-          <button type="submit" style={{
-            background: 'transparent', border: `1px solid ${T.brass}`, color: T.ink,
-            fontFamily: T.body, fontWeight: 600, fontSize: '0.78rem', letterSpacing: '0.02em',
-            padding: '9px 18px', borderRadius: '2px', cursor: 'pointer',
-          }}>
-            Send Reminders ({due.length})
-          </button>
-        </form>
-      </div>
-
-      {/* Stat strip — one ruled folio, internally divided. 2 columns on mobile via lodgeos-stat-cell class. */}
-      <div className="lodgeos-stat-strip" style={{ background: T.vellum, border: `1px solid ${T.brass}`, marginBottom: '1.75rem', display: 'flex', flexWrap: 'wrap' }}>
-        {[
-          { label: 'Collected', value: `$${collected.toLocaleString()}`, tone: T.ledger },
-          { label: 'Outstanding', value: `$${outstanding.toLocaleString()}`, tone: T.seal },
-          { label: 'Annual Rate', value: `$${tenant.dues_amount}`, tone: T.ink },
-          { label: 'Paid', value: paid.length, tone: T.ledger },
-          { label: 'Due', value: due.length, tone: T.seal },
-          { label: 'Exempt', value: exempt.length, tone: T.inkFaint },
-        ].map(({ label, value, tone }, i) => (
-          <div key={label} className="lodgeos-stat-cell" style={{ padding: '1.1rem 1.4rem', flex: '1 1 140px', borderLeft: i > 0 ? `1px solid ${T.brassDim}` : 'none' }}>
-            <div style={{ fontFamily: T.figure, fontSize: '10px', letterSpacing: '0.1em', color: T.inkFaint, textTransform: 'uppercase', marginBottom: '6px' }}>{label}</div>
-            <div style={{ fontFamily: T.display, fontSize: '1.5rem', fontWeight: 600, color: tone, lineHeight: 1 }}>{value}</div>
+          <div
+            role="progressbar"
+            aria-valuenow={pctCollected}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label="Dues collected this year"
+            style={{ height: 8, background: 'rgba(255,255,255,0.05)', borderRadius: 4, overflow: 'hidden' }}
+          >
+            <div style={{ width: `${pctCollected}%`, height: '100%', background: T.gold, transition: 'width 0.4s ease' }} />
           </div>
-        ))}
+        </div>
       </div>
 
-      {/* Dues status table — horizontal scroll on mobile rather than
-          cramming 6 columns into 320px, the honest standard pattern for
-          data-dense tables. */}
-      <div style={{ background: T.vellum, border: `1px solid ${T.brass}`, marginBottom: '1.75rem' }}>
-        <div style={{ padding: '14px 20px', borderBottom: `1px solid ${T.brassDim}`, fontFamily: T.display, fontSize: '0.95rem', fontWeight: 600, color: T.ink }}>
-          Member Dues Status — {new Date().getFullYear()}
-        </div>
-        <div className="lodgeos-table-scroll">
-        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '640px' }}>
-          <thead>
-            <tr>
-              {['Brother', 'Email', 'Degree', 'Amount', 'Status', 'Paid On'].map(h => (
-                <th key={h} style={{ padding: '10px 20px', textAlign: 'left', fontFamily: T.figure, fontSize: '10px', letterSpacing: '0.09em', color: T.inkFainter, textTransform: 'uppercase', borderBottom: `1px solid ${T.brassDim}` }}>{h}</th>
+      <div className="data-box">
+        <div className="data-box-head">Member Dues Status</div>
+        {members && members.length > 0 ? (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>{['Brother', 'Contact', 'Degree', 'Amount', 'Status', 'Paid On'].map(h => <th key={h} className="dash-th">{h}</th>)}</tr>
+            </thead>
+            <tbody>
+              {members.map((m: any) => (
+                <tr key={m.id}>
+                  <td className="dash-td" style={{ fontFamily: 'Cinzel, serif', fontSize: '0.85rem' }}>
+                    Bro. {m.profiles?.first_name} {m.profiles?.last_name}
+                  </td>
+                  <td className="dash-td" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.65rem', color: T.inkFaint }}>
+                    {m.profiles?.email || '—'}
+                  </td>
+                  <td className="dash-td"><span className="pill pill-ea">{m.degree}</span></td>
+                  <td className="dash-td" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.72rem' }}>
+                    {m.dues_status === 'exempt' ? '—' : money(rate)}
+                  </td>
+                  <td className="dash-td"><span className={`pill ${duesTone[m.dues_status] ?? 'pill-new'}`}>{m.dues_status}</span></td>
+                  <td className="dash-td" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.68rem', color: T.inkFaint }}>
+                    {m.dues_paid_at ? format(new Date(m.dues_paid_at), 'MMM d, yyyy') : '—'}
+                  </td>
+                </tr>
               ))}
-            </tr>
-          </thead>
-          <tbody>
-            {members?.map((m: any, i: number) => (
-              <tr key={m.id} style={{ borderBottom: i < (members?.length ?? 0) - 1 ? `1px solid ${T.vellumDim}` : 'none' }}>
-                <td style={{ padding: '12px 20px', fontFamily: T.body, fontSize: '0.85rem', color: T.ink, fontWeight: 600 }}>Bro. {m.profiles?.first_name} {m.profiles?.last_name}</td>
-                <td style={{ padding: '12px 20px', fontFamily: T.figure, fontSize: '0.75rem', color: T.inkFaint }}>{m.profiles?.email || '—'}</td>
-                <td style={{ padding: '12px 20px' }}>
-                  <span style={{ fontFamily: T.figure, fontSize: '10.5px', fontWeight: 600, color: T.inkFaint, border: `1px solid ${T.brassDim}`, background: T.vellumDim, padding: '2px 8px', letterSpacing: '0.05em' }}>{m.degree}</span>
-                </td>
-                <td style={{ padding: '12px 20px', fontFamily: T.figure, fontSize: '0.85rem', color: T.ink }}>${tenant.dues_amount}</td>
-                <td style={{ padding: '12px 20px' }}>
-                  <span style={{
-                    fontFamily: T.figure, fontSize: '10.5px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em',
-                    background: statusTone[m.dues_status]?.bg, color: statusTone[m.dues_status]?.text,
-                    border: `1px solid ${statusTone[m.dues_status]?.border}`, padding: '2px 9px',
-                  }}>{m.dues_status}</span>
-                </td>
-                <td style={{ padding: '12px 20px', fontFamily: T.figure, fontSize: '0.75rem', color: T.inkFaint }}>
-                  {m.dues_paid_at ? format(new Date(m.dues_paid_at), 'MMM d, yyyy') : '—'}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        </div>
+            </tbody>
+          </table>
+        ) : (
+          <div style={{ padding: '3rem', textAlign: 'center', color: T.inkFaint, fontStyle: 'italic' }}>
+            No active members on the roster yet.
+          </div>
+        )}
       </div>
 
-      {/* Payment history */}
-      <div style={{ background: T.vellum, border: `1px solid ${T.brass}` }}>
-        <div style={{ padding: '14px 20px', borderBottom: `1px solid ${T.brassDim}`, fontFamily: T.display, fontSize: '0.95rem', fontWeight: 600, color: T.ink }}>
-          Payment History
-        </div>
-        <div className="lodgeos-table-scroll">
-        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '560px' }}>
-          <thead>
-            <tr>
-              {['Brother', 'Amount', 'Year', 'Date', 'Receipt'].map(h => (
-                <th key={h} style={{ padding: '10px 20px', textAlign: 'left', fontFamily: T.figure, fontSize: '10px', letterSpacing: '0.09em', color: T.inkFainter, textTransform: 'uppercase', borderBottom: `1px solid ${T.brassDim}` }}>{h}</th>
+      <div className="data-box">
+        <div className="data-box-head">Recent Payments</div>
+        {payments && payments.length > 0 ? (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>{['Brother', 'Amount', 'Year', 'Date', 'Receipt'].map(h => <th key={h} className="dash-th">{h}</th>)}</tr>
+            </thead>
+            <tbody>
+              {payments.map((p: any) => (
+                <tr key={p.id}>
+                  <td className="dash-td" style={{ fontFamily: 'Cinzel, serif', fontSize: '0.85rem' }}>
+                    Bro. {p.profiles?.first_name} {p.profiles?.last_name}
+                  </td>
+                  <td className="dash-td" style={{ fontFamily: 'Cinzel, serif', fontSize: '0.9rem', color: T.success }}>${p.amount}</td>
+                  <td className="dash-td" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.68rem', color: T.inkFaint }}>{p.dues_year || '—'}</td>
+                  <td className="dash-td" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.68rem', color: T.inkFaint }}>
+                    {format(new Date(p.created_at), 'MMM d, yyyy')}
+                  </td>
+                  <td className="dash-td">
+                    {p.receipt_url
+                      ? <a href={p.receipt_url} target="_blank" rel="noopener noreferrer" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.6rem', color: T.gold, textDecoration: 'none' }}>View ↗</a>
+                      : <span style={{ color: T.inkFainter }}>—</span>}
+                  </td>
+                </tr>
               ))}
-            </tr>
-          </thead>
-          <tbody>
-            {payments?.map((p: any, i: number) => (
-              <tr key={p.id} style={{ borderBottom: i < (payments?.length ?? 0) - 1 ? `1px solid ${T.vellumDim}` : 'none' }}>
-                <td style={{ padding: '12px 20px', fontFamily: T.body, fontSize: '0.85rem', color: T.ink, fontWeight: 600 }}>Bro. {p.profiles?.first_name} {p.profiles?.last_name}</td>
-                <td style={{ padding: '12px 20px', fontFamily: T.figure, fontSize: '0.9rem', fontWeight: 600, color: T.ledger }}>${p.amount}</td>
-                <td style={{ padding: '12px 20px', fontFamily: T.figure, fontSize: '0.8rem', color: T.inkFaint }}>{p.dues_year || '—'}</td>
-                <td style={{ padding: '12px 20px', fontFamily: T.figure, fontSize: '0.75rem', color: T.inkFaint }}>{format(new Date(p.created_at), 'MMM d, yyyy')}</td>
-                <td style={{ padding: '12px 20px' }}>{p.receipt_url ? <a href={p.receipt_url} target="_blank" rel="noopener noreferrer" style={{ color: T.brass, fontSize: '0.8rem', fontFamily: T.body, fontWeight: 600 }}>View →</a> : <span style={{ color: T.inkFainter }}>—</span>}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        </div>
-        {(!payments || payments.length === 0) && <div style={{ padding: '2.5rem', textAlign: 'center', color: T.inkFaint, fontFamily: T.body, fontStyle: 'italic' }}>No payments recorded yet.</div>}
+            </tbody>
+          </table>
+        ) : (
+          <div style={{ padding: '3rem', textAlign: 'center', color: T.inkFaint, fontStyle: 'italic' }}>
+            No payments recorded yet.
+          </div>
+        )}
       </div>
-
-      <style>{`
-        .lodgeos-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        @media (max-width: 640px) {
-          .lodgeos-stat-cell { flex: 1 1 45% !important; }
-          .lodgeos-dues-header { align-items: stretch; }
-          .lodgeos-dues-header form { width: 100%; }
-          .lodgeos-dues-header button { width: 100%; }
-        }
-      `}</style>
     </div>
   )
 }

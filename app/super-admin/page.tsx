@@ -2,38 +2,8 @@ import { createServiceClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { format } from 'date-fns'
 
-// export default async function SuperAdminPage() {
-//   return (
-//     <div style={{ padding: 40, color: 'white' }}>
-//       SUPER ADMIN WORKS
-//     </div>
-//   )
-// }
 export default async function SuperAdminPage() {
   const supabase = createServiceClient()
-console.log(
-  'PROD URL:',
-  process.env.NEXT_PUBLIC_SUPABASE_URL
-)
-
-const test = await supabase
-  .from('tenants')
-  .select('id,name,slug')
-
-console.log('TENANTS TEST:', test)
-
-const tenantsCheck = await supabase
-  .from('tenants')
-  .select('*')
-
-console.log('TENANTS CHECK:', tenantsCheck)
-  console.log('SUPABASE URL', process.env.NEXT_PUBLIC_SUPABASE_URL)
-
-const tenantsTest = await supabase
-  .from('tenants')
-  .select('*')
-
-console.log('TENANTS TEST', tenantsTest)
   const [
     { count: totalLodges },
     { count: activeLodges },

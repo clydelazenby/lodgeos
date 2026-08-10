@@ -1,6 +1,15 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
+// Matches the officer tiers from lib/migrations/004_officer_role_tiers.sql
+// and the same set already used correctly in app/auth/login/page.tsx.
+// This route previously only recognized 'admin'/'secretary' — a stale
+// check that predates the officer-tiers migration — meaning a
+// Treasurer, Warden, Deacon, or Worshipful Master confirming their
+// email via this callback would be silently routed to the plain
+// member portal instead of their real dashboard.
+const OFFICER_TIERS = new Set(['admin', 'secretary', 'worshipful_master', 'treasurer', 'warden', 'deacon'])
+
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
@@ -28,7 +37,7 @@ export async function GET(request: Request) {
 
         if (membership) {
           const slug = (membership.tenants as any)?.slug
-          if (membership.tenant_role === 'admin' || membership.tenant_role === 'secretary') {
+          if (OFFICER_TIERS.has(membership.tenant_role)) {
             return NextResponse.redirect(`${origin}/lodge/${slug}/dashboard`)
           }
           return NextResponse.redirect(`${origin}/portal`)

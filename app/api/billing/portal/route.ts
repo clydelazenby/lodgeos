@@ -7,11 +7,17 @@ export async function GET(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.redirect(new URL('/auth/login', request.url))
 
+  // Treasurer included alongside admin/secretary — billing IS the
+  // treasurer's core domain (same reasoning the dues/finance pages
+  // elsewhere in this app already use), unlike e.g. the member-invite
+  // route's narrower admin/secretary-only restriction, which is
+  // deliberately about preventing privilege escalation, not about who
+  // handles money.
   const { data: membership } = await supabase
     .from('tenant_members')
     .select('tenant_id, tenants(stripe_customer_id)')
     .eq('user_id', user.id)
-    .in('tenant_role', ['admin', 'secretary'])
+    .in('tenant_role', ['admin', 'secretary', 'treasurer'])
     .single()
 
   const customerId = (membership?.tenants as any)?.stripe_customer_id
