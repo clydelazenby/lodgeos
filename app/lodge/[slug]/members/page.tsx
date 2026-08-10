@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { ConfirmDialog } from '@/components/lodge/ConfirmDialog'
 import { MemberImport } from '@/components/lodge/MemberImport'
+import { RosterExport } from '@/components/lodge/RosterExport'
 import { notify } from '@/lib/toast'
 
 export default function LodgeMembersPage() {
@@ -143,6 +144,7 @@ export default function LodgeMembersPage() {
               Send Dues Reminders ({dueCount})
             </button>
           )}
+          <RosterExport members={members} lodgeSlug={slug} />
           {tenant && <MemberImport tenantId={tenant.id} onImported={load} />}
           <button onClick={() => setShowInvite(!showInvite)} className="btn-gold" style={{ fontSize: '0.68rem' }}>
             {showInvite ? 'Cancel' : '+ Invite Brother'}
