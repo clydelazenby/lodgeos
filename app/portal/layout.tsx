@@ -35,7 +35,7 @@ export default async function PortalLayout({ children }: { children: React.React
           </span>
         </div>
       </header>
-      <main style={{ maxWidth: '900px', margin: '0 auto', padding: '2rem' }}>
+      <main className="lodgeos-app-main" style={{ maxWidth: '900px', margin: '0 auto', padding: '2rem' }}>
         {children}
       </main>
     </div>

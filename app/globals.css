@@ -131,6 +131,65 @@ body { background: var(--navy); color: var(--cream); font-family: 'Crimson Pro',
 }
 
 /* ============================================================
+   MOBILE GRID COLLAPSE — the "everything is squeezed together" fix
+   ============================================================
+   Most layouts in the authenticated app are inline-styled CSS grids
+   with HARDCODED column counts: `1fr 1fr`, `2fr 1fr 1fr`,
+   `repeat(4, 1fr)`, `1fr 1.3fr 1fr` and so on. Unlike
+   `repeat(auto-fit, minmax(150px, 1fr))` — which reflows on its own —
+   a fixed track list keeps all N columns at ANY width. On a 375px
+   phone that divides the screen into three ~110px columns, which is
+   how the Dashboard, Settings, Petitions and Degrees pages ended up
+   unreadable while the public site (which has its own responsive CSS)
+   looked fine.
+
+   Fixing each grid individually would mean touching a dozen files and
+   would silently miss any page added later. This collapses them all at
+   once, scoped to the three authenticated shells via .lodgeos-app-main
+   so the public lodge page — which is already responsive and verified
+   to have zero horizontal overflow at 375px — is untouched.
+
+   The `[style*="grid-template-columns"]` selector matches React's
+   serialized inline style attribute, and `!important` is required
+   because an inline style otherwise outranks any stylesheet rule.
+
+   Opt out with .lodgeos-keep-grid on anything genuinely spatial (a
+   calendar heatmap, a floor plan) where one column would be nonsense —
+   those should scroll horizontally instead of stacking.
+   ============================================================ */
+@media (max-width: 767px) {
+  /* Opt-outs are listed as :not() here rather than relying on a later,
+     more specific rule to override this one. Both would carry
+     !important, so the winner would come down to selector specificity —
+     and this selector is (0,3,0) while a plain `.lodgeos-quick-actions`
+     is (0,1,0), so the override would silently lose. Excluding here is
+     unambiguous and doesn't depend on source order. */
+  .lodgeos-app-main [style*="grid-template-columns"]:not(.lodgeos-keep-grid):not(.lodgeos-quick-actions) {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Genuinely spatial grids: keep the shape, scroll to reach it. */
+  .lodgeos-keep-grid-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Stat figures are sized for a desktop column; at full width on a
+     phone they read as oversized without this. */
+  .lodgeos-app-main { padding: 1rem !important; }
+
+  /* Quick actions are the exception to the one-column rule: they are
+     small, equal-weight, icon-led targets, and six of them stacked
+     vertically pushes everything below off the first screen. Two up
+     keeps them thumb-sized and the block compact. */
+  .lodgeos-quick-actions { grid-template-columns: 1fr 1fr !important; }
+
+  /* Comfortable tap target — below Apple's 44px minimum these were
+     hard to hit accurately. */
+  .lodgeos-quick-action { min-height: 104px !important; }
+}
+
+/* ============================================================
    LODGE ROOM — floor plan mobile handling
    ============================================================
    The Lodge Room's 12 officer-station "chairs" are absolute-positioned

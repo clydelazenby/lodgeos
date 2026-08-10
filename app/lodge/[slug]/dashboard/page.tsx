@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { format, formatDistanceToNow } from 'date-fns'
 import Link from 'next/link'
 import { T, pillTone } from '@/lib/designTokens'
+import { Users, DollarSign, CalendarPlus, UserPlus, BookOpen, BarChart3 } from 'lucide-react'
 
 // Traditional fixed lodge stations, same list as the prior vellum
 // dashboard — carried over unchanged, since this is a visual reskin,
@@ -200,7 +201,13 @@ export default async function LodgeDashboardPage({ params }: { params: { slug: s
         {/* Attendance heatmap */}
         <div style={{ background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '1.1rem 1.25rem' }}>
           <div style={{ fontFamily: T.display, fontSize: '0.9rem', fontWeight: 600, color: T.ink, marginBottom: '1rem' }}>Attendance Overview ({new Date().getFullYear()})</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '44px repeat(12, 1fr)', gap: '3px', fontSize: '9px' }}>
+          {/* Exempt from the mobile grid collapse: a 12-month heatmap
+              flattened to one column would be 78 stacked squares with no
+              shape to read. It keeps its 13 tracks and scrolls sideways
+              instead, with a min-width so the cells stay tappable rather
+              than compressing to slivers. */}
+          <div className="lodgeos-keep-grid-scroll">
+          <div className="lodgeos-keep-grid" style={{ display: 'grid', gridTemplateColumns: '44px repeat(12, 1fr)', gap: '3px', fontSize: '9px', minWidth: '320px' }}>
             <div />
             {Array.from({ length: 12 }, (_, m) => (
               <div key={m} style={{ fontFamily: T.mono, color: T.inkFaint, textAlign: 'center' }}>{monthLabel(m)[0]}</div>
@@ -220,6 +227,7 @@ export default async function LodgeDashboardPage({ params }: { params: { slug: s
                 return <div key={m} title={`${count} members present in ${monthLabel(m)}`} style={{ aspectRatio: '1', borderRadius: '2px', background: count === 0 ? 'rgba(255,255,255,0.05)' : `rgba(201,168,76,${0.25 + intensity * 0.65})` }} />
               })}
             </div>
+          </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '10px', fontFamily: T.mono, fontSize: '9px', color: T.inkFaint }}>
             <span>Less</span>
@@ -250,19 +258,42 @@ export default async function LodgeDashboardPage({ params }: { params: { slug: s
         </div>
       </div>
 
-      {/* Quick actions */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' }}>
+      {/* Quick actions.
+          These previously mixed full-colour emoji (👥 📅 📖 📊) with two
+          bare typographic characters ($ and +) inside the same gold
+          badge. Emoji render in their own fixed palette, so four of the
+          six tiles were multicolour blobs against a strictly navy/gold
+          interface, and the other two were plain glyphs at a different
+          optical weight — six badges, three different visual languages.
+          lucide-react (already a dependency, used on the public page)
+          gives one consistent stroked set that inherits currentColor,
+          so every badge is the same gold as everything else.
+          Also switched from a horizontal row to a 2-up grid on phones,
+          where six 150px tiles previously stacked into a long column. */}
+      <div className="lodgeos-quick-actions" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' }}>
         {[
-          { icon: '👥', label: 'Record Attendance', href: `/lodge/${params.slug}/attendance` },
-          { icon: '$', label: 'Record Payment', href: `/lodge/${params.slug}/dues` },
-          { icon: '📅', label: 'Create Meeting', href: `/lodge/${params.slug}/events` },
-          { icon: '+', label: 'Add Candidate', href: `/lodge/${params.slug}/petitions` },
-          { icon: '📖', label: 'Lodge Minutes', href: `/lodge/${params.slug}/documents` },
-          { icon: '📊', label: 'View Reports', href: `/lodge/${params.slug}/reports` },
-        ].map(qa => (
-          <Link key={qa.label} href={qa.href} style={{ background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '1.1rem', textAlign: 'center', textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-            <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: T.goldDim, border: `1px solid ${T.goldBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', color: T.gold }}>{qa.icon}</div>
-            <span style={{ fontFamily: T.body, fontSize: '0.75rem', color: T.ink }}>{qa.label}</span>
+          { Icon: Users, label: 'Record Attendance', href: `/lodge/${params.slug}/attendance` },
+          { Icon: DollarSign, label: 'Record Payment', href: `/lodge/${params.slug}/dues` },
+          { Icon: CalendarPlus, label: 'Create Meeting', href: `/lodge/${params.slug}/events` },
+          { Icon: UserPlus, label: 'Add Candidate', href: `/lodge/${params.slug}/petitions` },
+          { Icon: BookOpen, label: 'Lodge Minutes', href: `/lodge/${params.slug}/documents` },
+          { Icon: BarChart3, label: 'View Reports', href: `/lodge/${params.slug}/reports` },
+        ].map(({ Icon, label, href }) => (
+          <Link
+            key={label}
+            href={href}
+            className="lodgeos-quick-action"
+            style={{
+              background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: T.radius,
+              padding: '1.1rem 0.75rem', textAlign: 'center', textDecoration: 'none',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              gap: '10px', minHeight: '96px',
+            }}
+          >
+            <span style={{ width: '38px', height: '38px', borderRadius: '10px', background: T.goldDim, border: `1px solid ${T.goldBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.gold, flexShrink: 0 }}>
+              <Icon size={18} strokeWidth={1.75} aria-hidden="true" />
+            </span>
+            <span style={{ fontFamily: T.body, fontSize: '0.75rem', color: T.ink, lineHeight: 1.3 }}>{label}</span>
           </Link>
         ))}
       </div>

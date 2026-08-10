@@ -180,7 +180,7 @@ export function ResponsiveNavShell({
         </div>
       </aside>
 
-      <main className="lodgeos-main" style={{ flex: 1, padding: '2rem', minWidth: 0 }}>
+      <main className="lodgeos-main lodgeos-app-main" style={{ flex: 1, padding: '2rem', minWidth: 0 }}>
         {children}
       </main>
 

@@ -51,7 +51,7 @@ export default async function SuperAdminLayout({
           <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.6rem', color: '#C9A84C' }}>{profile?.first_name}</span>
         </div>
       </header>
-      <main style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
+      <main className="lodgeos-app-main" style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
         {children}
       </main>
     </div>
