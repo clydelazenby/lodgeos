@@ -2,7 +2,11 @@ import { createClient } from '@/lib/supabase/server'
 import { getTenantBySlug, getSessionUser, getMembership, getProfile } from '@/lib/supabase/queries'
 import { notFound } from 'next/navigation'
 import { format } from 'date-fns'
-import { DocumentUploadButton, DocumentDownloadLink, DocumentDeleteButton, DocumentPlayer, isPlayable, formatDuration } from '@/components/lodge/DocumentUpload'
+import { DocumentUploadButton, DocumentDownloadLink, DocumentDeleteButton, DocumentPlayer } from '@/components/lodge/DocumentUpload'
+// From lib, NOT from the component file. These are called during this
+// server render, and a function imported from a 'use client' module is
+// a client reference that throws when invoked on the server.
+import { isPlayable, formatDuration } from '@/lib/documents'
 import { DEGREE_RANK, degreeShortLabel } from '@/lib/degrees'
 
 /**

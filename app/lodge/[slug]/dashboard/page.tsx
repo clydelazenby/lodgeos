@@ -73,7 +73,14 @@ export default async function LodgeDashboardPage({ params }: { params: { slug: s
     supabase.from('petitions').select('*', { count: 'exact', head: true }).eq('tenant_id', tenant.id).eq('status', 'new'),
     supabase.from('tenant_members').select('*', { count: 'exact', head: true }).eq('tenant_id', tenant.id).eq('dues_status', 'due').eq('is_active', true),
     supabase.from('lodge_events').select('*').eq('tenant_id', tenant.id).gte('event_date', today).order('event_date').limit(4),
-    supabase.from('payments').select('*, profiles(first_name, last_name)').eq('tenant_id', tenant.id).eq('status', 'succeeded').order('created_at', { ascending: false }).limit(5),
+    // profiles!payments_member_id_fkey, not a bare profiles(...).
+    // payments has TWO foreign keys to profiles — member_id, and
+    // confirmed_by since migration 018 added dues-by-transfer — so
+    // PostgREST cannot tell which one is meant and answers 300 Multiple
+    // Choices. Supabase surfaces that as data: null with no thrown
+    // error, so this panel has been silently empty ever since rather
+    // than failing loudly. Naming the constraint is the whole fix.
+    supabase.from('payments').select('*, profiles!payments_member_id_fkey(first_name, last_name)').eq('tenant_id', tenant.id).eq('status', 'succeeded').order('created_at', { ascending: false }).limit(5),
     supabase.from('tenant_members').select('user_id, lodge_role, raised_date, profiles(first_name, last_name)').eq('tenant_id', tenant.id).eq('is_active', true),
     supabase.from('petitions').select('id, first_name, last_name, created_at').eq('tenant_id', tenant.id).order('created_at', { ascending: false }).limit(4),
     supabase.from('communications').select('id, subject, created_at, is_draft').eq('tenant_id', tenant.id).eq('is_draft', false).order('created_at', { ascending: false }).limit(4),

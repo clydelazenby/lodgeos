@@ -6,6 +6,7 @@ import { ConfirmDialog } from '@/components/lodge/ConfirmDialog'
 import { createClient } from '@/lib/supabase/client'
 import { notify } from '@/lib/toast'
 import { DegreeOptions } from '@/components/DegreeOptions'
+import { isPlayable, formatDuration, formatBytes } from '@/lib/documents'
 
 const CATEGORIES = ['Degree Materials', 'Minutes', 'Administration', 'Grand Lodge', 'Training', 'Other']
 
@@ -14,24 +15,16 @@ const ACCEPT =
 
 const MAX_SIZE = 500 * 1024 * 1024
 
-export const isPlayable = (mime?: string | null) =>
-  !!mime && (mime.startsWith('video/') || mime.startsWith('audio/'))
-
-export const formatDuration = (s?: number | null) => {
-  if (!s || s < 1) return null
-  const h = Math.floor(s / 3600)
-  const m = Math.floor((s % 3600) / 60)
-  const sec = Math.round(s % 60)
-  return h > 0
-    ? `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
-    : `${m}:${String(sec).padStart(2, '0')}`
-}
-
-export const formatBytes = (b?: number | null) => {
-  if (!b) return null
-  if (b < 1024 * 1024) return `${Math.round(b / 1024)} KB`
-  return `${(b / (1024 * 1024)).toFixed(1)} MB`
-}
+/* isPlayable / formatDuration / formatBytes MOVED to lib/documents.ts.
+   They were exported from this file, which is a client module — so a
+   Server Component importing them received client REFERENCES, and
+   calling one threw "Attempted to call isPlayable() from the server".
+   The lodge Documents page does exactly that in its row loop, so it
+   broke the moment the library had a row in it. They are pure
+   functions with no browser dependency and belong in neither half.
+   Deliberately NOT re-exported from here: a re-export through a client
+   module is still a client reference, which would leave the same trap
+   in place for the next caller. */
 
 /**
  * Reads playback length from a media file in the browser, before upload.
