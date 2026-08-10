@@ -32,7 +32,7 @@ export default async function PortalAssignmentsPage() {
   const [{ data: assignments }, { data: progress }, { data: docs }] = await Promise.all([
     supabase
       .from('assignments')
-      .select('id, title, description, due_date, step_id, document_id, completed_at, cancelled_at, assigned_by_name, created_at')
+      .select('id, title, description, due_date, step_id, document_id, completed_at, cancelled_at, submitted_at, declined_at, declined_by_name, decline_note, assigned_by_name, created_at')
       .eq('tenant_id', tenantId)
       .eq('assigned_to', user.id)
       .is('cancelled_at', null)
@@ -61,8 +61,8 @@ export default async function PortalAssignmentsPage() {
           Assignments
         </h1>
         <p style={{ fontFamily: 'Crimson Pro, serif', fontStyle: 'italic', color: '#B8B0A0', margin: 0 }}>
-          What the lodge has asked of you, and what you have already done. Tasks you mark yourself;
-          degree work is signed off by an officer who has heard it.
+          What the lodge has asked of you, and what you have already done. Mark something done and it
+          goes to an officer to sign off — he is told the moment you do.
         </p>
       </div>
 

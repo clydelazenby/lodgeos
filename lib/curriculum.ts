@@ -1,3 +1,5 @@
+import { DEGREE_VALUES, degreeLabel } from '@/lib/degrees'
+
 /**
  * The work of a degree, as a lodge defines it.
  *
@@ -10,31 +12,54 @@
  * "no progress recorded in 45 days", which is a symptom, not an answer.
  */
 
-export const CURRICULUM_DEGREES = ['EA', 'FC', 'MM'] as const
-export type CurriculumDegree = typeof CURRICULUM_DEGREES[number]
+/**
+ * EVERY DEGREE, not the three the Blue Lodge confers.
+ *
+ * Migration 031 restricted this to EA/FC/MM on the reasoning that
+ * appendant bodies are separate organisations with their own work. That
+ * holds for who CONFERS a degree and turns out to be the wrong reason
+ * to refuse the column: a lodge mentors its brethren past the third
+ * degree whether or not it confers what comes next. Someone tells a new
+ * Master Mason what the York Rite is; someone notices a brother has
+ * been a Noble for a year and never been asked to do anything.
+ *
+ * One list, shared with the roster (lib/degrees.ts), so a brother
+ * recorded at 32° can have a 32° curriculum rather than falling off the
+ * end of the tracker.
+ */
+export const CURRICULUM_DEGREES = DEGREE_VALUES
 
-export const DEGREE_TITLE: Record<CurriculumDegree, string> = {
-  EA: 'Entered Apprentice',
-  FC: 'Fellowcraft',
-  MM: 'Master Mason',
+/** Any of the seventeen degree codes. Widened from EA/FC/MM in 034. */
+export type CurriculumDegree = string
+
+export function degreeTitle(value: string): string {
+  return degreeLabel(value)
 }
+
+/**
+ * Kept for the call sites that read it as a map. Backed by the same
+ * single list, so it cannot drift from the roster's vocabulary.
+ */
+export const DEGREE_TITLE: Record<string, string> = Object.fromEntries(
+  DEGREE_VALUES.map((v) => [v, degreeLabel(v)])
+)
 
 /**
  * A conventional outline, offered as a starting point and expected to
  * be edited.
  *
- * DELIBERATELY NOT SEEDED AUTOMATICALLY. Jurisdictions differ on what
- * is required, in what order, and what is merely customary — a
- * curriculum written into every lodge on the platform at signup would
- * be wrong for most of them and, worse, would carry the app's
- * authority. A lodge that clicks "start from this outline" has made a
- * choice and knows it is theirs to change.
+ * DELIBERATELY NOT SEEDED AUTOMATICALLY, and deliberately BLUE LODGE
+ * ONLY. Jurisdictions differ on what is required, in what order, and
+ * what is merely customary — an outline written into every lodge on the
+ * platform at signup would be wrong for most of them and would carry
+ * the app's authority while being wrong. Beyond the third degree the
+ * app has no business inventing what the Scottish Rite requires at all;
+ * those steps are written by the lodge or not written.
  *
- * Kept generic for the same reason: these are the stages nearly every
- * jurisdiction has in some form, named plainly, with nothing that would
- * be out of place read aloud.
+ * A degree with no outline simply offers no "start from" button. The
+ * officer writes the steps himself, which is the honest option.
  */
-export const STARTER_OUTLINE: Record<CurriculumDegree, { title: string; description: string; required: boolean }[]> = {
+export const STARTER_OUTLINE: Record<string, { title: string; description: string; required: boolean }[]> = {
   EA: [
     { title: 'Degree conferred', description: 'The date the degree was conferred upon him.', required: true },
     { title: 'Mentor assigned', description: 'A brother appointed to guide him through this degree.', required: true },

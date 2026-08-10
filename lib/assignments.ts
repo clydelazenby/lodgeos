@@ -28,11 +28,21 @@ export type Assignment = {
   document_id: string | null
   completed_at: string | null
   cancelled_at: string | null
+  submitted_at: string | null
+  declined_at: string | null
+  declined_by_name: string | null
+  decline_note: string | null
   assigned_by_name: string | null
   created_at: string
 }
 
-export type AssignmentStatus = 'open' | 'completed' | 'cancelled' | 'overdue'
+export type AssignmentStatus =
+  | 'open'
+  | 'awaiting'    // he says he has done it; an officer has yet to decide
+  | 'declined'    // sent back, with a reason
+  | 'completed'
+  | 'cancelled'
+  | 'overdue'
 
 export function assignmentStatus(
   a: Assignment,
@@ -43,6 +53,21 @@ export function assignmentStatus(
 
   const done = a.step_id ? signedOffStepIds.has(a.step_id) : !!a.completed_at
   if (done) return 'completed'
+
+  /**
+   * SUBMITTED OUTRANKS DECLINED, and both outrank overdue.
+   *
+   * A brother whose proficiency was sent back and who has since
+   * resubmitted is waiting on an officer, not sitting on a refusal —
+   * and the route clears declined_at when he resubmits, so this only
+   * has to break the tie in the moment between the two writes.
+   *
+   * Both outrank overdue because "he is waiting on you" and "you sent
+   * it back" are each more useful to show than "it is late", and the
+   * due date is still printed beside the pill either way.
+   */
+  if (a.submitted_at) return 'awaiting'
+  if (a.declined_at) return 'declined'
 
   /**
    * Overdue is compared on the DATE, not the instant. A task due today
@@ -58,7 +83,21 @@ export function assignmentStatus(
   return 'open'
 }
 
-/** Whether the assignee may mark this done himself. */
+/**
+ * Whether the brother may SUBMIT this — which every assignment now
+ * allows, task or degree work alike.
+ *
+ * Submitting is not completing. He is saying he has done it; an officer
+ * decides whether it stands. That distinction is the whole point of the
+ * flow: a proficiency the candidate marks off himself is not a
+ * proficiency, and a task nobody was told about might as well not have
+ * been finished.
+ */
+export function canSubmit(a: Assignment, status: AssignmentStatus): boolean {
+  return status === 'open' || status === 'overdue' || status === 'declined'
+}
+
+/** Whether the assignee may mark this done outright. Nothing, now. */
 export function selfCompletable(a: Assignment): boolean {
   return !a.step_id
 }
@@ -67,6 +106,8 @@ export function statusPill(status: AssignmentStatus): string {
   switch (status) {
     case 'completed': return 'pill-active'
     case 'overdue': return 'pill-absent'
+    case 'declined': return 'pill-absent'
+    case 'awaiting': return 'pill-fc'
     case 'cancelled': return 'pill-new'
     default: return 'pill-excused'
   }
@@ -74,8 +115,10 @@ export function statusPill(status: AssignmentStatus): string {
 
 export function statusLabel(status: AssignmentStatus): string {
   switch (status) {
-    case 'completed': return 'Done'
+    case 'completed': return 'Signed off'
     case 'overdue': return 'Overdue'
+    case 'declined': return 'Sent back'
+    case 'awaiting': return 'Awaiting sign-off'
     case 'cancelled': return 'Withdrawn'
     default: return 'Open'
   }

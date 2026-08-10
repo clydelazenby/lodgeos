@@ -37,7 +37,9 @@ export function AssignmentBoard({
   curriculumCounts: Record<string, number>
 }) {
   const router = useRouter()
-  const [tab, setTab] = useState<'open' | 'done'>('open')
+  const [tab, setTab] = useState<'awaiting' | 'open' | 'done'>('awaiting')
+  const [declining, setDeclining] = useState<string | null>(null)
+  const [declineNote, setDeclineNote] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -52,7 +54,10 @@ export function AssignmentBoard({
   const rows = useMemo(() => {
     return assignments
       .map((a) => ({ a, status: statusOf(a) }))
-      .filter(({ status }) => (tab === 'open' ? status === 'open' || status === 'overdue' : status === 'completed' || status === 'cancelled'))
+      .filter(({ status }) =>
+        tab === 'awaiting' ? status === 'awaiting'
+        : tab === 'open' ? status === 'open' || status === 'overdue' || status === 'declined'
+        : status === 'completed' || status === 'cancelled')
       // Overdue first, then soonest due, then newest. What needs
       // chasing should not be below what does not.
       .sort((x, y) => {
@@ -65,6 +70,11 @@ export function AssignmentBoard({
       })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assignments, signedOffByMember, tab])
+
+  // The queue this feature exists to serve: brethren waiting on an
+  // officer's decision. Surfaced as a count on the tab, because a
+  // proficiency sitting unheard for a fortnight is the failure mode.
+  const awaitingCount = assignments.filter((a) => statusOf(a) === 'awaiting').length
 
   const nameOf = (userId: string) =>
     members.find((m) => m.user_id === userId)?.name ?? 'A brother'
@@ -154,9 +164,12 @@ export function AssignmentBoard({
             <div>
               {label('WHICH DEGREE')}
               <select value={form.degree} onChange={(e) => setForm(p => ({ ...p, degree: e.target.value }))} style={{ ...input, fontSize: '0.95rem' }}>
-                {CURRICULUM_DEGREES.map((d) => (
-                  <option key={d} value={d} disabled={!curriculumCounts[d]}>
-                    {DEGREE_TITLE[d]}{curriculumCounts[d] ? ` — ${curriculumCounts[d]} steps` : ' — no curriculum written'}
+                {/* Only degrees with a curriculum written. Seventeen
+                    options of which fifteen are disabled is a list that
+                    reads as broken. */}
+                {CURRICULUM_DEGREES.filter((d) => curriculumCounts[d]).map((d) => (
+                  <option key={d} value={d}>
+                    {DEGREE_TITLE[d]} — {curriculumCounts[d]} steps
                   </option>
                 ))}
               </select>
@@ -212,8 +225,8 @@ export function AssignmentBoard({
         </div>
       </div>
 
-      <div style={{ borderBottom: '1px solid rgba(201,168,76,0.12)', margin: '1.6rem 0 1.2rem', display: 'flex' }}>
-        {(['open', 'done'] as const).map((t) => (
+      <div style={{ borderBottom: '1px solid rgba(201,168,76,0.12)', margin: '1.6rem 0 1.2rem', display: 'flex', flexWrap: 'wrap' }}>
+        {(['awaiting', 'open', 'done'] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)} aria-pressed={tab === t}
             style={{
               background: 'none', border: 'none',
@@ -222,7 +235,12 @@ export function AssignmentBoard({
               fontFamily: 'Cinzel, serif', fontSize: '0.85rem',
               padding: '10px 4px', marginRight: '1.6rem', cursor: 'pointer',
             }}>
-            {t === 'open' ? 'Outstanding' : 'Completed'}
+            {t === 'awaiting' ? 'Awaiting You' : t === 'open' ? 'Outstanding' : 'Completed'}
+            {t === 'awaiting' && awaitingCount > 0 && (
+              <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.6rem', color: '#C9A84C', marginLeft: 6 }}>
+                {awaitingCount}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -259,8 +277,47 @@ export function AssignmentBoard({
               )}
             </Link>
             <span className={`pill ${statusPill(status)}`}>{statusLabel(status)}</span>
-            {(status === 'open' || status === 'overdue') && (
-              <button onClick={() => act(a.id, { cancel: true })} disabled={busy}
+            {status === 'awaiting' && (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <button onClick={() => act(a.id, { action: 'signoff' })} disabled={busy}
+                  style={{ background: 'rgba(39,174,96,0.14)', border: '1px solid rgba(39,174,96,0.45)', color: '#5DBE85', cursor: 'pointer', borderRadius: 3, padding: '6px 10px', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.56rem', letterSpacing: '0.1em' }}>
+                  SIGN OFF
+                </button>
+                <button onClick={() => { setDeclining(a.id); setDeclineNote('') }} disabled={busy}
+                  style={{ background: 'transparent', border: '1px solid rgba(231,76,60,0.35)', color: '#EC5B4B', cursor: 'pointer', borderRadius: 3, padding: '6px 10px', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.56rem', letterSpacing: '0.1em' }}>
+                  SEND BACK
+                </button>
+              </div>
+            )}
+
+            {declining === a.id && (
+              <div style={{ width: '100%', marginTop: 8 }}>
+                <input
+                  value={declineNote}
+                  onChange={(e) => setDeclineNote(e.target.value)}
+                  placeholder="What is still wanting? He is emailed this."
+                  style={{ ...input, marginBottom: 6 }}
+                />
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button
+                    onClick={async () => { await act(a.id, { action: 'decline', note: declineNote }); setDeclining(null) }}
+                    disabled={busy}
+                    style={{ background: 'rgba(231,76,60,0.14)', border: '1px solid rgba(231,76,60,0.45)', color: '#EC5B4B', cursor: 'pointer', borderRadius: 3, padding: '7px 12px', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.56rem', letterSpacing: '0.1em' }}>
+                    SEND IT BACK
+                  </button>
+                  <button onClick={() => setDeclining(null)} disabled={busy}
+                    style={{ background: 'transparent', border: '1px solid rgba(184,176,160,0.25)', color: '#B8B0A0', cursor: 'pointer', borderRadius: 3, padding: '7px 12px', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.56rem' }}>
+                    CANCEL
+                  </button>
+                </div>
+                <p style={{ fontFamily: 'Crimson Pro, serif', fontStyle: 'italic', fontSize: '0.82rem', color: '#918879', margin: '6px 0 0' }}>
+                  A proficiency returned without a reason teaches nothing except that he failed.
+                </p>
+              </div>
+            )}
+
+            {(status === 'open' || status === 'overdue' || status === 'declined') && (
+              <button onClick={() => act(a.id, { action: 'cancel' })} disabled={busy}
                 style={{ background: 'none', border: '1px solid rgba(184,176,160,0.25)', color: '#918879', cursor: 'pointer', borderRadius: 3, padding: '5px 9px', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.55rem', letterSpacing: '0.1em' }}>
                 WITHDRAW
               </button>
