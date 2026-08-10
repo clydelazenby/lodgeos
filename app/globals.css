@@ -562,3 +562,104 @@ textarea:user-invalid + .lodgeos-field-hint::after {
     display: none;
   }
 }
+
+
+/* ============================================================
+   AI SECRETARY PANEL
+   ============================================================
+   WHY THIS IS CSS AND NOT INLINE STYLE. The panel was sized inline at
+   560px tall, capped by calc(100vh - 32px), and inline styles cannot
+   carry a media query — so a phone got the desktop card and its
+   problems.
+
+   100vh IS THE BUG on a phone. It is the LARGE viewport: the height the
+   page would have if the browser's address bar and toolbar were
+   collapsed away. They are not collapsed when the panel opens, so a
+   box sized to 100vh is taller than what can actually be seen, and its
+   head and foot — the title and the text box — sit off-screen. 100dvh
+   is the DYNAMIC viewport, which is what is visible right now. The vh
+   line stays first as the fallback for anything that lacks dvh. */
+.lodgeos-ai-panel {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  z-index: 50;
+  width: 380px;
+  max-width: calc(100vw - 32px);
+  height: 560px;
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  background: #141C2E;
+  border: 1px solid rgba(201,168,76,0.25);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  overflow: hidden;
+}
+
+.lodgeos-ai-head {
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(201,168,76,0.15);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.lodgeos-ai-log {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0; /* or a long reply pushes the compose box off the foot */
+}
+
+.lodgeos-ai-compose {
+  padding: 12px;
+  border-top: 1px solid rgba(201,168,76,0.15);
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* 0.82rem is about 13px, and iOS Safari ZOOMS THE PAGE whenever a
+   focused input is under 16px. That zoom is what made everything drift
+   left and right: the officer taps the box to type, the page scales up,
+   and now it pans. 16px exactly is the threshold. */
+.lodgeos-ai-input {
+  font-size: 16px;
+  line-height: 1.4;
+  /* Never shorter than one full line of its own text: rows=1 plus a
+     wrapping placeholder was clipping the second line. */
+  min-height: 42px;
+}
+
+@media (min-width: 641px) {
+  /* Back to the intended size once there is no keyboard to trigger it. */
+  .lodgeos-ai-input { font-size: 0.85rem; }
+}
+
+/* On a phone it is a sheet, not a floating card. A 380px card inset on
+   all four sides of a 390px screen leaves margins too thin to be worth
+   the clipping they cause. */
+@media (max-width: 640px) {
+  .lodgeos-ai-panel {
+    inset: 0;
+    width: 100%;
+    max-width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    max-height: none;
+    border: none;
+    border-radius: 0;
+    /* Clear of the notch at the top and the home indicator at the
+       bottom, both of which would otherwise cover real controls. */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
