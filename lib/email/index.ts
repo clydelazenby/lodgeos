@@ -315,6 +315,62 @@ export async function sendNewPetitionAlert({
 }
 
 /**
+ * Password reset link, minted by /api/auth/forgot-password.
+ *
+ * Sent through Resend rather than Supabase's mailer, for the same
+ * reason invitations are (see lib/auth/inviteLink.ts): the built-in
+ * service is rate limited to a couple of messages an hour and is not
+ * meant for production, which is how invitations came to silently
+ * never arrive. A reset nobody receives is the same bug wearing a
+ * different hat.
+ *
+ * Says plainly what to do if the request was not theirs. A reset email
+ * arriving unbidden is alarming, and the honest answer — nothing has
+ * changed, ignore it — is worth stating rather than leaving to guess.
+ */
+export async function sendPasswordResetEmail({
+  to, firstName, resetUrl, expiresInMinutes = 60,
+}: { to: string; firstName?: string | null; resetUrl: string; expiresInMinutes?: number }) {
+  const resend = getResend()
+  const greeting = firstName ? `Brother ${escapeHtml(firstName)}` : 'Brother'
+
+  const { data, error } = await resend.emails.send({
+    from: `LodgeOS <${FROM}>`,
+    to,
+    subject: 'Reset your LodgeOS password',
+    html: `
+      <div style="font-family:Georgia,serif;max-width:600px;margin:0 auto;background:#0A0E1A;color:#F5F0E8;padding:40px;">
+        <div style="text-align:center;margin-bottom:32px;">
+          <div style="font-family:'Arial',sans-serif;font-size:24px;font-weight:700;color:#C9A84C;letter-spacing:0.2em;">LODGEOS</div>
+          <div style="font-size:12px;color:#B8B0A0;letter-spacing:0.3em;margin-top:4px;">LODGE MANAGEMENT PLATFORM</div>
+        </div>
+        <h1 style="font-family:'Arial',sans-serif;font-size:22px;color:#F5F0E8;margin-bottom:8px;">Reset your password</h1>
+        <p style="color:#B8B0A0;line-height:1.7;margin-bottom:24px;">${greeting}, we received a request to reset the password for this email address.</p>
+        <div style="text-align:center;margin-bottom:24px;">
+          <a href="${resetUrl}" style="background:#C9A84C;color:#0A0E1A;font-family:Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;padding:14px 36px;text-decoration:none;display:inline-block;">Choose a New Password</a>
+        </div>
+        <p style="color:rgba(184,176,160,0.6);font-size:12px;line-height:1.7;text-align:center;margin-bottom:24px;">
+          This link can only be used once and expires in about ${expiresInMinutes} minutes.
+        </p>
+        <div style="background:#141C2E;padding:20px;margin-bottom:24px;border-left:3px solid #C9A84C;">
+          <p style="color:#B8B0A0;font-size:13px;line-height:1.7;margin:0;">
+            <strong style="color:#C9A84C;">Didn't ask for this?</strong> You can ignore this email. Your password has not
+            been changed, and it will not change unless someone opens the link above.
+          </p>
+        </div>
+        <div style="border-top:1px solid rgba(201,168,76,0.2);margin-top:32px;padding-top:16px;text-align:center;">
+          <p style="color:rgba(184,176,160,0.4);font-size:11px;font-style:italic;">Liberty · Equality · Fraternity</p>
+          <p style="color:rgba(184,176,160,0.3);font-size:11px;">Powered by LodgeOS · ${APP_URL}</p>
+        </div>
+      </div>
+    `,
+  })
+
+  if (error) throw new Error(error.message || 'Resend rejected the password reset email.')
+  return data
+}
+
+/**
  * A lodge has asked to use LodgeOS (see app/request-access). Goes to
  * the platform owner, not to any lodge.
  *

@@ -47,9 +47,12 @@ export async function GET(request: Request) {
     if (error) {
       // Overwhelmingly this is a link that was already used or has
       // expired, which is worth saying plainly — the brother's next
-      // move is to ask his Secretary for another invitation, not to
-      // guess at a password he never set.
-      return NextResponse.redirect(`${origin}/auth/login?error=link_expired`)
+      // move is to request another one, not to guess at a password he
+      // never set. A recovery link says so differently: he can send
+      // himself a new one, where an invitation has to come from his
+      // Secretary.
+      const reason = otpType === 'recovery' ? 'reset_expired' : 'link_expired'
+      return NextResponse.redirect(`${origin}/auth/login?error=${reason}`)
     }
     return NextResponse.redirect(`${origin}${safeNext(next) ?? '/portal'}`)
   }

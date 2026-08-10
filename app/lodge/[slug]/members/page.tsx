@@ -7,6 +7,7 @@ import { ConfirmDialog } from '@/components/lodge/ConfirmDialog'
 import { MemberImport } from '@/components/lodge/MemberImport'
 import { RosterExport } from '@/components/lodge/RosterExport'
 import { notify } from '@/lib/toast'
+import { DegreeOptions } from '@/components/DegreeOptions'
 
 export default function LodgeMembersPage() {
   const params = useParams()
@@ -317,9 +318,7 @@ export default function LodgeMembersPage() {
             <div><label className="lodgeos-required" style={labelStyle}>Email</label><input type="email" value={inviteForm.email} onChange={e => setInviteForm(p => ({ ...p, email: e.target.value }))} style={inputStyle} required /></div>
             <div><label style={labelStyle}>Degree</label>
               <select value={inviteForm.degree} onChange={e => setInviteForm(p => ({ ...p, degree: e.target.value }))} style={{ ...inputStyle, cursor: 'pointer' }}>
-                <option value="EA">Entered Apprentice</option>
-                <option value="FC">Fellowcraft</option>
-                <option value="MM">Master Mason</option>
+                <DegreeOptions />
               </select>
             </div>
             <div><label style={labelStyle}>Lodge Role</label><input value={inviteForm.lodgeRole} onChange={e => setInviteForm(p => ({ ...p, lodgeRole: e.target.value }))} placeholder="e.g. Senior Warden" style={inputStyle} /></div>
@@ -387,9 +386,7 @@ export default function LodgeMembersPage() {
                     <td className="dash-td">
                       <select value={m.degree} onChange={e => updateMember(m.id, 'degree', e.target.value)}
                         style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.65rem', color: '#C9A84C', outline: 'none' }}>
-                        <option value="EA">EA</option>
-                        <option value="FC">FC</option>
-                        <option value="MM">MM</option>
+                        <DegreeOptions short />
                       </select>
                     </td>
                     <td className="dash-td" style={{ fontSize: '0.85rem', color: '#B8B0A0' }}>{m.lodge_role || '—'}</td>

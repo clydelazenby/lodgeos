@@ -3,10 +3,11 @@ import { getTenantBySlug, getSessionUser, getMembership, getProfile } from '@/li
 import { notFound } from 'next/navigation'
 import { format } from 'date-fns'
 import { DocumentUploadButton, DocumentDownloadLink, DocumentDeleteButton, DocumentPlayer, isPlayable, formatDuration } from '@/components/lodge/DocumentUpload'
+import { DEGREE_RANK, degreeShortLabel } from '@/lib/degrees'
 
 /**
- * Degree hierarchy — deliberately identical to the map in
- * app/api/documents/[id]/download/route.ts. A Master Mason can open
+ * Degree hierarchy — the SAME map the download route uses, now
+ * imported from lib/degrees.ts rather than hand-copied into both. A Master Mason can open
  * anything an EA or FC can, so access_level is a FLOOR, not an
  * exact-match requirement.
  *
@@ -25,7 +26,6 @@ import { DocumentUploadButton, DocumentDownloadLink, DocumentDeleteButton, Docum
  * is deliberately NOT a bypass — the restriction is about degree, and
  * being Treasurer doesn't make someone a Master Mason.
  */
-const DEGREE_RANK: Record<string, number> = { EA: 1, FC: 2, MM: 3 }
 
 export default async function LodgeDocumentsPage({ params }: { params: { slug: string } }) {
   const supabase = await createClient()
@@ -131,7 +131,7 @@ export default async function LodgeDocumentsPage({ params }: { params: { slug: s
                   <td className="dash-td" style={{ color: '#B8B0A0', fontSize: '0.85rem' }}>{d.category}</td>
                   <td className="dash-td" style={{ fontSize: '0.82rem', color: '#B8B0A0' }}>{d.profiles ? `${d.profiles.first_name} ${d.profiles.last_name}` : '—'}</td>
                   <td className="dash-td" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.68rem', color: '#B8B0A0' }}>{format(new Date(d.created_at), 'MMM d, yyyy')}</td>
-                  <td className="dash-td"><span className={`pill ${accessColor[d.access_level] ?? 'pill-new'}`}>{d.access_level === 'all' ? 'All Brothers' : `${d.access_level}+`}</span></td>
+                  <td className="dash-td"><span className={`pill ${accessColor[d.access_level] ?? 'pill-new'}`}>{d.access_level === 'all' ? 'All Brothers' : `${degreeShortLabel(d.access_level)}+`}</span></td>
                   <td className="dash-td" style={{ textAlign: 'right' }}>
                     <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'flex-start', flexWrap: 'wrap' }}>
                       {isPlayable(d.mime_type)

@@ -8,6 +8,8 @@ import React, { useState, useEffect } from 'react'
 const LINK_ERRORS: Record<string, string> = {
   link_expired:
     'That invitation link has expired or was already used. Ask your Secretary to send you a new invitation.',
+  reset_expired:
+    'That password reset link has expired or was already used. Request a new one below.',
   auth_failed: 'That sign-in link could not be verified. Please sign in below or request a new invitation.',
 }
 
@@ -285,6 +287,29 @@ style: {
             loading ? 'Signing in...' : 'Sign In'
           )
         ),
+        // Directly under the form, where a brother looks the moment a
+        // password fails — not buried at the bottom of the page.
+        React.createElement(
+          'p',
+          {
+            style: {
+              textAlign: 'center',
+              fontSize: '0.85rem',
+              marginTop: '1.25rem',
+            },
+          },
+          React.createElement(
+            'a',
+            {
+              href: '/auth/forgot-password',
+              style: {
+                color: '#C9A84C',
+                textDecoration: 'none',
+              },
+            },
+            'Forgot your password?'
+          )
+        ),
         React.createElement(
           'p',
           {
@@ -292,7 +317,7 @@ style: {
               textAlign: 'center',
               fontSize: '0.85rem',
               color: '#B8B0A0',
-              marginTop: '1.5rem',
+              marginTop: '0.75rem',
             },
           },
           // Self-serve signup is no longer offered here: a lodge asks

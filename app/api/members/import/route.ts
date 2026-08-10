@@ -4,6 +4,7 @@ import { requireTenantRole, type TenantRole } from '@/lib/auth/requireTenantAdmi
 import { sendWelcomeEmail, APP_URL } from '@/lib/email'
 import { createInviteLink } from '@/lib/auth/inviteLink'
 import { upsertProfilePreservingIdentity } from '@/lib/auth/profile'
+import { DEGREE_VALUES } from '@/lib/degrees'
 
 /**
  * Bulk roster import.
@@ -36,7 +37,7 @@ import { upsertProfilePreservingIdentity } from '@/lib/auth/profile'
 
 const MAX_ROWS = 500
 
-const VALID_DEGREES = new Set(['EA', 'FC', 'MM'])
+const VALID_DEGREES = new Set(DEGREE_VALUES)
 const VALID_TIERS = new Set<TenantRole>([
   'admin', 'secretary', 'worshipful_master', 'treasurer', 'warden', 'deacon', 'member',
 ])
@@ -118,9 +119,17 @@ export async function POST(request: Request) {
         continue
       }
 
-      const degree = (raw.degree?.trim().toUpperCase() || 'MM')
+      // A roster spreadsheet says "Knight Templar", not
+      // "KNIGHT_TEMPLAR" — nobody types the stored form by hand. Fold
+      // spaces to underscores so the labels a Secretary would actually
+      // write match the values, same normalisation the tier field below
+      // already does.
+      const degree = (raw.degree?.trim().toUpperCase().replace(/\s+/g, '_') || 'MM')
       if (!VALID_DEGREES.has(degree)) {
-        warnings.push(`Row ${line}: skipped — degree "${raw.degree}" must be EA, FC or MM (${email}).`)
+        warnings.push(
+          `Row ${line}: skipped — degree "${raw.degree}" is not one this lodge recognises (${email}). ` +
+          `Use EA, FC, MM, or an appendant degree such as Royal Arch or Knight Templar.`
+        )
         continue
       }
 
