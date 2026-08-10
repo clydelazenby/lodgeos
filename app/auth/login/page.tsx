@@ -295,17 +295,22 @@ style: {
               marginTop: '1.5rem',
             },
           },
+          // Self-serve signup is no longer offered here: a lodge asks
+          // for access and is onboarded, and a brother is invited by
+          // his Secretary. Both paths start with a request, not an
+          // account. /auth/signup still exists for onboarding an
+          // approved lodge — it is simply no longer advertised.
           'Need an account? ',
           React.createElement(
             'a',
             {
-              href: '/auth/signup',
+              href: '/request-access',
               style: {
                 color: '#C9A84C',
                 textDecoration: 'none',
               },
             },
-            'Sign Up'
+            'Request Access'
           )
         )
       )

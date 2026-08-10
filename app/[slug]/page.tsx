@@ -640,6 +640,14 @@ h('img', {
             h(
               'a',
               {
+                href: `/${params.slug}/request-access`,
+                className: 'mobile-menu-login',
+              },
+              'Request Access'
+            ),
+            h(
+              'a',
+              {
                 href: `/${params.slug}/petition`,
                 className: 'mobile-menu-primary',
               },
@@ -1394,7 +1402,15 @@ background: `
           tenant.email
             ? h('div', null, h(Mail, { size: 14, style: { verticalAlign: 'middle', marginRight: 8 } }), tenant.email)
             : null,
-          h('a', { href: '/auth/login', style: { color: gold, textDecoration: 'none' } }, 'Brother Login')
+          h('a', { href: '/auth/login', style: { color: gold, textDecoration: 'none' } }, 'Brother Login'),
+          h(
+            'a',
+            {
+              href: `/${params.slug}/request-access`,
+              style: { color: gold, textDecoration: 'none', display: 'block', marginTop: 6 },
+            },
+            'Request Access'
+          )
         )
       )
     )
