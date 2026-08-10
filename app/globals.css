@@ -187,6 +187,17 @@ body { background: var(--navy); color: var(--cream); font-family: 'Crimson Pro',
   /* Comfortable tap target — below Apple's 44px minimum these were
      hard to hit accurately. */
   .lodgeos-quick-action { min-height: 104px !important; }
+
+  /* Super-admin header: brand, role badge, four nav links and a name in
+     one nowrap row ran off the side of a phone with the links
+     unreachable. Tighter padding, smaller gaps, and the nav centred on
+     its own wrapped row. */
+  .lodgeos-sa-header { padding: 0.6rem 1rem !important; }
+  .lodgeos-sa-nav {
+    gap: 0.9rem !important;
+    width: 100%;
+    justify-content: flex-start;
+  }
 }
 
 /* ============================================================
@@ -224,8 +235,57 @@ body { background: var(--navy); color: var(--cream); font-family: 'Crimson Pro',
    the data tables and the dashboard heatmap already behave on phones:
    a genuinely spatial layout keeps its shape and scrolls, rather than
    being compressed into illegibility. */
-/* Short labels are desktop-hidden; the swap happens in the mobile block. */
+/* Short labels are desktop-hidden; the swap happens below. */
 .lodgeos-room-label-short { display: none; }
+
+/* ============================================================
+   LODGE ROOM — sized by the PLAN, not by the viewport
+   ============================================================
+   The compact treatment was originally keyed to `max-width: 767px`,
+   which fixed phones and left a hole exactly where it was worst.
+
+   The floor plan does not get the viewport's width. It sits inside a
+   220px sidebar layout, then inside a `1fr 260px` grid, then inside a
+   card with 1.5rem of padding. At a 768px viewport that arithmetic
+   leaves the plan about 152px — narrower than on a phone, where the
+   layout has already stacked to one column. So a tablet, or a desktop
+   window dragged narrow, got twelve full-width chairs in 152px and the
+   circles ran together, while a phone looked fine.
+
+   A viewport media query cannot express "the plan is narrow" when four
+   ancestors decide its width. A container query can: the card declares
+   itself a container and the chairs respond to ITS width, so this holds
+   at any viewport and survives future layout changes to the sidebar or
+   side panel.
+
+   560px is the measured threshold — at that width twelve 92px chairs
+   place with zero overlaps; below it they collide. */
+.lodgeos-room-card {
+  container-type: inline-size;
+  container-name: lodgeroom;
+}
+
+@container lodgeroom (max-width: 560px) {
+  /* !important is required: the plan carries aspect-ratio:4/3 as an
+     INLINE style, and an inline style outranks any stylesheet rule
+     regardless of container or media query. Without it the box stayed
+     landscape while the chairs shrank, which fixed the horizontal
+     crowding and left the vertical crowding untouched — measured as 2
+     overlapping pairs at a 336px plan. */
+  .lodgeos-room-plan { aspect-ratio: 3 / 4 !important; min-width: 0 !important; }
+  .lodgeos-room-chair-wrap { width: 48px !important; }
+  .lodgeos-room-chair-circle { width: 38px !important; height: 38px !important; }
+  .lodgeos-room-chair-name { display: none !important; }
+  .lodgeos-room-label-full { display: none !important; }
+  .lodgeos-room-label-short { display: block !important; font-size: 9px !important; }
+}
+
+/* Stack the floor plan and its side panel much earlier than 767px.
+   Below roughly 1100px the fixed 260px panel is taking a third of the
+   plan's width for a list that reads perfectly well underneath it. */
+@media (max-width: 1100px) {
+  .lodgeos-room-layout { grid-template-columns: 1fr !important; }
+}
 
 @media (max-width: 767px) {
   /* FITS THE SCREEN — no horizontal scrolling.
@@ -247,17 +307,10 @@ body { background: var(--navy); color: var(--cream); font-family: 'Crimson Pro',
 
      Verified at 375px: 0 overlapping pairs, 0 chairs outside the plan,
      0 page overflow, at 319x425 with 38px avatars. */
-  .lodgeos-room-plan {
-    aspect-ratio: 3 / 4;
-    min-width: 0;
-  }
-  .lodgeos-room-chair-wrap { width: 48px !important; }
-  .lodgeos-room-chair-circle { width: 38px !important; height: 38px !important; }
-  .lodgeos-room-chair-name { display: none !important; }
-  .lodgeos-room-label-full { display: none !important; }
-  .lodgeos-room-label-short { display: block !important; font-size: 9px !important; }
-
-  /* Reclaims ~24px of plan width from the card's own padding. */
+  /* The chair sizing itself now lives in the container query above, so
+     it applies at any viewport where the PLAN is narrow — not only on a
+     phone. All that remains here is reclaiming the card's own padding
+     for plan width, which is genuinely a small-screen concern. */
   .lodgeos-room-card { padding: 1.25rem 0.75rem !important; }
 }
 

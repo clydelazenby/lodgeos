@@ -39,12 +39,16 @@ export default async function SuperAdminLayout({
 
   return (
     <div style={{ minHeight: '100vh', background: '#0A0E1A' }}>
-      <header style={{ background: '#141C2E', borderBottom: '1px solid rgba(201,168,76,0.15)', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 2rem', position: 'sticky', top: 0, zIndex: 100 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+      {/* height was fixed at 60px with a nowrap row of five items —
+          brand, badge, four nav links and a name. On a phone that ran
+          straight off the side of the screen with no way to reach the
+          links. minHeight lets it wrap to two rows instead. */}
+      <header className="lodgeos-sa-header" style={{ background: '#141C2E', borderBottom: '1px solid rgba(201,168,76,0.15)', minHeight: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', padding: '0.5rem 2rem', position: 'sticky', top: 0, zIndex: 100 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
           <span style={{ fontFamily: 'Cinzel, serif', fontSize: '1.1rem', fontWeight: 700, color: '#C9A84C', letterSpacing: '0.15em' }}>LODGEOS</span>
           <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.58rem', background: 'rgba(192,57,43,0.2)', color: '#E74C3C', border: '1px solid rgba(192,57,43,0.3)', padding: '3px 10px', letterSpacing: '0.1em' }}>SUPER ADMIN</span>
         </div>
-        <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+        <div className="lodgeos-sa-nav" style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
           {navItems.map(({ label, href }) => (
             <Link key={href} href={href} style={{ fontFamily: 'Cinzel, serif', fontSize: '0.68rem', color: '#B8B0A0', textDecoration: 'none', letterSpacing: '0.08em' }}>{label}</Link>
           ))}
