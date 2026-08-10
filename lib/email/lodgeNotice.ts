@@ -1,4 +1,4 @@
-import { Resend } from 'resend'
+import { Resend, type CreateBatchOptions } from 'resend'
 import { escapeHtml } from '@/lib/email'
 
 /**
@@ -169,7 +169,7 @@ export type BatchSendResult = {
 }
 
 export async function sendLodgeNoticeBatch({
-  recipients, lodgeName, subject, body, sentByName, replyTo,
+  recipients, lodgeName, subject, body, sentByName, replyTo, scheduledAt,
 }: {
   recipients: NoticeRecipient[]
   lodgeName: string
@@ -177,6 +177,8 @@ export async function sendLodgeNoticeBatch({
   body: string
   sentByName?: string
   replyTo?: string
+  /** ISO-8601 instant. Omit to send immediately. */
+  scheduledAt?: string
 }): Promise<BatchSendResult> {
   if (!process.env.RESEND_API_KEY) {
     throw new Error('RESEND_API_KEY is not configured')
@@ -192,7 +194,28 @@ export async function sendLodgeNoticeBatch({
   for (let i = 0; i < recipients.length; i += BATCH_LIMIT) {
     const chunk = recipients.slice(i, i + BATCH_LIMIT)
 
-    const messages = chunk.map((r) => {
+    /**
+     * ANNOTATED WITH THE SDK'S OWN TYPE ON PURPOSE.
+     *
+     * A misspelled optional field here does not fail — it is silently
+     * dropped, and the email goes out missing a Reply-To or a schedule
+     * with no error anywhere. That already happened once: under
+     * resend-node 3.x the field was `reply_to`, and spelling it
+     * `replyTo` compiled clean because object spread suppresses
+     * TypeScript's excess-property check.
+     *
+     * The v6 upgrade INVERTED that. `CreateEmailBaseOptions` now uses
+     * camelCase `replyTo`; `reply_to` survives only on the raw wire
+     * type. So the previously-correct spelling became the silently
+     * broken one. Typing the array as CreateBatchOptions turns any
+     * future rename into a compile error instead of a quiet omission.
+     *
+     * (CreateBatchEmailOptions is Omit<CreateEmailOptions,
+     * 'attachments'> — the batch endpoint cannot carry attachments at
+     * all. See sendNoticeAttachmentNote in the send route for how a
+     * lodge attaches a file instead.)
+     */
+    const messages: CreateBatchOptions = chunk.map((r) => {
       const { html, text } = renderLodgeNotice({
         firstName: r.firstName,
         lodgeName,
@@ -207,17 +230,14 @@ export async function sendLodgeNoticeBatch({
         subject: `${lodgeName}: ${subject}`,
         html,
         text,
-        // Replies go to the officer who sent the notice rather than to
-        // an unmonitored noreply address. A brother answering "I can't
+        // Replies reach the officer who sent the notice rather than an
+        // unmonitored noreply address. A brother answering "I can't
         // make Tuesday" should reach a person.
-        //
-        // NOTE the snake_case key. resend-node 3.x types this field as
-        // `reply_to`, not `replyTo`. Spelling it `replyTo` compiles
-        // silently — object spread suppresses TypeScript's excess
-        // property check — and the header is then dropped without any
-        // error, so replies would go to the noreply address. Verified
-        // against CreateEmailBaseOptions in the installed package.
-        ...(replyTo ? { reply_to: replyTo } : {}),
+        ...(replyTo ? { replyTo } : {}),
+        // ISO-8601 instant. Resend holds the message and sends it then;
+        // the ids come back immediately either way, so delivery
+        // tracking works identically for a scheduled notice.
+        ...(scheduledAt ? { scheduledAt } : {}),
       }
     })
 

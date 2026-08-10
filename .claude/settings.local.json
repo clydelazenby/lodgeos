@@ -20,7 +20,9 @@
       "Bash(git push *)",
       "Bash(sed -n '/^const LAYOUT/,/^]/p' 'app/lodge/[slug]/lodge-room/page.tsx')",
       "Bash(pkill -f \"http.server 8899\")",
-      "Bash(sips -g pixelWidth -g pixelHeight -g format public/assets/lodgeos/images/pojl-logo.png)"
+      "Bash(sips -g pixelWidth -g pixelHeight -g format public/assets/lodgeos/images/pojl-logo.png)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('latest:', d['version']\\)\")",
+      "Bash(node -e \"console.log\\('resend', require\\('./node_modules/resend/package.json'\\).version\\)\")"
     ]
   }
 }

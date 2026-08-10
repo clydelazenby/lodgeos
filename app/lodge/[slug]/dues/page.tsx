@@ -4,6 +4,8 @@ import { notFound } from 'next/navigation'
 import { format } from 'date-fns'
 import { T } from '@/lib/designTokens'
 import { DuesReminderButton } from '@/components/lodge/DuesReminderButton'
+import { DuesRateEditor } from '@/components/lodge/DuesRateEditor'
+import { ChargesPanel } from '@/components/lodge/ChargesPanel'
 
 /**
  * REBUILT ON THE SHARED DESIGN SYSTEM.
@@ -38,9 +40,17 @@ export default async function LodgeDuesPage({ params }: { params: { slug: string
   const tenant = await getTenantBySlug(params.slug)
   if (!tenant) notFound()
 
-  const [{ data: members }, { data: payments }] = await Promise.all([
+  const [{ data: members }, { data: payments }, { data: charges }] = await Promise.all([
     supabase.from('tenant_members').select('*, profiles(first_name, last_name, email)').eq('tenant_id', tenant.id).eq('is_active', true).order('created_at'),
     supabase.from('payments').select('*, profiles(first_name, last_name)').eq('tenant_id', tenant.id).eq('status', 'succeeded').order('created_at', { ascending: false }).limit(20),
+    supabase
+      .from('member_charges')
+      .select('*, profiles!member_charges_member_id_fkey(first_name, last_name)')
+      .eq('tenant_id', tenant.id)
+      // Outstanding first, then most recent — a treasurer opens this
+      // page to see what is owed, not what was settled last spring.
+      .order('status')
+      .order('created_at', { ascending: false }),
   ])
 
   const rate = tenant.dues_amount ?? 60
@@ -52,6 +62,15 @@ export default async function LodgeDuesPage({ params }: { params: { slug: string
   const outstanding = due.length * rate
   const expected = collected + outstanding
   const pctCollected = expected > 0 ? Math.round((collected / expected) * 100) : 100
+
+  // Penalties and fees are money owed on top of dues. Folded into the
+  // Outstanding figure so the headline number is what the lodge is
+  // actually owed, not just its dues subtotal — but deliberately kept
+  // OUT of the collection-rate bar below, which measures dues against
+  // the annual rate and would be distorted by one-off charges.
+  const chargesOutstanding = (charges ?? [])
+    .filter((c: any) => c.status === 'outstanding')
+    .reduce((a: number, c: any) => a + Number(c.amount), 0)
 
   const duesTone: Record<string, string> = { paid: 'pill-active', due: 'pill-new', exempt: 'pill-ea' }
 
@@ -77,8 +96,7 @@ export default async function LodgeDuesPage({ params }: { params: { slug: string
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
           {[
             { label: 'Collected', value: money(collected), tone: T.success },
-            { label: 'Outstanding', value: money(outstanding), tone: due.length > 0 ? T.danger : T.inkFaint },
-            { label: 'Annual Rate', value: money(rate), tone: T.ink },
+            { label: 'Outstanding', value: money(outstanding + chargesOutstanding), tone: (due.length > 0 || chargesOutstanding > 0) ? T.danger : T.inkFaint },
           ].map(({ label, value, tone }) => (
             <div key={label}>
               <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.56rem', letterSpacing: '0.2em', color: T.gold, textTransform: 'uppercase', marginBottom: '0.5rem' }}>
@@ -89,6 +107,16 @@ export default async function LodgeDuesPage({ params }: { params: { slug: string
               </div>
             </div>
           ))}
+
+          {/* Editable in place — this is the number the whole page is
+              built around, and it previously lived only on the Settings
+              page among branding and contact fields. */}
+          <div>
+            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.56rem', letterSpacing: '0.2em', color: T.gold, textTransform: 'uppercase', marginBottom: '0.5rem' }}>
+              Annual Rate
+            </div>
+            <DuesRateEditor tenantId={tenant.id} current={rate} />
+          </div>
         </div>
 
         {/* Collection progress — the one number a treasurer is actually
@@ -150,6 +178,12 @@ export default async function LodgeDuesPage({ params }: { params: { slug: string
           </div>
         )}
       </div>
+
+      <ChargesPanel
+        tenantId={tenant.id}
+        members={(members ?? []).map((m: any) => ({ user_id: m.user_id, profiles: m.profiles }))}
+        charges={(charges ?? []) as any}
+      />
 
       <div className="data-box">
         <div className="data-box-head">Recent Payments</div>

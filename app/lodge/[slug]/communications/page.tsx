@@ -39,6 +39,20 @@ type Member = {
   profiles: { first_name: string | null; last_name: string | null; email: string | null } | null
 }
 
+/**
+ * A sensible default when switching to scheduled send: one hour out,
+ * formatted for datetime-local, which expects LOCAL time with no zone
+ * suffix. Building it from toISOString() would silently offset the
+ * default by the browser's UTC difference — the value is converted back
+ * to a real instant with new Date() at submit time, where the browser's
+ * zone is applied correctly.
+ */
+function defaultScheduleValue(): string {
+  const d = new Date(Date.now() + 60 * 60 * 1000)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 export default function LodgeCommunicationsPage() {
   const params = useParams()
   const slug = params.slug as string
@@ -51,6 +65,7 @@ export default function LodgeCommunicationsPage() {
   const [loading, setLoading] = useState(true)
 
   const [form, setForm] = useState({ subject: '', body: '', recipient_group: 'all' })
+  const [scheduleAt, setScheduleAt] = useState('')
   const [draftId, setDraftId] = useState<string | null>(null)
 
   const [busy, setBusy] = useState<'' | 'send' | 'test' | 'draft'>('')
@@ -155,6 +170,8 @@ export default function LodgeCommunicationsPage() {
           recipientGroup: form.recipient_group,
           mode,
           draftId,
+          // Only meaningful for a real send; a test goes now.
+          scheduledAt: mode === 'send' && scheduleAt ? new Date(scheduleAt).toISOString() : undefined,
         }),
       })
       const result = await res.json()
@@ -178,11 +195,14 @@ export default function LodgeCommunicationsPage() {
       }
 
       setNotice(
-        `Sent to ${result.sent} of ${result.total} ${result.total === 1 ? 'brother' : 'brothers'}.` +
-          (result.warning ? ` ${result.warning}` : '')
+        result.scheduledFor
+          ? `Scheduled for ${new Date(result.scheduledFor).toLocaleString()} — ${result.sent} ${result.sent === 1 ? 'brother' : 'brothers'} queued.`
+          : `Sent to ${result.sent} of ${result.total} ${result.total === 1 ? 'brother' : 'brothers'}.` +
+            (result.warning ? ` ${result.warning}` : '')
       )
       if (result.failedRecipients?.length) setFailedList(result.failedRecipients)
       setForm({ subject: '', body: '', recipient_group: 'all' })
+      setScheduleAt('')
       setDraftId(null)
       await load()
     } catch (err: any) {
@@ -409,6 +429,36 @@ export default function LodgeCommunicationsPage() {
             </div>
           )}
 
+          {/* Scheduling is handled by Resend, which holds the message
+              and releases it at this instant — so there is no cron job
+              or queue on our side, and delivery tracking works exactly
+              the same for a scheduled notice. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <label style={{ ...labelStyle, marginBottom: 0 }}>Send</label>
+            <select
+              value={scheduleAt ? 'later' : 'now'}
+              onChange={(e) => setScheduleAt(e.target.value === 'now' ? '' : defaultScheduleValue())}
+              style={{ ...inputStyle, width: 'auto', cursor: 'pointer' }}
+            >
+              <option value="now">Immediately</option>
+              <option value="later">At a set time</option>
+            </select>
+            {scheduleAt && (
+              <>
+                <input
+                  type="datetime-local"
+                  value={scheduleAt}
+                  min={defaultScheduleValue()}
+                  onChange={(e) => setScheduleAt(e.target.value)}
+                  style={{ ...inputStyle, width: 'auto' }}
+                />
+                <span style={{ fontFamily: 'Crimson Pro, serif', fontSize: '0.85rem', color: T.inkFainter }}>
+                  your local time · up to 30 days ahead
+                </span>
+              </>
+            )}
+          </div>
+
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
             <button
               onClick={() => setConfirmOpen(true)}
@@ -416,7 +466,11 @@ export default function LodgeCommunicationsPage() {
               className="btn-gold"
               style={{ fontSize: '0.7rem', cursor: !canCompose || reachable.length === 0 ? 'not-allowed' : 'pointer', opacity: !canCompose || reachable.length === 0 ? 0.5 : 1 }}
             >
-              {busy === 'send' ? 'Sending…' : `Send to ${reachable.length} ${reachable.length === 1 ? 'Brother' : 'Brothers'}`}
+              {busy === 'send'
+                ? (scheduleAt ? 'Scheduling…' : 'Sending…')
+                : scheduleAt
+                  ? `Schedule for ${reachable.length} ${reachable.length === 1 ? 'Brother' : 'Brothers'}`
+                  : `Send to ${reachable.length} ${reachable.length === 1 ? 'Brother' : 'Brothers'}`}
             </button>
 
             <button onClick={() => setShowPreview(v => !v)} disabled={!canCompose} style={{ ...ghostButton, opacity: canCompose ? 1 : 0.5 }}>

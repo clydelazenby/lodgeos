@@ -28,7 +28,29 @@ const MAX_BODY = 20000
 
 export async function POST(request: Request) {
   try {
-    const { tenantId, subject, body, recipientGroup, mode, draftId } = await request.json()
+    const { tenantId, subject, body, recipientGroup, mode, draftId, scheduledAt } = await request.json()
+
+    // Scheduling. Resend holds the message and releases it at the given
+    // instant, so this costs nothing to support and does not require a
+    // cron job of our own — the alternative would be storing the notice
+    // and polling for its time, which is a scheduler we don't need to
+    // build. Capped at 30 days because that is Resend's own limit.
+    let scheduleIso: string | undefined
+    if (scheduledAt) {
+      const when = new Date(scheduledAt)
+      if (Number.isNaN(when.getTime())) {
+        return NextResponse.json({ error: 'That send time is not a valid date.' }, { status: 400 })
+      }
+      // One minute of slack: a secretary picking "in 2 minutes" and
+      // taking 90 seconds to hit send should not be rejected.
+      if (when.getTime() < Date.now() - 60_000) {
+        return NextResponse.json({ error: 'That send time is in the past.' }, { status: 400 })
+      }
+      if (when.getTime() > Date.now() + 30 * 24 * 60 * 60 * 1000) {
+        return NextResponse.json({ error: 'Notices can be scheduled up to 30 days ahead.' }, { status: 400 })
+      }
+      scheduleIso = when.toISOString()
+    }
 
     const action: 'send' | 'test' | 'draft' = mode === 'test' || mode === 'draft' ? mode : 'send'
 
@@ -174,6 +196,7 @@ export async function POST(request: Request) {
       body,
       sentByName,
       replyTo: sender?.email ?? undefined,
+      scheduledAt: scheduleIso,
     })
 
     const allFailures = [...unreachable, ...sendFailures]
@@ -191,7 +214,10 @@ export async function POST(request: Request) {
         recipient_group: group,
         sent_by: auth.userId,
         is_draft: false,
+        // For a scheduled notice this records when it was QUEUED.
+        // scheduled_for carries when it actually goes out.
         sent_at: new Date().toISOString(),
+        scheduled_for: scheduleIso ?? null,
         recipient_count: total,
         sent_count: sent,
         failed_count: allFailures.length,
@@ -263,6 +289,7 @@ export async function POST(request: Request) {
       failed: allFailures.length,
       total,
       failedRecipients: allFailures,
+      scheduledFor: scheduleIso ?? null,
       communication: comm,
     })
   } catch (error: any) {

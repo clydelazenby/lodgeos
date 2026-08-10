@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useParams } from 'next/navigation'
 import { format } from 'date-fns'
+import Link from 'next/link'
 
 export default function LodgeEventsPage() {
   const params = useParams()
@@ -12,8 +13,6 @@ export default function LodgeEventsPage() {
   const [tenant, setTenant] = useState<any>(null)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [invitingId, setInvitingId] = useState<string | null>(null)
-  const [inviteMsg, setInviteMsg] = useState<Record<string, string>>({})
   const [form, setForm] = useState({ title: '', event_date: '', event_time: '', location: '', description: '', dress_code: '', is_public: false, event_type: 'other' })
   const supabase = createClient()
 
@@ -42,25 +41,6 @@ export default function LodgeEventsPage() {
     load()
   }, [])
 
-  const sendInvites = async (eventId: string) => {
-    setInvitingId(eventId)
-    setInviteMsg(m => ({ ...m, [eventId]: '' }))
-    const res = await fetch('/api/events/send-invites', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tenantId: tenant.id, eventId }),
-    })
-    const result = await res.json()
-    setInviteMsg(m => ({
-      ...m,
-      [eventId]: res.ok && result.success
-        ? `Sent to ${result.sent} of ${result.total} brothers.`
-        : `Failed to send: ${result.error || 'unknown error'}`,
-    }))
-    setInvitingId(null)
-    loadRsvpCounts(events.map(ev => ev.id), tenant.id)
-  }
-
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
@@ -70,12 +50,6 @@ export default function LodgeEventsPage() {
     setShowForm(false)
     setForm(p => ({ ...p, title: '', event_date: '', event_time: '', description: '', dress_code: '' }))
     setSaving(false)
-  }
-
-  const deleteEvent = async (id: string) => {
-    if (!confirm('Remove this event?')) return
-    await supabase.from('lodge_events').delete().eq('id', id)
-    setEvents(prev => prev.filter(e => e.id !== id))
   }
 
   const inputStyle = { width: '100%', background: '#0A0E1A', border: '1px solid rgba(201,168,76,0.2)', color: '#F5F0E8', padding: '10px 14px', fontFamily: 'Crimson Pro, serif', fontSize: '0.95rem', outline: 'none', borderRadius: '4px' }
@@ -124,46 +98,60 @@ export default function LodgeEventsPage() {
         </div>
       )}
 
-      <div className="data-box">
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead><tr>{['Date', 'Event', 'Location', 'Type', 'Public', 'Attending', ''].map(h => <th key={h} className="dash-th">{h}</th>)}</tr></thead>
-          <tbody>
-            {events.map((ev, i) => (
-              <tr key={ev.id}>
-                <td className="dash-td" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.72rem', color: '#B8B0A0', whiteSpace: 'nowrap' }}>
-                  {format(new Date(ev.event_date + 'T12:00:00'), 'MMM d, yyyy')}
-                  {ev.event_time && ` · ${ev.event_time}`}
-                </td>
-                <td className="dash-td">{ev.title}</td>
-                <td className="dash-td" style={{ color: '#B8B0A0', fontSize: '0.85rem' }}>{ev.location || '—'}</td>
-                <td className="dash-td"><span className={`pill ${typeColor[ev.event_type] ?? 'pill-new'}`}>{ev.event_type.replace('_', ' ')}</span></td>
-                <td className="dash-td"><span className={`pill ${ev.is_public ? 'pill-active' : 'pill-new'}`}>{ev.is_public ? 'Yes' : 'No'}</span></td>
-                <td className="dash-td" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.72rem', whiteSpace: 'nowrap' }}>
-                  {rsvpCounts[ev.id] ? (
-                    <span>
-                      <span style={{ color: '#5DBE85' }}>{rsvpCounts[ev.id].yes} yes</span>
-                      {' · '}<span style={{ color: '#C9A84C' }}>{rsvpCounts[ev.id].maybe} maybe</span>
-                      {' · '}<span style={{ color: '#E74C3C' }}>{rsvpCounts[ev.id].no} no</span>
-                    </span>
-                  ) : <span style={{ color: '#B8B0A0' }}>—</span>}
-                </td>
-                <td className="dash-td">
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                      <button onClick={() => sendInvites(ev.id)} disabled={invitingId === ev.id} style={{ background: 'none', border: 'none', cursor: invitingId === ev.id ? 'not-allowed' : 'pointer', color: '#C9A84C', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.6rem', letterSpacing: '0.08em', opacity: invitingId === ev.id ? 0.5 : 1 }}>
-                        {invitingId === ev.id ? 'SENDING…' : 'SEND INVITES'}
-                      </button>
-                      <button onClick={() => deleteEvent(ev.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#E74C3C', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.6rem', letterSpacing: '0.08em' }}>REMOVE</button>
-                    </div>
-                    {inviteMsg[ev.id] && <div style={{ color: '#B8B0A0', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.58rem' }}>{inviteMsg[ev.id]}</div>}
+      {/* Cards, not a seven-column table.
+          The table carried date, title, location, type, public flag, an
+          RSVP tally and two action buttons in one row — which meant
+          scrolling sideways past everything to reach anything on a
+          phone. Everything beyond identity and headcount now lives on
+          the event's own page, one tap away, where it has room to show
+          WHO replied rather than three numbers. */}
+      <div style={{ display: 'grid', gap: '0.75rem' }}>
+        {events.map(ev => {
+          const counts = rsvpCounts[ev.id]
+          const past = new Date(ev.event_date + 'T12:00:00') < new Date(new Date().toDateString())
+          return (
+            <Link
+              key={ev.id}
+              href={`/lodge/${slug}/events/${ev.id}`}
+              style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem',
+                flexWrap: 'wrap', textDecoration: 'none',
+                background: '#141C2E', border: '1px solid rgba(201,168,76,0.12)',
+                borderRadius: '10px', padding: '1.1rem 1.25rem',
+                opacity: past ? 0.75 : 1,
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.62rem', letterSpacing: '0.12em', color: '#C9A84C', marginBottom: 5 }}>
+                  {format(new Date(ev.event_date + 'T12:00:00'), 'EEE, MMM d, yyyy').toUpperCase()}
+                  {ev.event_time && ` · ${ev.event_time.slice(0, 5)}`}
+                </div>
+                <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1rem', color: '#F5F0E8', marginBottom: 4 }}>{ev.title}</div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <span className={`pill ${typeColor[ev.event_type] ?? 'pill-new'}`}>{ev.event_type.replace('_', ' ')}</span>
+                  {ev.is_public && <span className="pill pill-active">Public</span>}
+                  {ev.location && <span style={{ fontFamily: 'Crimson Pro, serif', fontSize: '0.85rem', color: '#B8B0A0' }}>{ev.location}</span>}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexShrink: 0 }}>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1.3rem', color: counts?.yes ? '#5DBE85' : '#6B6355', lineHeight: 1 }}>
+                    {counts?.yes ?? 0}
                   </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {events.length === 0 && <div style={{ padding: '3rem', textAlign: 'center', color: '#B8B0A0', fontStyle: 'italic' }}>No events yet. Create your first one above.</div>}
+                  <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.55rem', letterSpacing: '0.1em', color: '#B8B0A0' }}>ATTENDING</div>
+                </div>
+                <span style={{ color: '#C9A84C', fontSize: '1.1rem' }} aria-hidden="true">›</span>
+              </div>
+            </Link>
+          )
+        })}
       </div>
+      {events.length === 0 && (
+        <div style={{ padding: '3rem', textAlign: 'center', color: '#B8B0A0', fontStyle: 'italic', background: '#141C2E', border: '1px solid rgba(201,168,76,0.12)', borderRadius: '10px' }}>
+          No events yet. Create your first one above.
+        </div>
+      )}
     </div>
   )
 }
