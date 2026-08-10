@@ -39,9 +39,9 @@ const MAX_ROWS = 500
 
 const VALID_DEGREES = new Set(DEGREE_VALUES)
 const VALID_TIERS = new Set<TenantRole>([
-  'admin', 'secretary', 'worshipful_master', 'treasurer', 'warden', 'deacon', 'member',
+  'admin', 'secretary', 'grand_master', 'worshipful_master', 'treasurer', 'warden', 'deacon', 'member',
 ])
-const ADMIN_TIER_ROLES = new Set<TenantRole>(['admin', 'secretary'])
+const ADMIN_TIER_ROLES = new Set<TenantRole>(['admin', 'secretary', 'grand_master'])
 
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const auth = await requireTenantRole(tenantId, ['admin', 'secretary', 'worshipful_master'])
+    const auth = await requireTenantRole(tenantId, ['admin', 'secretary', 'grand_master', 'worshipful_master'])
     if (!auth.ok) return auth.response
 
     const supabase = createServiceClient()
@@ -143,7 +143,7 @@ export async function POST(request: Request) {
       // not hold himself.
       if (ADMIN_TIER_ROLES.has(tier) && !ADMIN_TIER_ROLES.has(auth.tenantRole)) {
         warnings.push(
-          `Row ${line}: skipped — only a Secretary or admin can grant the "${tier}" role (${email}).`
+          `Row ${line}: skipped — only a Secretary, Grand Master or admin can grant the "${tier}" role (${email}).`
         )
         continue
       }

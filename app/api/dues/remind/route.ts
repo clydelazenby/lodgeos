@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     // handle dues, not every officer. A Deacon or Warden shouldn't be
     // able to blast dues reminders even though they're legitimate
     // officers with other real access elsewhere in the app.
-    const auth = await requireTenantRole(tenantId, ['secretary', 'treasurer', 'worshipful_master', 'admin'])
+    const auth = await requireTenantRole(tenantId, ['secretary', 'grand_master', 'treasurer', 'worshipful_master', 'admin'])
     if (!auth.ok) return auth.response
 
     const supabase = await createClient()

@@ -12,7 +12,7 @@ import { requireTenantRole } from '@/lib/auth/requireTenantAdmin'
  * mirrors the tier list already used by /api/dues/remind.
  */
 
-const FINANCE_TIERS = ['admin', 'secretary', 'treasurer', 'worshipful_master'] as const
+const FINANCE_TIERS = ['admin', 'secretary', 'grand_master', 'treasurer', 'worshipful_master'] as const
 
 const CHARGE_TYPES = new Set([
   'penalty', 'late_fee', 'degree_fee', 'reinstatement', 'assessment', 'other',

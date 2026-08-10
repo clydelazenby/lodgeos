@@ -17,7 +17,7 @@ export async function GET(request: Request) {
     .from('tenant_members')
     .select('tenant_id, tenants(stripe_customer_id)')
     .eq('user_id', user.id)
-    .in('tenant_role', ['admin', 'secretary', 'treasurer'])
+    .in('tenant_role', ['admin', 'secretary', 'grand_master', 'treasurer'])
     .single()
 
   const customerId = (membership?.tenants as any)?.stripe_customer_id

@@ -106,7 +106,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const auth = await requireTenantRole(tenantId, ['admin', 'secretary'])
+    const auth = await requireTenantRole(tenantId, ['admin', 'secretary', 'grand_master'])
     if (!auth.ok) return auth.response
 
     // ---- Parse -------------------------------------------------

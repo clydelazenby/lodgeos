@@ -8,6 +8,7 @@ import { MemberImport } from '@/components/lodge/MemberImport'
 import { RosterExport } from '@/components/lodge/RosterExport'
 import { notify } from '@/lib/toast'
 import { DegreeOptions } from '@/components/DegreeOptions'
+import { roleLabel } from '@/lib/auth/permissions'
 
 export default function LodgeMembersPage() {
   const params = useParams()
@@ -329,6 +330,7 @@ export default function LodgeMembersPage() {
                 <option value="warden">Warden — meetings &amp; roster (Senior or Junior)</option>
                 <option value="treasurer">Treasurer — full financial access</option>
                 <option value="worshipful_master">Worshipful Master — meetings, events &amp; communications</option>
+                <option value="grand_master">Grand Master — full access, presides over the Grand Lodge</option>
                 <option value="secretary">Secretary — full lodge management</option>
                 <option value="admin">Admin — full access</option>
               </select>
@@ -400,11 +402,12 @@ export default function LodgeMembersPage() {
                     </td>
                     <td className="dash-td"><span className={`pill ${
                   m.tenant_role === 'admin' || m.tenant_role === 'secretary' ? 'pill-mm'
+                  : m.tenant_role === 'grand_master' ? 'pill-shrine'
                   : m.tenant_role === 'worshipful_master' ? 'pill-active'
                   : m.tenant_role === 'treasurer' ? 'pill-fc'
                   : m.tenant_role === 'warden' || m.tenant_role === 'deacon' ? 'pill-ea'
                   : 'pill-new'
-                }`}>{m.tenant_role === 'worshipful_master' ? 'Worshipful Master' : m.tenant_role}</span></td>
+                }`}>{roleLabel(m.tenant_role)}</span></td>
                     <td className="dash-td"><span className={`pill pill-${m.is_active ? 'active' : 'canceled'}`}>{m.is_active ? 'Active' : 'Inactive'}</span></td>
                     <td className="dash-td" style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                       <button
