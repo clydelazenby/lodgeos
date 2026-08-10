@@ -45,7 +45,7 @@ const ACCESS_LEVELS = new Set(['all', ...DEGREE_VALUES])
 export async function POST(request: Request) {
   try {
     const {
-      tenantId, storagePath, name, category, accessLevel,
+      tenantId, storagePath, name, category, accessLevel, supersedesId,
       description, mimeType, fileSize, durationSeconds,
     } = await request.json()
 
@@ -103,6 +103,31 @@ export async function POST(request: Request) {
       )
     }
 
+    /**
+     * The document this one replaces must belong to THIS lodge.
+     *
+     * Without the check a valid id from another lodge would be accepted
+     * and would quietly mark that lodge's document as superseded — it
+     * would drop out of their library, replaced by a file they cannot
+     * see. Cheap lookup, and the failure it prevents is invisible to
+     * the people it happens to.
+     */
+    if (supersedesId) {
+      const { data: prior } = await supabase
+        .from('documents')
+        .select('id')
+        .eq('id', supersedesId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle()
+
+      if (!prior) {
+        return NextResponse.json(
+          { error: 'The document being replaced does not belong to this lodge.' },
+          { status: 400 }
+        )
+      }
+    }
+
     const { data: doc, error: insertError } = await supabase
       .from('documents')
       .insert({
@@ -117,6 +142,10 @@ export async function POST(request: Request) {
         file_size: fileSize ? Number(fileSize) : null,
         duration_seconds: durationSeconds ? Math.round(Number(durationSeconds)) : null,
         uploaded_by: auth.userId,
+        // Scoped to this tenant above, so a valid id from another lodge
+        // cannot be named as the thing this replaces — which would hide
+        // that lodge's document from its own library.
+        supersedes_id: supersedesId || null,
       })
       .select()
       .single()

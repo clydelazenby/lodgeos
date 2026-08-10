@@ -47,13 +47,22 @@ function readDuration(file: File): Promise<number | null> {
   })
 }
 
-export function DocumentUploadButton({ tenantId }: { tenantId: string }) {
+export function DocumentUploadButton({
+  tenantId,
+  existing = [],
+}: {
+  tenantId: string
+  /** Current documents, so a new upload can say which one it replaces. */
+  existing?: { id: string; name: string }[]
+}) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [file, setFile] = useState<File | null>(null)
   const [name, setName] = useState('')
   const [category, setCategory] = useState(CATEGORIES[0])
   const [accessLevel, setAccessLevel] = useState('all')
+  // What this upload replaces, if anything. See lib/migrations/032.
+  const [supersedesId, setSupersedesId] = useState('')
   const [description, setDescription] = useState('')
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState('')
@@ -114,6 +123,7 @@ export function DocumentUploadButton({ tenantId }: { tenantId: string }) {
           category,
           accessLevel,
           description,
+          supersedesId: supersedesId || null,
           mimeType: file.type,
           fileSize: file.size,
           durationSeconds: duration,
@@ -206,6 +216,26 @@ export function DocumentUploadButton({ tenantId }: { tenantId: string }) {
                 </select>
               </div>
             </div>
+
+            {/* VERSIONING, at the only moment anyone knows the answer.
+                Every document library converges on Bylaws.pdf beside
+                Bylaws_v2.pdf beside Bylaws_v3_FINAL_final.pdf, with
+                nothing to say which governs. The uploader knows for
+                certain what he is replacing; asking him here costs one
+                dropdown and saves the guess forever. */}
+            {existing.length > 0 && (
+              <div>
+                <label style={labelStyle}>Replaces an existing document (optional)</label>
+                <select value={supersedesId} onChange={e => setSupersedesId(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
+                  <option value="">— this is a new document —</option>
+                  {existing.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+                <p style={{ fontSize: '0.78rem', color: '#918879', fontStyle: 'italic', marginTop: 4 }}>
+                  The old copy is kept but stops being the current one — it collapses under this in
+                  the library rather than sitting beside it.
+                </p>
+              </div>
+            )}
 
             <div>
               <label style={labelStyle}>Description (optional)</label>
