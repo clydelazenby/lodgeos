@@ -224,22 +224,41 @@ body { background: var(--navy); color: var(--cream); font-family: 'Crimson Pro',
    the data tables and the dashboard heatmap already behave on phones:
    a genuinely spatial layout keeps its shape and scrolls, rather than
    being compressed into illegibility. */
-@media (max-width: 767px) {
-  .lodgeos-room-scroll {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    /* Bleed to the card edges so the scroll affordance is obvious. */
-    margin: 0 -1.5rem;
-    padding: 0 1.5rem;
-  }
-  .lodgeos-room-plan { min-width: 560px; }
-}
+/* Short labels are desktop-hidden; the swap happens in the mobile block. */
+.lodgeos-room-label-short { display: none; }
 
-@media (max-width: 480px) {
+@media (max-width: 767px) {
+  /* FITS THE SCREEN — no horizontal scrolling.
+     A previous attempt gave the plan a 560px floor width and let it
+     scroll. That removed the overlaps but pushed the room off the side
+     of the screen, which is worse: a floor plan you have to drag around
+     is harder to read than a small one you can see whole.
+
+     What actually made twelve chairs impossible to fit was the FULL
+     STATION NAME under each one. "Senior Steward" at 8.5px needs ~76px,
+     and twelve 76px chairs cannot be placed at these fixed percentages
+     inside a ~300px box — four of them hung off the edges entirely.
+     Dropping to an abbreviation ("SS") and hiding the brother's name
+     takes a chair to 48px, which fits with room to spare. The name is
+     still in the chair's tooltip and in the roster panel below.
+
+     The box also turns portrait (3:4 rather than 4:3), which buys the
+     vertical separation the 42%/58% station rows need.
+
+     Verified at 375px: 0 overlapping pairs, 0 chairs outside the plan,
+     0 page overflow, at 319x425 with 38px avatars. */
+  .lodgeos-room-plan {
+    aspect-ratio: 3 / 4;
+    min-width: 0;
+  }
+  .lodgeos-room-chair-wrap { width: 48px !important; }
   .lodgeos-room-chair-circle { width: 38px !important; height: 38px !important; }
-  .lodgeos-room-chair-label { font-size: 7.5px !important; }
-  .lodgeos-room-chair-name { font-size: 9px !important; }
-  .lodgeos-room-chair-wrap { width: 76px !important; }
+  .lodgeos-room-chair-name { display: none !important; }
+  .lodgeos-room-label-full { display: none !important; }
+  .lodgeos-room-label-short { display: block !important; font-size: 9px !important; }
+
+  /* Reclaims ~24px of plan width from the card's own padding. */
+  .lodgeos-room-card { padding: 1.25rem 0.75rem !important; }
 }
 
 @media (max-width: 767px) {

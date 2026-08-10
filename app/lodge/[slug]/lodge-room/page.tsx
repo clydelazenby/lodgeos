@@ -26,19 +26,28 @@ import { T } from '@/lib/designTokens'
 // laid out to resemble an actual lodge floor plan: East (top, where
 // the WM sits) to West (bottom, the entrance/Tyler's post), with
 // Wardens flanking the WM and the working officers along the sides.
-const LAYOUT: { station: string; top: string; left: string }[] = [
-  { station: 'Worshipful Master', top: '8%', left: '50%' },
-  { station: 'Senior Warden', top: '22%', left: '25%' },
-  { station: 'Junior Warden', top: '22%', left: '75%' },
-  { station: 'Treasurer', top: '42%', left: '12%' },
-  { station: 'Chaplain', top: '42%', left: '88%' },
-  { station: 'Secretary', top: '58%', left: '12%' },
-  { station: 'Marshal', top: '58%', left: '88%' },
-  { station: 'Senior Deacon', top: '48%', left: '38%' },
-  { station: 'Junior Deacon', top: '48%', left: '62%' },
-  { station: 'Senior Steward', top: '80%', left: '30%' },
-  { station: 'Junior Steward', top: '80%', left: '70%' },
-  { station: 'Tyler', top: '94%', left: '50%' },
+/**
+ * `short` is the phone-sized label. The full station name is what
+ * forces a chair to be ~76px wide, and twelve 76px chairs cannot fit a
+ * 300px-wide floor plan at these fixed percentages no matter how small
+ * the type gets — four of them ended up hanging off the edges of the
+ * box. Abbreviating the label (and dropping the brother's name, which
+ * stays in the tooltip and in the roster panel beside the plan) takes
+ * a chair down to 48px, which fits with room to spare.
+ */
+const LAYOUT: { station: string; short: string; top: string; left: string }[] = [
+  { station: 'Worshipful Master', short: 'WM', top: '8%', left: '50%' },
+  { station: 'Senior Warden', short: 'SW', top: '22%', left: '25%' },
+  { station: 'Junior Warden', short: 'JW', top: '22%', left: '75%' },
+  { station: 'Treasurer', short: 'Treas', top: '42%', left: '12%' },
+  { station: 'Chaplain', short: 'Chap', top: '42%', left: '88%' },
+  { station: 'Secretary', short: 'Sec', top: '58%', left: '12%' },
+  { station: 'Marshal', short: 'Mar', top: '58%', left: '88%' },
+  { station: 'Senior Deacon', short: 'SD', top: '48%', left: '38%' },
+  { station: 'Junior Deacon', short: 'JD', top: '48%', left: '62%' },
+  { station: 'Senior Steward', short: 'SS', top: '80%', left: '30%' },
+  { station: 'Junior Steward', short: 'JS', top: '80%', left: '70%' },
+  { station: 'Tyler', short: 'Tyler', top: '94%', left: '50%' },
 ]
 
 export default function LodgeRoomPage() {
@@ -129,12 +138,8 @@ export default function LodgeRoomPage() {
 
       <div className="lodgeos-room-layout" style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: '1.5rem', alignItems: 'start' }}>
         {/* Floor plan */}
-        <div style={{ background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '2rem 1.5rem' }}>
+        <div className="lodgeos-room-card" style={{ background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '2rem 1.5rem' }}>
           <div style={{ fontFamily: T.mono, fontSize: '10px', letterSpacing: '0.15em', color: T.inkFaint, textAlign: 'center', marginBottom: '0.5rem' }}>EAST</div>
-          {/* Scroll wrapper: see .lodgeos-room-plan in globals.css for why
-              the plan is given a floor width on phones rather than being
-              allowed to shrink with the screen. */}
-          <div className="lodgeos-room-scroll">
           <div
             className="lodgeos-room-plan"
             style={{
@@ -185,14 +190,14 @@ export default function LodgeRoomPage() {
                       </span>
                     )}
                   </div>
-                  <div className="lodgeos-room-chair-label" style={{ fontFamily: T.mono, fontSize: '8.5px', color: T.gold, letterSpacing: '0.03em', marginTop: '4px', textTransform: 'uppercase' }}>{layout.station}</div>
+                  <div className="lodgeos-room-chair-label lodgeos-room-label-full" style={{ fontFamily: T.mono, fontSize: '8.5px', color: T.gold, letterSpacing: '0.03em', marginTop: '4px', textTransform: 'uppercase' }}>{layout.station}</div>
+                  <div className="lodgeos-room-chair-label lodgeos-room-label-short" style={{ fontFamily: T.mono, fontSize: '9px', color: T.gold, letterSpacing: '0.03em', marginTop: '4px', textTransform: 'uppercase' }}>{layout.short}</div>
                   <div className="lodgeos-room-chair-name" style={{ fontFamily: T.body, fontSize: '10px', color: T.inkFaint, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {holder ? `${holder.profiles?.first_name} ${holder.profiles?.last_name}` : 'Unassigned'}
                   </div>
                 </div>
               )
             })}
-          </div>
           </div>
           <div style={{ fontFamily: T.mono, fontSize: '10px', letterSpacing: '0.15em', color: T.inkFaint, textAlign: 'center', marginTop: '0.5rem' }}>WEST · ENTRANCE</div>
         </div>

@@ -28,7 +28,7 @@ const MAX_BODY = 20000
 
 export async function POST(request: Request) {
   try {
-    const { tenantId, subject, body, recipientGroup, mode, draftId, scheduledAt } = await request.json()
+    const { tenantId, subject, body, recipientGroup, mode, draftId, scheduledAt, eventId, meetingUrl } = await request.json()
 
     // Scheduling. Resend holds the message and releases it at the given
     // instant, so this costs nothing to support and does not require a
@@ -50,6 +50,26 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Notices can be scheduled up to 30 days ahead.' }, { status: 400 })
       }
       scheduleIso = when.toISOString()
+    }
+
+    let joinUrl: string | undefined
+    if (meetingUrl?.trim()) {
+      let parsed: URL
+      try {
+        parsed = new URL(meetingUrl.trim())
+      } catch {
+        return NextResponse.json({ error: 'That meeting link is not a valid URL.' }, { status: 400 })
+      }
+      // Only http(s). A javascript: or data: URL rendered as a button
+      // that every brother is told to tap is not something to send under
+      // the lodge's name.
+      if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+        return NextResponse.json(
+          { error: 'Meeting links must start with https:// — Zoom, Meet, Teams and Discord links all do.' },
+          { status: 400 }
+        )
+      }
+      joinUrl = parsed.toString()
     }
 
     const action: 'send' | 'test' | 'draft' = mode === 'test' || mode === 'draft' ? mode : 'send'
@@ -88,6 +108,31 @@ export async function POST(request: Request) {
 
     const sentByName = sender ? `${sender.first_name ?? ''} ${sender.last_name ?? ''}`.trim() : undefined
     const lodgeName = `${tenant.name} #${tenant.number}`
+
+    // Resolve the attached event, scoped to this lodge so an id from
+    // another tenant cannot be surfaced in a notice.
+    let noticeEvent: { id: string; title: string; dateLabel: string; location?: string | null } | undefined
+    if (eventId) {
+      const { data: ev } = await supabase
+        .from('lodge_events')
+        .select('id, title, event_date, event_time, location')
+        .eq('id', eventId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle()
+
+      if (!ev) {
+        return NextResponse.json({ error: 'That event does not belong to this lodge.' }, { status: 400 })
+      }
+
+      // Noon avoids the date shifting a day either way when a bare
+      // YYYY-MM-DD is parsed as UTC midnight in a western timezone.
+      const d = new Date(ev.event_date + 'T12:00:00')
+      const dateLabel =
+        d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) +
+        (ev.event_time ? ` at ${String(ev.event_time).slice(0, 5)}` : '')
+
+      noticeEvent = { id: ev.id, title: ev.title, dateLabel, location: ev.location }
+    }
 
     // ---- Draft: save and stop ---------------------------------
 
@@ -197,6 +242,8 @@ export async function POST(request: Request) {
       sentByName,
       replyTo: sender?.email ?? undefined,
       scheduledAt: scheduleIso,
+      event: noticeEvent,
+      meetingUrl: joinUrl,
     })
 
     const allFailures = [...unreachable, ...sendFailures]
@@ -218,6 +265,8 @@ export async function POST(request: Request) {
         // scheduled_for carries when it actually goes out.
         sent_at: new Date().toISOString(),
         scheduled_for: scheduleIso ?? null,
+        event_id: eventId || null,
+        meeting_url: joinUrl ?? null,
         recipient_count: total,
         sent_count: sent,
         failed_count: allFailures.length,

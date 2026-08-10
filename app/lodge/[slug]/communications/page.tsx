@@ -66,6 +66,9 @@ export default function LodgeCommunicationsPage() {
 
   const [form, setForm] = useState({ subject: '', body: '', recipient_group: 'all' })
   const [scheduleAt, setScheduleAt] = useState('')
+  const [eventId, setEventId] = useState('')
+  const [meetingUrl, setMeetingUrl] = useState('')
+  const [events, setEvents] = useState<any[]>([])
   const [draftId, setDraftId] = useState<string | null>(null)
 
   const [busy, setBusy] = useState<'' | 'send' | 'test' | 'draft'>('')
@@ -84,7 +87,8 @@ export default function LodgeCommunicationsPage() {
     if (!t) { setLoading(false); return }
     setTenant(t)
 
-    const [{ data: m }, { data: c }, { data: problems }] = await Promise.all([
+    const today = new Date().toISOString().split('T')[0]
+    const [{ data: m }, { data: c }, { data: problems }, { data: ev }] = await Promise.all([
       supabase
         .from('tenant_members')
         .select('degree, dues_status, profiles(first_name, last_name, email)')
@@ -105,8 +109,18 @@ export default function LodgeCommunicationsPage() {
         .eq('tenant_id', t.id)
         .in('status', ['bounced', 'complained'])
         .order('last_event_at', { ascending: false }),
+      // Upcoming only — attaching a notice to a meeting that already
+      // happened is almost always a mis-click.
+      supabase
+        .from('lodge_events')
+        .select('id, title, event_date, event_time, location')
+        .eq('tenant_id', t.id)
+        .gte('event_date', today)
+        .order('event_date')
+        .limit(25),
     ])
 
+    setEvents(ev ?? [])
     setMembers((m ?? []) as any)
     setComms((c ?? []).filter((x: any) => !x.is_draft))
     setDrafts((c ?? []).filter((x: any) => x.is_draft))
@@ -172,6 +186,8 @@ export default function LodgeCommunicationsPage() {
           draftId,
           // Only meaningful for a real send; a test goes now.
           scheduledAt: mode === 'send' && scheduleAt ? new Date(scheduleAt).toISOString() : undefined,
+          eventId: eventId || undefined,
+          meetingUrl: meetingUrl.trim() || undefined,
         }),
       })
       const result = await res.json()
@@ -203,6 +219,8 @@ export default function LodgeCommunicationsPage() {
       if (result.failedRecipients?.length) setFailedList(result.failedRecipients)
       setForm({ subject: '', body: '', recipient_group: 'all' })
       setScheduleAt('')
+      setEventId('')
+      setMeetingUrl('')
       setDraftId(null)
       await load()
     } catch (err: any) {
@@ -428,6 +446,40 @@ export default function LodgeCommunicationsPage() {
               </div>
             </div>
           )}
+
+          {/* Attach a meeting and/or a join link.
+              The calendar entry goes out as an "Add to Calendar" LINK
+              rather than an .ics attachment: Resend's batch endpoint
+              cannot carry attachments at all, and links survive the
+              mail-security filters that routinely strip calendar files. */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+            <div>
+              <label style={labelStyle}>Attach a meeting (optional)</label>
+              <select value={eventId} onChange={e => setEventId(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
+                <option value="">— None —</option>
+                {events.map(ev => (
+                  <option key={ev.id} value={ev.id}>
+                    {format(new Date(ev.event_date + 'T12:00:00'), 'MMM d')} — {ev.title}
+                  </option>
+                ))}
+              </select>
+              <p style={{ fontFamily: 'Crimson Pro, serif', fontSize: '0.8rem', color: T.inkFainter, margin: '5px 0 0' }}>
+                Adds the date, time and location, plus an Add to Calendar button.
+              </p>
+            </div>
+            <div>
+              <label style={labelStyle}>Join link (optional)</label>
+              <input
+                value={meetingUrl}
+                onChange={e => setMeetingUrl(e.target.value)}
+                placeholder="https://zoom.us/j/… or a Discord invite"
+                style={inputStyle}
+              />
+              <p style={{ fontFamily: 'Crimson Pro, serif', fontSize: '0.8rem', color: T.inkFainter, margin: '5px 0 0' }}>
+                Zoom, Meet, Teams or Discord — paste the link and it becomes a button.
+              </p>
+            </div>
+          </div>
 
           {/* Scheduling is handled by Resend, which holds the message
               and releases it at this instant — so there is no cron job

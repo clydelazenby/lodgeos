@@ -64,10 +64,22 @@ export type FailedRecipient = {
   reason: string
 }
 
+export type NoticeEvent = {
+  id: string
+  title: string
+  dateLabel: string
+  location?: string | null
+}
+
 export function renderLodgeNotice({
-  firstName, lodgeName, subject, body, sentByName,
+  firstName, lodgeName, subject, body, sentByName, event, meetingUrl, appUrl,
 }: {
   firstName: string; lodgeName: string; subject: string; body: string; sentByName?: string
+  /** When set, the notice carries the meeting details and a calendar link. */
+  event?: NoticeEvent
+  /** Zoom / Meet / Discord / Teams join link, rendered as a button. */
+  meetingUrl?: string
+  appUrl?: string
 }): { html: string; text: string } {
   const safeSubject = escapeHtml(subject)
   const safeLodge = escapeHtml(lodgeName)
@@ -80,6 +92,33 @@ export function renderLodgeNotice({
     .map((line) => `<p style="margin:0 0 14px;">${escapeHtml(line.trim())}</p>`)
     .join('')
 
+  const base = appUrl || process.env.NEXT_PUBLIC_APP_URL || 'https://www.psalmslodge1827.com'
+
+  // Event details plus a calendar link. Deliberately a LINK and not an
+  // .ics attachment — Resend's batch endpoint cannot carry attachments
+  // at all, and links survive mail-security filters that routinely strip
+  // calendar files. See app/api/events/[eventId]/calendar.ics.
+  const eventHtml = event
+    ? `
+        <div style="background:#141C2E;border:1px solid rgba(201,168,76,0.3);padding:20px;margin-bottom:24px;">
+          <div style="font-family:'Arial',sans-serif;font-size:11px;letter-spacing:0.2em;color:#C9A84C;text-transform:uppercase;margin-bottom:8px;">Meeting Details</div>
+          <div style="font-size:16px;color:#F5F0E8;margin-bottom:6px;">${escapeHtml(event.title)}</div>
+          <div style="font-size:14px;color:#B8B0A0;">${escapeHtml(event.dateLabel)}</div>
+          ${event.location ? `<div style="font-size:14px;color:#B8B0A0;margin-top:4px;">${escapeHtml(event.location)}</div>` : ''}
+          <div style="margin-top:16px;">
+            <a href="${base}/api/events/${event.id}/calendar.ics" style="background:transparent;border:1px solid #C9A84C;color:#C9A84C;font-family:Arial,sans-serif;font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:10px 20px;text-decoration:none;display:inline-block;">Add to Calendar</a>
+          </div>
+        </div>`
+    : ''
+
+  const meetingHtml = meetingUrl
+    ? `
+        <div style="text-align:center;margin-bottom:24px;">
+          <a href="${escapeHtml(meetingUrl)}" style="background:#C9A84C;color:#0A0E1A;font-family:Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;padding:14px 36px;text-decoration:none;display:inline-block;">Join the Meeting</a>
+          <p style="color:rgba(184,176,160,0.5);font-size:11px;margin-top:10px;word-break:break-all;">${escapeHtml(meetingUrl)}</p>
+        </div>`
+    : ''
+
   const html = `
       <div style="font-family:Georgia,serif;max-width:600px;margin:0 auto;background:#0A0E1A;color:#F5F0E8;padding:40px;">
         <div style="text-align:center;margin-bottom:32px;">
@@ -91,6 +130,8 @@ export function renderLodgeNotice({
           <p style="margin:0 0 14px;">Brother ${safeName},</p>
           ${bodyHtml}
         </div>
+        ${eventHtml}
+        ${meetingHtml}
         <div style="border-top:1px solid rgba(201,168,76,0.2);margin-top:32px;padding-top:16px;text-align:center;">
           <p style="color:rgba(184,176,160,0.4);font-size:11px;font-style:italic;">Liberty · Equality · Fraternity</p>
           <p style="color:rgba(184,176,160,0.3);font-size:11px;">Powered by LodgeOS</p>
@@ -110,6 +151,12 @@ export function renderLodgeNotice({
     `Brother ${firstName},`,
     '',
     ...paragraphs.map((l) => l.trim()),
+    ...(event
+      ? ['', 'MEETING DETAILS', event.title, event.dateLabel,
+         ...(event.location ? [event.location] : []),
+         `Add to calendar: ${base}/api/events/${event.id}/calendar.ics`]
+      : []),
+    ...(meetingUrl ? ['', `Join the meeting: ${meetingUrl}`] : []),
     '',
     '—',
     'Powered by LodgeOS',
@@ -169,7 +216,7 @@ export type BatchSendResult = {
 }
 
 export async function sendLodgeNoticeBatch({
-  recipients, lodgeName, subject, body, sentByName, replyTo, scheduledAt,
+  recipients, lodgeName, subject, body, sentByName, replyTo, scheduledAt, event, meetingUrl,
 }: {
   recipients: NoticeRecipient[]
   lodgeName: string
@@ -179,6 +226,8 @@ export async function sendLodgeNoticeBatch({
   replyTo?: string
   /** ISO-8601 instant. Omit to send immediately. */
   scheduledAt?: string
+  event?: NoticeEvent
+  meetingUrl?: string
 }): Promise<BatchSendResult> {
   if (!process.env.RESEND_API_KEY) {
     throw new Error('RESEND_API_KEY is not configured')
@@ -222,6 +271,8 @@ export async function sendLodgeNoticeBatch({
         subject,
         body,
         sentByName,
+        event,
+        meetingUrl,
       })
 
       return {
