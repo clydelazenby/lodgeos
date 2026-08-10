@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { degreeLabel, degreePillClass, degreeRank } from '@/lib/degrees'
+import { stationRank } from '@/lib/stations'
 
 /**
  * The lodge roster, as a brother sees it.
@@ -44,17 +45,8 @@ export default async function PortalRosterPage() {
 
   // Officers first, in station order where we know it, then everyone
   // else by surname — the order a printed roster uses.
-  const STATION_ORDER = [
-    'Worshipful Master', 'Senior Warden', 'Junior Warden', 'Treasurer', 'Secretary',
-    'Chaplain', 'Senior Deacon', 'Junior Deacon', 'Senior Steward', 'Junior Steward',
-    'Marshal', 'Tyler',
-  ]
-  const rank = (m: any) => {
-    const i = STATION_ORDER.indexOf((m.lodge_role ?? '').trim())
-    return i === -1 ? STATION_ORDER.length : i
-  }
   const sorted = [...(members ?? [])].sort((a: any, b: any) => {
-    const byStation = rank(a) - rank(b)
+    const byStation = stationRank(a.lodge_role) - stationRank(b.lodge_role)
     if (byStation !== 0) return byStation
     const surname = (m: any) => (m.profiles?.last_name ?? '').toLowerCase()
     return surname(a).localeCompare(surname(b))

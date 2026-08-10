@@ -8,6 +8,7 @@ import { MemberImport } from '@/components/lodge/MemberImport'
 import { RosterExport } from '@/components/lodge/RosterExport'
 import { notify } from '@/lib/toast'
 import { DegreeOptions } from '@/components/DegreeOptions'
+import { OfficeSelect } from '@/components/lodge/OfficeSelect'
 import { roleLabel } from '@/lib/auth/permissions'
 
 export default function LodgeMembersPage() {
@@ -170,7 +171,7 @@ export default function LodgeMembersPage() {
     }
   }
 
-  const FIELD_LABEL: Record<string, string> = { degree: 'Degree', dues_status: 'Dues status' }
+  const FIELD_LABEL: Record<string, string> = { degree: 'Degree', dues_status: 'Dues status', lodge_role: 'Lodge office' }
 
   const updateMember = async (memberId: string, field: string, value: string) => {
     const previous = members.find(m => m.id === memberId)?.[field]
@@ -326,7 +327,19 @@ export default function LodgeMembersPage() {
                 <DegreeOptions />
               </select>
             </div>
-            <div><label style={labelStyle}>Lodge Role</label><input value={inviteForm.lodgeRole} onChange={e => setInviteForm(p => ({ ...p, lodgeRole: e.target.value }))} placeholder="e.g. Senior Warden" style={inputStyle} /></div>
+            <div>
+              <label style={labelStyle}>Lodge Office</label>
+              <OfficeSelect
+                value={inviteForm.lodgeRole}
+                onChange={(next) => setInviteForm(p => ({ ...p, lodgeRole: next }))}
+                style={{ ...inputStyle, cursor: 'pointer' }}
+                ariaLabel="Lodge office for the brother being invited"
+              />
+              <p style={{ fontSize: '0.7rem', color: '#B8B0A0', fontStyle: 'italic', marginTop: '4px' }}>
+                Seats him in the Lodge Room. This was a free-text box, and only an exact match
+                seated anybody.
+              </p>
+            </div>
             <div><label style={labelStyle}>Portal Access</label>
               <select value={inviteForm.tenantRole} onChange={e => setInviteForm(p => ({ ...p, tenantRole: e.target.value }))} style={{ ...inputStyle, cursor: 'pointer' }}>
                 <option value="member">Member — basic portal access</option>
@@ -395,7 +408,17 @@ export default function LodgeMembersPage() {
                         <DegreeOptions short />
                       </select>
                     </td>
-                    <td className="dash-td" style={{ fontSize: '0.85rem', color: '#B8B0A0' }}>{m.lodge_role || '—'}</td>
+                    <td className="dash-td">
+                      {/* Editable at last. The Lodge Room's own subtitle
+                          says to assign stations from the Members page,
+                          and until now this column was plain text. */}
+                      <OfficeSelect
+                        value={m.lodge_role || ''}
+                        onChange={(next) => updateMember(m.id, 'lodge_role', next)}
+                        ariaLabel={`Lodge office for ${m.profiles?.first_name ?? 'this brother'}`}
+                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'Crimson Pro, serif', fontSize: '0.85rem', color: '#B8B0A0', outline: 'none', maxWidth: 170 }}
+                      />
+                    </td>
                     <td className="dash-td">
                       <select value={m.dues_status} onChange={e => updateMember(m.id, 'dues_status', e.target.value)}
                         style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.62rem', color: m.dues_status === 'paid' ? '#5DBE85' : m.dues_status === 'due' ? '#C9A84C' : '#B8B0A0', outline: 'none' }}>
