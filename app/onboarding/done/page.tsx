@@ -21,14 +21,14 @@ export default function OnboardingDonePage() {
         Your LodgeOS platform is ready. Start by adding members, creating events, and setting up dues collection from your admin dashboard.
       </p>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1px', background: 'rgba(201,168,76,0.1)', marginBottom: '3rem', textAlign: 'left' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1px', marginBottom: '3rem', textAlign: 'left' }}>
         {[
           { emoji: '👥', title: 'Add members', desc: 'Invite brothers to the portal', href: slug ? `/lodge/${slug}/members` : '#' },
           { emoji: '📅', title: 'Create events', desc: 'Schedule your first meeting', href: slug ? `/lodge/${slug}/events` : '#' },
           { emoji: '💳', title: 'Setup payments', desc: 'Connect Stripe for dues', href: slug ? `/lodge/${slug}/settings` : '#' },
           { emoji: '🌐', title: 'View public site', desc: 'See your live lodge website', href: slug ? `/lodge/${slug}` : '#' },
         ].map(({ emoji, title, desc, href }) => (
-          <Link key={title} href={href} style={{ background: '#141C2E', padding: '1.5rem', textDecoration: 'none', display: 'block', transition: 'background 0.2s' }}>
+          <Link key={title} href={href} style={{ background: '#141C2E', padding: '1.5rem', boxShadow: '0 0 0 1px rgba(201,168,76,0.1)', textDecoration: 'none', display: 'block', transition: 'background 0.2s' }}>
             <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>{emoji}</div>
             <div style={{ fontFamily: 'Cinzel, serif', fontSize: '0.9rem', color: '#C9A84C', marginBottom: '0.25rem' }}>{title}</div>
             <div style={{ fontSize: '0.85rem', color: '#B8B0A0' }}>{desc}</div>

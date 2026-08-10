@@ -60,7 +60,7 @@ export default function HomePage() {
           <h2 style={{ fontFamily: 'Cinzel, serif', fontSize: 'clamp(1.8rem, 3vw, 2.8rem)', color: 'var(--cream)', marginBottom: '1rem' }}>Built for Secretaries.<br />Loved by Brothers.</h2>
           <p style={{ fontSize: '1.1rem', color: 'var(--cream-dim)', fontStyle: 'italic', maxWidth: '500px', margin: '0 auto' }}>Everything you need to run a modern lodge — no coding required.</p>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1px', maxWidth: '1100px', margin: '0 auto', background: 'rgba(201,168,76,0.1)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1px', maxWidth: '1100px', margin: '0 auto' }}>
           {[
             { icon: '👥', title: 'Member Management', desc: 'Full roster with roles, degrees, contact info. Brothers update their own profiles. You stay organized effortlessly.' },
             { icon: '💳', title: 'Online Dues Collection', desc: 'Brothers pay directly from their portal. Stripe processes payment. Status updates automatically. No more chasing checks.' },
@@ -109,7 +109,7 @@ export default function HomePage() {
           <h2 style={{ fontFamily: 'Cinzel, serif', fontSize: '2rem', color: 'var(--cream)', marginBottom: '1rem' }}>One price. Everything included.</h2>
           <p style={{ fontSize: '1.1rem', color: 'var(--cream-dim)', fontStyle: 'italic' }}>14-day free trial on all plans. No credit card required.</p>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1px', maxWidth: '900px', margin: '0 auto', background: 'rgba(201,168,76,0.1)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1px', maxWidth: '900px', margin: '0 auto' }}>
           {Object.entries(PLANS).map(([key, plan]) => (
             <div key={key} style={{ background: key === 'pro' ? 'var(--navy-light)' : 'var(--navy-card)', padding: '2.5rem 2rem', position: 'relative' }}>
               {key === 'pro' && (

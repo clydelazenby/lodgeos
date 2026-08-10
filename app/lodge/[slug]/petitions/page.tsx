@@ -29,9 +29,9 @@ export default async function LodgePetitionsPage({ params }: { params: { slug: s
         <p style={{ fontFamily: 'Crimson Pro, serif', fontStyle: 'italic', color: '#B8B0A0' }}>Review and manage membership applications</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1px', background: 'rgba(201,168,76,0.1)', marginBottom: '2rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1px', marginBottom: '2rem' }}>
         {[['New', counts.new, '#7BB8D4'], ['Under Review', counts.under_review, '#C9A84C'], ['Approved', counts.approved, '#5DBE85'], ['Denied', counts.denied, '#EC5B4B']].map(([l, v, c]) => (
-          <div key={l as string} style={{ background: '#141C2E', padding: '1.25rem' }}>
+          <div key={l as string} style={{ background: '#141C2E', padding: '1.25rem', boxShadow: '0 0 0 1px rgba(201,168,76,0.1)' }}>
             <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.56rem', letterSpacing: '0.2em', color: '#C9A84C', textTransform: 'uppercase', marginBottom: '0.5rem' }}>{l}</div>
             <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1.8rem', fontWeight: 700, color: c as string, lineHeight: 1 }}>{v}</div>
           </div>

@@ -49,7 +49,7 @@ export default function BillingOnboardingPage() {
       </div>
 
       {/* Plan cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1px', background: 'rgba(201,168,76,0.1)', marginBottom: '2rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1px', marginBottom: '2rem' }}>
         {Object.entries(PLANS).map(([key, plan]) => (
           <div key={key} onClick={() => setSelectedPlan(key)}
             style={{ background: selectedPlan === key ? '#1C2640' : '#141C2E', padding: '1.5rem', cursor: 'pointer', border: selectedPlan === key ? '2px solid #C9A84C' : '2px solid transparent', position: 'relative', transition: 'all 0.2s' }}>

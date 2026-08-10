@@ -50,7 +50,7 @@ export default async function PortalPage() {
       )}
 
       {/* Status cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1px', background: 'rgba(201,168,76,0.1)', marginBottom: '2rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1px', marginBottom: '2rem' }}>
         <div style={{ background: '#141C2E', padding: '1.4rem' }}>
           <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.56rem', letterSpacing: '0.2em', color: '#C9A84C', textTransform: 'uppercase', marginBottom: '0.6rem' }}>Degree</div>
           <span className={`pill pill-${(membership as any).degree?.toLowerCase()}`}>{(membership as any).degree}</span>

@@ -54,16 +54,16 @@ export default function PortalDuesPage() {
       </div>
 
       {/* Current status */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1px', background: 'rgba(201,168,76,0.1)', marginBottom: '2rem' }}>
-        <div style={{ background: '#141C2E', padding: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1px', marginBottom: '2rem' }}>
+        <div style={{ background: '#141C2E', padding: '1.5rem', boxShadow: '0 0 0 1px rgba(201,168,76,0.1)' }}>
           <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.56rem', letterSpacing: '0.2em', color: '#C9A84C', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Current Year</div>
           <div style={{ fontFamily: 'Cinzel, serif', fontSize: '2rem', fontWeight: 700, color: '#F5F0E8' }}>{new Date().getFullYear()}</div>
         </div>
-        <div style={{ background: '#141C2E', padding: '1.5rem' }}>
+        <div style={{ background: '#141C2E', padding: '1.5rem', boxShadow: '0 0 0 1px rgba(201,168,76,0.1)' }}>
           <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.56rem', letterSpacing: '0.2em', color: '#C9A84C', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Annual Amount</div>
           <div style={{ fontFamily: 'Cinzel, serif', fontSize: '2rem', fontWeight: 700, color: '#F5F0E8' }}>${tenant?.dues_amount ?? '—'}</div>
         </div>
-        <div style={{ background: '#141C2E', padding: '1.5rem' }}>
+        <div style={{ background: '#141C2E', padding: '1.5rem', boxShadow: '0 0 0 1px rgba(201,168,76,0.1)' }}>
           <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.56rem', letterSpacing: '0.2em', color: '#C9A84C', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Status</div>
           <span className={`pill pill-${membership?.dues_status ?? 'new'}`}>{membership?.dues_status ?? '—'}</span>
         </div>

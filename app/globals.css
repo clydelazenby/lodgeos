@@ -192,11 +192,23 @@ body { background: var(--navy); color: var(--cream); font-family: 'Crimson Pro',
      one nowrap row ran off the side of a phone with the links
      unreachable. Tighter padding, smaller gaps, and the nav centred on
      its own wrapped row. */
-  .lodgeos-sa-header { padding: 0.6rem 1rem !important; }
+  /* Stack rather than relying on flex-wrap. A flex item whose content
+     cannot shrink below its min-content width will overflow its row
+     instead of wrapping, which is exactly what happened here: the nav
+     block (four links plus a name) stayed on the brand's row and ran off
+     the side of the screen, taking the page's horizontal scroll with it.
+     Explicit column direction removes the ambiguity. */
+  .lodgeos-sa-header {
+    padding: 0.6rem 1rem !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0.5rem !important;
+  }
   .lodgeos-sa-nav {
     gap: 0.9rem !important;
     width: 100%;
     justify-content: flex-start;
+    min-width: 0;
   }
 }
 

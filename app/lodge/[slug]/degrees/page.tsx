@@ -40,9 +40,9 @@ export default async function LodgeDegreesPage({ params }: { params: { slug: str
       </div>
 
       {/* Degree counts */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1px', background: 'rgba(201,168,76,0.1)', marginBottom: '2rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1px', marginBottom: '2rem' }}>
         {[['I°', 'Entered Apprentice', ea.length, '#7BB8D4'], ['II°', 'Fellowcraft', fc.length, '#C9A84C'], ['III°', 'Master Mason', mm.length, '#5DBE85']].map(([deg, name, count, color]) => (
-          <div key={deg as string} style={{ background: '#141C2E', padding: '1.5rem', textAlign: 'center' }}>
+          <div key={deg as string} style={{ background: '#141C2E', padding: '1.5rem', boxShadow: '0 0 0 1px rgba(201,168,76,0.1)', textAlign: 'center' }}>
             <div style={{ fontFamily: 'Cinzel, serif', fontSize: '2rem', fontWeight: 900, color: color as string, lineHeight: 1, marginBottom: '0.4rem' }}>{deg}</div>
             <div style={{ fontFamily: 'Cinzel, serif', fontSize: '0.82rem', color: '#F5F0E8', marginBottom: '0.5rem' }}>{name}</div>
             <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1.6rem', fontWeight: 700, color: '#F5F0E8' }}>{count as number}</div>
