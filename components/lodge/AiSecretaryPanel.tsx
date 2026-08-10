@@ -125,6 +125,27 @@ export function AiSecretaryPanel({
     }
   }, [open])
 
+  /**
+   * Navigating closes the sheet.
+   *
+   * Insurance rather than the fix — raising the panel above the header
+   * puts the nav out of reach while it is open, so this should no
+   * longer be reachable on a phone. But a full-screen sheet left
+   * covering a page the officer has just navigated to is an unusually
+   * bad failure: the app looks frozen, and the only visible control is
+   * one that has nothing to do with where he was going. Cheap to make
+   * impossible twice.
+   *
+   * Sheet widths only. On a desktop the docked card blocks nothing, and
+   * carrying a conversation across pages is the point of keeping it.
+   */
+  useEffect(() => {
+    if (!open) return
+    if (!window.matchMedia('(max-width: 640px)').matches) return
+    setOpen(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- on route change only
+  }, [pathname])
+
   /** Escape closes it, as it closes every other dialog in the app. */
   useEffect(() => {
     if (!open) return

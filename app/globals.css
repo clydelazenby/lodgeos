@@ -588,7 +588,24 @@ textarea:user-invalid + .lodgeos-field-hint::after {
   position: fixed;
   bottom: 16px;
   right: 16px;
-  z-index: 50;
+  /* ABOVE THE HEADER, AND THAT IS THE WHOLE POINT.
+     At z-index 50 this sat UNDER the sticky lodge header (100) and the
+     mobile hamburger (101). On a phone the sheet is inset:0, so its top
+     sixty pixels — precisely where the × and NEW live — were covered by
+     the header: tapping the close button hit "Sign out" instead, and
+     there was no way out of the panel at all.
+     The hamburger floating above it was the second half of the same
+     bug. The officer could open the nav over an opaque full-screen
+     sheet and tap Dashboard; the route changed behind the sheet and
+     nothing appeared to happen.
+     A modal sheet must be above the chrome it covers. 150 clears the
+     header and the hamburger while staying UNDER the app's real modals
+     — the document upload sheet (200), the confirm dialogs (300) and
+     the toaster (400) — so a dialog raised over the panel still lands
+     on top of it rather than behind it.
+     This also fixes the desktop card in a short window, where the same
+     overlap made its own header unreachable. */
+  z-index: 150;
   width: 400px;
   max-width: calc(100vw - 32px);
   height: 580px;
