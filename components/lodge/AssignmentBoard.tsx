@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { assignmentStatus, statusPill, statusLabel, dueLabel, type Assignment } from '@/lib/assignments'
 import { CURRICULUM_DEGREES, DEGREE_TITLE } from '@/lib/curriculum'
+import { callApi, errorMessage } from '@/lib/clientFetch'
 
 /**
  * Giving work out, and seeing what is outstanding.
@@ -70,10 +71,8 @@ export function AssignmentBoard({
     if (form.mode === 'task' && !form.title.trim()) { setError('A task needs a title.'); return }
     setBusy(true); setError(''); setNotice('')
     try {
-      const res = await fetch('/api/assignments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const data = await callApi('/api/assignments', {
+        body: {
           tenantId,
           memberId: form.memberId,
           notify: form.notify,
@@ -81,29 +80,23 @@ export function AssignmentBoard({
           ...(form.mode === 'plan'
             ? { degree: form.degree }
             : { title: form.title, description: form.description, documentId: form.documentId || null }),
-        }),
+        },
       })
-      const data = await res.json()
-      if (!res.ok) { setError(data.error || 'Could not assign that.'); return }
       setNotice(data.message)
       setForm((p) => ({ ...p, title: '', description: '', documentId: '' }))
       router.refresh()
-    } catch (e: any) {
-      setError(e?.message || 'Could not assign that.')
+    } catch (e) {
+      setError(errorMessage(e, 'Could not assign that.'))
     } finally { setBusy(false) }
   }
 
   const act = async (assignmentId: string, body: any) => {
     setBusy(true); setError('')
     try {
-      const res = await fetch('/api/assignments', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenantId, assignmentId, ...body }),
-      })
-      const data = await res.json()
-      if (!res.ok) { setError(data.error || 'That did not work.'); return }
+      await callApi('/api/assignments', { method: 'PATCH', body: { tenantId, assignmentId, ...body } })
       router.refresh()
+    } catch (e) {
+      setError(errorMessage(e))
     } finally { setBusy(false) }
   }
 

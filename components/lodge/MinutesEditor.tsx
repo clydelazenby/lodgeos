@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { takeStagedMinutes } from '@/lib/minutesHandoff'
+import { callApi, errorMessage } from '@/lib/clientFetch'
 
 /**
  * Writing up a meeting.
@@ -71,22 +72,15 @@ export function MinutesEditor({
     setError('')
     setSaved(false)
     try {
-      const res = await fetch('/api/minutes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenantId, eventId, body, status: nextStatus }),
+      const data = await callApi('/api/minutes', {
+        body: { tenantId, eventId, body, status: nextStatus },
       })
-      const data = await res.json()
-      if (!res.ok) {
-        setError(data.error || 'Could not save the minutes.')
-        return
-      }
       setStatus(data.minutes.status)
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
       if (nextStatus === 'submitted') router.push(`/lodge/${slug}/minutes`)
-    } catch (e: any) {
-      setError(e?.message || 'Could not save the minutes.')
+    } catch (e) {
+      setError(errorMessage(e, 'Could not save the minutes.'))
     } finally {
       setSaving(false)
     }

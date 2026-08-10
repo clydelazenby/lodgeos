@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { peekStagedMinutes, discardStagedMinutes } from '@/lib/minutesHandoff'
+import { callApi, errorMessage } from '@/lib/clientFetch'
 
 /**
  * The minute book.
@@ -92,28 +93,22 @@ export function MinuteBook({
     setBusy(true)
     setError('')
     try {
-      const res = await fetch('/api/minutes', {
+      const data = await callApi('/api/minutes', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: {
           tenantId,
           minutesId: approving.id,
           approvedAtEventId: approvalEvent || null,
           approvedOn: approvalDate,
           correctionNote: correction,
-        }),
+        },
       })
-      const data = await res.json()
-      if (!res.ok) {
-        setError(data.error || 'Could not record the approval.')
-        return
-      }
       setRows((prev) => prev.map((m) => (m.id === approving.id ? { ...m, ...data.minutes } : m)))
       setApproving(null)
       setCorrection('')
       setApprovalEvent('')
-    } catch (e: any) {
-      setError(e?.message || 'Could not record the approval.')
+    } catch (e) {
+      setError(errorMessage(e, 'Could not record the approval.'))
     } finally {
       setBusy(false)
     }
