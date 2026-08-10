@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { CURRICULUM_DEGREES, DEGREE_TITLE, type CurriculumDegree, type Step } from '@/lib/curriculum'
+import { callApi, errorMessage } from '@/lib/clientFetch'
 
 /**
  * Writing down what a degree actually requires.
@@ -43,20 +44,14 @@ export function CurriculumEditor({
     setBusy(true)
     setError('')
     try {
-      const res = await fetch('/api/curriculum', {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenantId, degree, ...body }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        setError(data.error || 'That did not work.')
-        return false
-      }
+      // callApi retries once on a network-level failure and turns
+      // Safari's bare "Load failed" into a sentence that says what
+      // happened and whether anything was saved. See lib/clientFetch.
+      await callApi('/api/curriculum', { method, body: { tenantId, degree, ...body } })
       router.refresh()
       return true
-    } catch (e: any) {
-      setError(e?.message || 'That did not work.')
+    } catch (e) {
+      setError(errorMessage(e))
       return false
     } finally {
       setBusy(false)

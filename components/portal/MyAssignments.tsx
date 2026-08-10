@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { assignmentStatus, statusPill, statusLabel, dueLabel, selfCompletable, type Assignment } from '@/lib/assignments'
+import { callApi, errorMessage } from '@/lib/clientFetch'
 
 /**
  * What a brother has been asked to do, and what he has finished.
@@ -49,21 +50,14 @@ export function MyAssignments({
     setError('')
     setLocallyDone((p) => ({ ...p, [a.id]: completed }))
     try {
-      const res = await fetch('/api/assignments', {
+      await callApi('/api/assignments', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenantId, assignmentId: a.id, completed }),
+        body: { tenantId, assignmentId: a.id, completed },
       })
-      const data = await res.json()
-      if (!res.ok) {
-        setLocallyDone((p) => ({ ...p, [a.id]: !completed }))
-        setError(data.error || 'Could not record that.')
-        return
-      }
       router.refresh()
-    } catch (e: any) {
+    } catch (e) {
       setLocallyDone((p) => ({ ...p, [a.id]: !completed }))
-      setError(e?.message || 'Could not record that.')
+      setError(errorMessage(e, 'Could not record that.'))
     } finally {
       setBusy(null)
     }

@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { completion, nextStep, DEGREE_TITLE, type CurriculumDegree, type Step } from '@/lib/curriculum'
+import { callApi, errorMessage } from '@/lib/clientFetch'
 
 /**
  * Where each candidate has actually got to.
@@ -58,27 +59,21 @@ export function CandidateCurriculum({
       return nextSet
     })
     try {
-      const res = await fetch('/api/curriculum', {
+      await callApi('/api/curriculum', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenantId, memberId, stepId, completed }),
+        body: { tenantId, memberId, stepId, completed },
       })
-      const data = await res.json()
-      if (!res.ok) {
-        // Put it back. An optimistic update that silently keeps a
-        // rejected sign-off is worse than no optimism at all.
-        setDone((prev) => {
-          const revert = new Set(prev)
-          if (completed) revert.delete(stepId)
-          else revert.add(stepId)
-          return revert
-        })
-        setError(data.error || 'Could not record that.')
-        return
-      }
       router.refresh()
-    } catch (e: any) {
-      setError(e?.message || 'Could not record that.')
+    } catch (e) {
+      // Put it back. An optimistic update that silently keeps a
+      // rejected sign-off is worse than no optimism at all.
+      setDone((prev) => {
+        const revert = new Set(prev)
+        if (completed) revert.delete(stepId)
+        else revert.add(stepId)
+        return revert
+      })
+      setError(errorMessage(e, 'Could not record that.'))
     } finally {
       setBusy(null)
     }
