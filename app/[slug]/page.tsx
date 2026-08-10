@@ -2,6 +2,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
+import { upcomingSince } from '@/lib/dates'
 import {
   ArrowRight,
   BookOpen,
@@ -100,7 +101,7 @@ const tenant = result.data
 
 if (!tenant) notFound()
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = upcomingSince()
 
   const { data: events } = await supabase
     .from('lodge_events')

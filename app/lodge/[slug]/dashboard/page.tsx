@@ -6,6 +6,7 @@ import { format, formatDistanceToNow } from 'date-fns'
 import Link from 'next/link'
 import { T, pillTone } from '@/lib/designTokens'
 import { Users, DollarSign, CalendarPlus, UserPlus, BookOpen, BarChart3 } from 'lucide-react'
+import { upcomingSince } from '@/lib/dates'
 
 // Traditional fixed lodge stations, same list as the prior vellum
 // dashboard — carried over unchanged, since this is a visual reskin,
@@ -38,7 +39,7 @@ const monthLabel = (m: number) => new Date(2000, m, 1).toLocaleString('en-US', {
 
 export default async function LodgeDashboardPage({ params }: { params: { slug: string } }) {
   const supabase = await createClient()
-  const today = new Date().toISOString().split('T')[0]
+  const today = upcomingSince()
   const yearStart = `${new Date().getFullYear()}-01-01`
 
   // Deduped against the identical lookup in lodge/[slug]/layout.tsx —

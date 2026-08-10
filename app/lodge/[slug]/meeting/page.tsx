@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useParams } from 'next/navigation'
 import { T } from '@/lib/designTokens'
 import { QRCodeSVG } from 'qrcode.react'
+import { localDateString } from '@/lib/dates'
 
 /**
  * Meeting Mode — the live "lodge is open right now" view from the
@@ -37,7 +38,7 @@ export default function MeetingModePage() {
   // Inline meeting creation. Defaults to today and to a stated
   // communication, because the overwhelmingly common case is "the lodge
   // is meeting right now and no event exists for it."
-  const today = new Date().toISOString().split('T')[0]
+  const today = localDateString()
   const [showCreate, setShowCreate] = useState(false)
   const [createForm, setCreateForm] = useState({
     title: 'Stated Communication',

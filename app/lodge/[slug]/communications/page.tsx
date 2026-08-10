@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import { format } from 'date-fns'
 import { T } from '@/lib/designTokens'
 import { ConfirmDialog } from '@/components/lodge/ConfirmDialog'
+import { upcomingSince } from '@/lib/dates'
 
 /**
  * Communications.
@@ -87,7 +88,7 @@ export default function LodgeCommunicationsPage() {
     if (!t) { setLoading(false); return }
     setTenant(t)
 
-    const today = new Date().toISOString().split('T')[0]
+    const today = upcomingSince()
     const [{ data: m }, { data: c }, { data: problems }, { data: ev }] = await Promise.all([
       supabase
         .from('tenant_members')
@@ -455,7 +456,12 @@ export default function LodgeCommunicationsPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
             <div>
               <label style={labelStyle}>Attach a meeting (optional)</label>
-              <select value={eventId} onChange={e => setEventId(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
+              <select
+                value={eventId}
+                onChange={e => setEventId(e.target.value)}
+                disabled={events.length === 0}
+                style={{ ...inputStyle, cursor: events.length === 0 ? 'not-allowed' : 'pointer', opacity: events.length === 0 ? 0.6 : 1 }}
+              >
                 <option value="">— None —</option>
                 {events.map(ev => (
                   <option key={ev.id} value={ev.id}>
@@ -463,9 +469,21 @@ export default function LodgeCommunicationsPage() {
                   </option>
                 ))}
               </select>
-              <p style={{ fontFamily: 'Crimson Pro, serif', fontSize: '0.8rem', color: T.inkFainter, margin: '5px 0 0' }}>
-                Adds the date, time and location, plus an Add to Calendar button.
-              </p>
+              {/* An empty dropdown with no explanation reads as broken.
+                  This list is upcoming meetings only, so a lodge whose
+                  events are all in the past sees nothing — and has no way
+                  to tell that apart from a bug. */}
+              {events.length === 0 ? (
+                <p style={{ fontFamily: 'Crimson Pro, serif', fontSize: '0.8rem', color: T.gold, margin: '5px 0 0', lineHeight: 1.5 }}>
+                  No upcoming meetings on the calendar. Only future events can be attached —{' '}
+                  <a href={`/lodge/${slug}/events`} style={{ color: T.gold }}>add one on the Events page</a>{' '}
+                  and it will appear here.
+                </p>
+              ) : (
+                <p style={{ fontFamily: 'Crimson Pro, serif', fontSize: '0.8rem', color: T.inkFainter, margin: '5px 0 0' }}>
+                  Adds the date, time and location, plus an Add to Calendar button.
+                </p>
+              )}
             </div>
             <div>
               <label style={labelStyle}>Join link (optional)</label>

@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { format } from 'date-fns'
+import { upcomingSince } from '@/lib/dates'
 
 export default async function PortalPage() {
   const supabase = await createClient()
@@ -17,7 +18,7 @@ export default async function PortalPage() {
 
   if (!membership) redirect('/auth/login')
   const tenant = (membership as any).tenants
-  const today = new Date().toISOString().split('T')[0]
+  const today = upcomingSince()
 
   const [{ data: events }, { data: payments }, { data: degrees }] = await Promise.all([
     supabase.from('lodge_events').select('*').eq('tenant_id', tenant.id).gte('event_date', today).order('event_date').limit(3),
