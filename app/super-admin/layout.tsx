@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import { Toaster } from '@/components/ui/Toaster'
 
 /**
  * PRODUCTION INCIDENT FIX — read before changing.
@@ -55,6 +56,7 @@ export default async function SuperAdminLayout({
           <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.6rem', color: '#C9A84C' }}>{profile?.first_name}</span>
         </div>
       </header>
+      <Toaster />
       <main className="lodgeos-app-main" style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
         {children}
       </main>

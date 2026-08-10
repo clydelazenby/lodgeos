@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import { Toaster } from '@/components/ui/Toaster'
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -35,6 +36,7 @@ export default async function PortalLayout({ children }: { children: React.React
           </span>
         </div>
       </header>
+      <Toaster />
       <main className="lodgeos-app-main" style={{ maxWidth: '900px', margin: '0 auto', padding: '2rem' }}>
         {children}
       </main>

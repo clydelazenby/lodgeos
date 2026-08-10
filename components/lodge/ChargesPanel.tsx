@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 import { T } from '@/lib/designTokens'
+import { notify } from '@/lib/toast'
 
 /**
  * Penalties, fines and one-off fees.
@@ -68,7 +69,8 @@ export function ChargesPanel({
         body: JSON.stringify({ tenantId, ...form }),
       })
       const data = await res.json()
-      if (!res.ok) { setError(data.error || 'Could not add that charge.'); return }
+      if (!res.ok) { setError(data.error || 'Could not add that charge.'); notify.error(data.error || 'Could not add that charge.'); return }
+      notify.saved('Charge added')
       setForm({ memberId: '', amount: '', chargeType: 'penalty', reason: '', dueDate: '' })
       setShowForm(false)
       router.refresh()
@@ -89,7 +91,8 @@ export function ChargesPanel({
         body: JSON.stringify({ tenantId, chargeId, action, waivedReason: reason }),
       })
       const data = await res.json()
-      if (!res.ok) { setError(data.error || 'Could not update that charge.'); return }
+      if (!res.ok) { setError(data.error || 'Could not update that charge.'); notify.error(data.error || 'Could not update that charge.'); return }
+      notify.saved(action === 'waive' ? 'Charge waived' : action === 'mark_paid' ? 'Marked as paid' : 'Charge reopened')
       setWaivingId(null)
       setWaiveReason('')
       router.refresh()

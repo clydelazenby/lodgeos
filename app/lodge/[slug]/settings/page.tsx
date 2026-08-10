@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useParams } from 'next/navigation'
 import { revalidateLodgePage } from '@/app/actions/revalidate'
+import { notify } from '@/lib/toast'
 
 export default function LodgeSettingsPage() {
   const params = useParams()
@@ -30,6 +31,7 @@ export default function LodgeSettingsPage() {
       // successful one.
       setSaving(false)
       setSaveError(error.message)
+      notify.error(`Not saved: ${error.message}`)
       return
     }
 
@@ -38,6 +40,7 @@ export default function LodgeSettingsPage() {
     await revalidateLodgePage(slug)
 
     setSaveError('')
+    notify.saved('Settings saved')
     setSaved(true)
     setTimeout(() => setSaved(false), 2500)
     setSaving(false)
@@ -167,6 +170,10 @@ export default function LodgeSettingsPage() {
       {/* Donations — what the public /donate page shows */}
       <div style={sectionStyle}>
         <div style={sectionTitle}>Donations</div>
+        <p style={{ fontFamily: 'Crimson Pro, serif', color: '#B8B0A0', marginTop: '-0.75rem', marginBottom: '1.5rem', lineHeight: 1.7 }}>
+          Every field here is optional — fill in only the payment methods your lodge actually uses.
+          The Donate button appears once at least one is set and the box below is ticked.
+        </p>
 
         <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: '1.5rem', cursor: 'pointer' }}>
           <input

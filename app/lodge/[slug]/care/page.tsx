@@ -92,7 +92,7 @@ export default function CareRegistryPage() {
 
       {showForm && (
         <form onSubmit={submitEntry} style={{ background: '#141C2E', border: '1px solid rgba(201,168,76,0.15)', padding: '1.5rem', marginBottom: '1.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
-          <div><label style={labelStyle}>Name</label><input required value={form.personName} onChange={e => setForm(p => ({ ...p, personName: e.target.value }))} style={inputStyle} /></div>
+          <div><label className="lodgeos-required" style={labelStyle}>Name</label><input required value={form.personName} onChange={e => setForm(p => ({ ...p, personName: e.target.value }))} style={inputStyle} /></div>
           <div><label style={labelStyle}>Relationship (if not a member)</label><input value={form.relationship} onChange={e => setForm(p => ({ ...p, relationship: e.target.value }))} placeholder="e.g. Widow of Bro. Ellis" style={inputStyle} /></div>
           <div><label style={labelStyle}>Type</label>
             <select value={form.careType} onChange={e => setForm(p => ({ ...p, careType: e.target.value }))} style={{ ...inputStyle, cursor: 'pointer' }}>

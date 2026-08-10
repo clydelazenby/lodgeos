@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useParams } from 'next/navigation'
 import { format } from 'date-fns'
 import Link from 'next/link'
+import { notify } from '@/lib/toast'
 
 export default function LodgeEventsPage() {
   const params = useParams()
@@ -45,8 +46,20 @@ export default function LodgeEventsPage() {
     e.preventDefault()
     setSaving(true)
     const { data: { user } } = await supabase.auth.getUser()
-    const { data: newEvent } = await supabase.from('lodge_events').insert({ ...form, tenant_id: tenant.id, created_by: user?.id }).select().single()
+    const { data: newEvent, error } = await supabase.from('lodge_events').insert({ ...form, tenant_id: tenant.id, created_by: user?.id }).select().single()
+
+    if (error) {
+      // The error was previously destructured away entirely, so a failed
+      // insert closed the form and cleared the fields exactly as a
+      // successful one did — the officer lost what they had typed and
+      // believed the event was created.
+      notify.error(`Event not created: ${error.message}`)
+      setSaving(false)
+      return
+    }
+
     if (newEvent) setEvents(prev => [...prev, newEvent].sort((a, b) => a.event_date.localeCompare(b.event_date)))
+    notify.saved(`"${newEvent?.title ?? 'Event'}" added to the calendar`)
     setShowForm(false)
     setForm(p => ({ ...p, title: '', event_date: '', event_time: '', description: '', dress_code: '' }))
     setSaving(false)
@@ -70,8 +83,8 @@ export default function LodgeEventsPage() {
         <div style={{ background: '#141C2E', border: '1px solid rgba(201,168,76,0.15)', padding: '2rem', marginBottom: '2rem' }}>
           <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1.1rem', color: '#C9A84C', marginBottom: '1.5rem' }}>New Event</div>
           <form onSubmit={handleSave} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-            <div style={{ gridColumn: '1 / -1' }}><label style={labelStyle}>Event Title *</label><input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="Stated Communication — April" style={inputStyle} required /></div>
-            <div><label style={labelStyle}>Date *</label><input type="date" value={form.event_date} onChange={e => setForm(p => ({ ...p, event_date: e.target.value }))} style={inputStyle} required /></div>
+            <div style={{ gridColumn: '1 / -1' }}><label className="lodgeos-required" style={labelStyle}>Event Title</label><input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="Stated Communication — April" style={inputStyle} required /></div>
+            <div><label className="lodgeos-required" style={labelStyle}>Date</label><input type="date" value={form.event_date} onChange={e => setForm(p => ({ ...p, event_date: e.target.value }))} style={inputStyle} required /></div>
             <div><label style={labelStyle}>Time</label><input type="time" value={form.event_time} onChange={e => setForm(p => ({ ...p, event_time: e.target.value }))} style={inputStyle} /></div>
             <div><label style={labelStyle}>Type</label>
               <select value={form.event_type} onChange={e => setForm(p => ({ ...p, event_type: e.target.value }))} style={{ ...inputStyle, cursor: 'pointer' }}>

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { ConfirmDialog } from '@/components/lodge/ConfirmDialog'
 
 import { createClient } from '@/lib/supabase/client'
+import { notify } from '@/lib/toast'
 
 const CATEGORIES = ['Degree Materials', 'Minutes', 'Administration', 'Grand Lodge', 'Training', 'Other']
 
@@ -135,6 +136,7 @@ export function DocumentUploadButton({ tenantId }: { tenantId: string }) {
 
       reset()
       setOpen(false)
+      notify.saved('Document uploaded')
       router.refresh()
     } catch (err: any) {
       setError(err.message)
@@ -389,6 +391,7 @@ export function DocumentDeleteButton({
         return
       }
       setOpen(false)
+      notify.saved('Document deleted')
       router.refresh()
     } catch (err: any) {
       setError(err?.message || 'Could not delete this document.')

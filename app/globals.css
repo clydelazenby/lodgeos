@@ -64,7 +64,64 @@ body { background: var(--navy); color: var(--cream); font-family: 'Crimson Pro',
 .data-box { background: var(--navy-card); border: 1px solid rgba(201,168,76,0.1); margin-bottom: 1.5rem; }
 .data-box-head { padding: 1rem 1.4rem; border-bottom: 1px solid rgba(201,168,76,0.1); font-family: 'Cinzel', serif; font-size: 0.88rem; color: var(--cream); display: flex; justify-content: space-between; align-items: center; }
 
+/* ============================================================
+   REQUIRED FIELDS
+   ============================================================
+   Forms across the app mark fields with the HTML `required`
+   attribute, which blocks submission — but nothing SHOWED which
+   fields were required until the browser refused to submit, and
+   nothing marked an empty one afterwards. An officer filling in a
+   long form got a generic browser bubble on one field with no way to
+   see at a glance what else was missing.
+
+   Two rules, no JavaScript:
+
+   1. A gold asterisk after the label of any required control. Added
+      via ::after on the label, so no markup changes are needed —
+      wrap the label text in .lodgeos-label and add `required` to the
+      input as usual.
+
+   2. :user-invalid, not :invalid. :invalid matches from first paint,
+      so an untouched empty form would light up entirely red before
+      the officer had typed a character — which reads as "you have
+      done something wrong" rather than "this is needed".
+      :user-invalid only matches AFTER interaction or a submit
+      attempt, which is the honest moment to say so.
+   ============================================================ */
+.lodgeos-required::after {
+  content: ' *';
+  color: #C9A84C;
+  font-weight: 700;
+}
+
+input:user-invalid,
+select:user-invalid,
+textarea:user-invalid {
+  border-color: #EC5B4B !important;
+  /* A colour change alone excludes anyone who cannot distinguish it,
+     so pair it with a visible ring. */
+  box-shadow: 0 0 0 1px rgba(236,91,75,0.45);
+}
+
+input:user-invalid + .lodgeos-field-hint::after,
+select:user-invalid + .lodgeos-field-hint::after,
+textarea:user-invalid + .lodgeos-field-hint::after {
+  content: 'This field is required';
+  display: block;
+  color: #EC5B4B;
+  font-family: 'Crimson Pro', Georgia, serif;
+  font-size: 0.8rem;
+  margin-top: 4px;
+}
+
 /* Animations */
+@keyframes lodgeosToastIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  [style*="lodgeosToastIn"] { animation: none !important; }
+}
 @keyframes fadeUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 .animate-fade-up { animation: fadeUp 0.8s ease both; }

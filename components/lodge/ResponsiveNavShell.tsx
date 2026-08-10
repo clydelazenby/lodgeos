@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { Toaster } from '@/components/ui/Toaster'
 
 export type NavItem = { label: string; href: string }
 export type NavGroup = { label: string; items: NavItem[] }
@@ -77,6 +78,7 @@ export function ResponsiveNavShell({
 
   return (
     <>
+      <Toaster />
       <button
         className="lodgeos-mobile-menu-btn"
         onClick={() => setMobileOpen(o => !o)}

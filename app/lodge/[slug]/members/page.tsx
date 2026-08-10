@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { ConfirmDialog } from '@/components/lodge/ConfirmDialog'
 import { MemberImport } from '@/components/lodge/MemberImport'
+import { notify } from '@/lib/toast'
 
 export default function LodgeMembersPage() {
   const params = useParams()
@@ -64,9 +65,26 @@ export default function LodgeMembersPage() {
     setInviting(false)
   }
 
+  const FIELD_LABEL: Record<string, string> = { degree: 'Degree', dues_status: 'Dues status' }
+
   const updateMember = async (memberId: string, field: string, value: string) => {
-    await supabase.from('tenant_members').update({ [field]: value }).eq('id', memberId)
+    const previous = members.find(m => m.id === memberId)?.[field]
+
+    // Optimistic: these are dropdowns in a table and should feel instant.
     setMembers(prev => prev.map(m => m.id === memberId ? { ...m, [field]: value } : m))
+
+    const { error } = await supabase.from('tenant_members').update({ [field]: value }).eq('id', memberId)
+
+    if (error) {
+      // The write failed but the dropdown was already showing the new
+      // value — previously that discrepancy was invisible and the
+      // officer would believe a change had been recorded that had not.
+      setMembers(prev => prev.map(m => m.id === memberId ? { ...m, [field]: previous } : m))
+      notify.error(`${FIELD_LABEL[field] ?? 'Change'} could not be saved: ${error.message}`)
+      return
+    }
+
+    notify.saved(`${FIELD_LABEL[field] ?? 'Change'} updated`)
   }
 
   const confirmRemove = async () => {
@@ -149,9 +167,9 @@ export default function LodgeMembersPage() {
             </div>
           )}
           <form onSubmit={handleInvite} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-            <div><label style={labelStyle}>First Name *</label><input value={inviteForm.firstName} onChange={e => setInviteForm(p => ({ ...p, firstName: e.target.value }))} style={inputStyle} required /></div>
-            <div><label style={labelStyle}>Last Name *</label><input value={inviteForm.lastName} onChange={e => setInviteForm(p => ({ ...p, lastName: e.target.value }))} style={inputStyle} required /></div>
-            <div><label style={labelStyle}>Email *</label><input type="email" value={inviteForm.email} onChange={e => setInviteForm(p => ({ ...p, email: e.target.value }))} style={inputStyle} required /></div>
+            <div><label className="lodgeos-required" style={labelStyle}>First Name</label><input value={inviteForm.firstName} onChange={e => setInviteForm(p => ({ ...p, firstName: e.target.value }))} style={inputStyle} required /></div>
+            <div><label className="lodgeos-required" style={labelStyle}>Last Name</label><input value={inviteForm.lastName} onChange={e => setInviteForm(p => ({ ...p, lastName: e.target.value }))} style={inputStyle} required /></div>
+            <div><label className="lodgeos-required" style={labelStyle}>Email</label><input type="email" value={inviteForm.email} onChange={e => setInviteForm(p => ({ ...p, email: e.target.value }))} style={inputStyle} required /></div>
             <div><label style={labelStyle}>Degree</label>
               <select value={inviteForm.degree} onChange={e => setInviteForm(p => ({ ...p, degree: e.target.value }))} style={{ ...inputStyle, cursor: 'pointer' }}>
                 <option value="EA">Entered Apprentice</option>

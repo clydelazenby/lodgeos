@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { T } from '@/lib/designTokens'
+import { notify } from '@/lib/toast'
 
 /**
  * Inline editor for the lodge's annual dues rate.
@@ -30,9 +31,11 @@ export function DuesRateEditor({ tenantId, current }: { tenantId: string; curren
       const data = await res.json()
       if (!res.ok) {
         setError(data.error || 'Could not update the rate.')
+        notify.error(data.error || 'Could not update the dues rate.')
         return
       }
       setEditing(false)
+      notify.saved(`Annual dues set to $${Number(value).toLocaleString()}`)
       router.refresh()
     } catch (err: any) {
       setError(err?.message || 'Could not update the rate.')
