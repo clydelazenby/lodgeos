@@ -239,6 +239,51 @@ export async function sendChargeAddedEmail({
   }, 'charge notice')
 }
 
+// ── A brother's years of service ──
+//
+// Sent by /api/cron/anniversaries, once, in the month the anniversary
+// falls. Deliberately warm rather than administrative: this is the one
+// piece of automated mail a lodge sends that is not asking for anything.
+export async function sendServiceAnniversaryEmail({
+  to, firstName, lodgeName, years, raisedDateLabel, milestone, brand,
+}: {
+  to: string; firstName: string; lodgeName: string
+  years: number; raisedDateLabel: string; milestone: boolean
+  brand?: LodgeBrand
+}) {
+  const b = resolveBrand(brand, lodgeName)
+  const title = lodgeTitle(b)
+
+  const body = {
+    greeting: `Dear Brother ${firstName},`,
+    paragraphs: milestone
+      ? [
+          `This month marks ${years} years since you were raised to the sublime degree of Master Mason.`,
+          `It is a milestone few reach, and the brethren of ${title} record it with gratitude. Your name will be called at our next stated communication.`,
+          'Thank you for the years you have given to the Craft.',
+        ]
+      : [
+          `This month marks ${years} years since you were raised to the sublime degree of Master Mason.`,
+          `The brethren of ${title} send their fraternal greetings, and their thanks for your continued service.`,
+        ],
+    details: [
+      { label: 'Raised', value: raisedDateLabel },
+      { label: 'Years of service', value: String(years) },
+    ],
+  }
+
+  return send({
+    from: `${title} <${FROM}>`,
+    to,
+    replyTo: b.email || undefined,
+    subject: milestone
+      ? `${years} years a Master Mason — with the thanks of ${title}`
+      : `${years} years since your raising`,
+    html: renderLodgeEmail(b, body, `${years} years since you were raised`),
+    text: renderLodgeEmailText(b, body),
+  }, 'anniversary note')
+}
+
 // ── Calendar invite for a lodge event ──
 //
 // Resend cannot set a custom Content-Type on attachments, so Outlook's

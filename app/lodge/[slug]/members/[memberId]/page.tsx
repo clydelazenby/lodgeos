@@ -37,6 +37,16 @@ export default async function MemberDetailPage({ params }: { params: { slug: str
     viewerProfile?.platform_role === 'super_admin'
   )
 
+  // The register is the Secretary's book. 'roster' is exactly the
+  // admin/secretary/grand_master set that /api/members/dates enforces,
+  // and that route is the authority — this only decides whether the
+  // inputs render or the dates show as text.
+  const canEditDates = can(
+    (viewerMembership as any)?.tenant_role ?? null,
+    'roster',
+    viewerProfile?.platform_role === 'super_admin'
+  )
+
   const [{ data: attendanceHistory }, { data: paymentHistory }, { data: degreeHistory }, { data: charges }] = await Promise.all([
     supabase.from('attendance').select('status, lodge_events(id, title, event_date)').eq('tenant_id', tenant.id).eq('member_id', params.memberId).order('lodge_events(event_date)', { ascending: false }),
     supabase.from('payments').select('*').eq('tenant_id', tenant.id).eq('member_id', params.memberId).eq('status', 'succeeded').order('created_at', { ascending: false }),
@@ -54,6 +64,7 @@ export default async function MemberDetailPage({ params }: { params: { slug: str
       degreeHistory={degreeHistory ?? []}
       charges={charges ?? []}
       canCharge={canCharge}
+      canEditDates={canEditDates}
     />
   )
 }

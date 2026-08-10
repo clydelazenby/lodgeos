@@ -6,19 +6,22 @@ import { T, pillTone } from '@/lib/designTokens'
 import { AvatarUpload } from '@/components/lodge/AvatarUpload'
 import { MemberQrCode } from '@/components/lodge/MemberQrCode'
 import { MemberChargeForm } from '@/components/lodge/MemberChargeForm'
+import { MasonicDates } from '@/components/lodge/MasonicDates'
 
 const TABS = ['Overview', 'Attendance', 'Dues', 'History', 'Notes'] as const
 type Tab = typeof TABS[number]
 
 export function MemberProfileTabs({
   slug, tenant, membership, attendanceHistory, paymentHistory, degreeHistory,
-  charges = [], canCharge = false,
+  charges = [], canCharge = false, canEditDates = false,
 }: {
   slug: string; tenant: any; membership: any
   attendanceHistory: any[]; paymentHistory: any[]; degreeHistory: any[]
   charges?: any[]
   /** Finance tier — Treasurer, Worshipful Master, Secretary, admin. */
   canCharge?: boolean
+  /** Secretary's office. Register work, not something a Deacon edits. */
+  canEditDates?: boolean
 }) {
   const [tab, setTab] = useState<Tab>('Overview')
   const [notes, setNotes] = useState(membership.notes ?? '')
@@ -96,6 +99,21 @@ export function MemberProfileTabs({
           <div style={{ ...sectionStyle, gridColumn: '1 / -1' }}>
             <div style={labelStyle}>Member Since</div>
             <div style={{ fontFamily: T.body, fontSize: '0.9rem', color: T.ink }}>{membership.joined_date ? format(new Date(membership.joined_date), 'MMMM yyyy') : 'Not recorded'}</div>
+          </div>
+
+          {/* Initiated, passed, raised — the dates a brother would
+              actually name, and the ones the app held none of. */}
+          <div style={{ ...sectionStyle, gridColumn: '1 / -1' }}>
+            <MasonicDates
+              tenantId={tenant.id}
+              memberId={membership.user_id}
+              initial={{
+                initiated_date: membership.initiated_date ?? null,
+                passed_date: membership.passed_date ?? null,
+                raised_date: membership.raised_date ?? null,
+              }}
+              canEdit={canEditDates}
+            />
           </div>
           <div style={sectionStyle}>
   <div style={labelStyle}>Member QR Code</div>
