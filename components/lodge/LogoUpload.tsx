@@ -117,10 +117,26 @@ export function LogoUpload({
 
       {pending && (
         <div style={{ marginTop: '1.25rem' }}>
+          {/* 320px, not the 512 an avatar gets.
+              The crest is rendered at exactly 120px in the email header
+              (lib/email/layout.ts) and is displayed nowhere else, so 320
+              still covers a 2.6x retina screen with room to spare. At
+              512/q0.9 it came out at 165KB — the same picture downloaded
+              again by every brother on every notice the lodge sends, on
+              whatever signal he happens to have.
+
+              Measured through Chromium's own JPEG encoder on a
+              crest-like test image: 65% smaller, which puts the current
+              165KB crest near 57KB. A photographed or scanned crest
+              should do better still, since downscaling throws away more
+              from a photograph than from flat artwork. No visible
+              difference at the 120px it is actually displayed at. */}
           <ImageCropper
             file={pending}
             busy={uploading}
             shape="square"
+            outputSize={320}
+            quality={0.82}
             onCancel={() => setPending(null)}
             onCropped={handleCropped}
           />
