@@ -1,7 +1,23 @@
 'use client'
-import { useState, useRef, useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
+import { SecretaryConversation } from './ai/SecretaryConversation'
+import { SquareAndCompasses } from './ai/Emblem'
 
-type Msg = { role: 'user' | 'assistant'; content: string }
+/**
+ * The docked AI Secretary — a launcher, and the sheet it opens.
+ *
+ * The conversation itself lives in SecretaryConversation, shared with
+ * the full page at /lodge/[slug]/secretary. This file is only about
+ * where the thing sits and how you get into it.
+ *
+ * WHY THERE IS A FULL PAGE AT ALL. A 380px box is fine for "who owes
+ * dues" and wrong for the job this was built for: an officer drafting a
+ * set of minutes was writing six hundred words into a window the size of
+ * a business card, unable to see the top of his own draft. The bubble
+ * answers questions; the page writes documents. Same conversation
+ * underneath, so moving between them loses nothing.
+ */
 
 /**
  * How far the officer must scroll down before the launcher gets out of
@@ -10,78 +26,82 @@ type Msg = { role: 'user' | 'assistant'; content: string }
  */
 const HIDE_AFTER_SCROLL = 24
 
-const SUGGESTIONS = [
-  'Who currently owes dues?',
-  'How has attendance been lately?',
-  'Any candidates need a mentor check-in?',
-  'Draft minutes from my notes below.',
-]
-
 /**
- * Renders the assistant's reply.
+ * How the header button reaches this component.
  *
- * The model answers in markdown — bold, bullets, numbered lists — and
- * this was printing it raw, so a drafted set of minutes arrived full of
- * literal asterisks and hyphens. Deliberately a tiny formatter rather
- * than a markdown library: bold, italic, inline code and lists cover
- * everything these replies actually use, and a parser for the rest is
- * weight in a bundle for no gain.
+ * On a phone the launcher used to float over the page — which meant it
+ * sat on top of whatever happened to be under it, and the fix for that
+ * was to keep shrinking it and hiding it on scroll. Both are treatments
+ * for a self-inflicted wound. Below 641px it is now a button in the top
+ * bar, beside the notice bell, where every other global control already
+ * lives and where it covers nothing.
  *
- * ESCAPING HAPPENS FIRST, before any markup is added, so nothing in a
- * reply — or in the lodge data quoted inside it — can become HTML.
+ * That button renders in a server layout far from this component's tree,
+ * so a plain window event carries the click rather than threading a
+ * context provider through the whole lodge shell for one boolean.
  */
-function formatReply(text: string): string {
-  const escaped = text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
+export const AI_OPEN_EVENT = 'lodgeos:ai-open'
 
-  return escaped
-    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-    .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>')
-    .replace(/`([^`]+)`/g, '<code style="font-family:JetBrains Mono,monospace;font-size:0.92em;">$1</code>')
-    .split('\n')
-    .map(line => {
-      const bullet = line.match(/^\s*[-•]\s+(.*)$/)
-      if (bullet) return `<span style="display:block;padding-left:1em;text-indent:-1em;">•&nbsp;${bullet[1]}</span>`
-      const numbered = line.match(/^\s*(\d+)\.\s+(.*)$/)
-      if (numbered) return `<span style="display:block;padding-left:1.4em;text-indent:-1.4em;">${numbered[1]}.&nbsp;${numbered[2]}</span>`
-      return line
-    })
-    .join('\n')
+export function AiSecretaryLauncherButton() {
+  return (
+    <button
+      onClick={() => window.dispatchEvent(new CustomEvent(AI_OPEN_EVENT))}
+      className="lodgeos-ai-header-btn"
+      aria-label="Ask the Secretary"
+      title="Ask the Secretary"
+      style={{
+        background: 'none',
+        border: 'none',
+        color: '#C9A84C',
+        cursor: 'pointer',
+        padding: '8px 4px',
+        display: 'none',
+        alignItems: 'center',
+      }}
+    >
+      <SquareAndCompasses size={19} />
+    </button>
+  )
 }
 
-export function AiSecretaryPanel({ tenantId }: { tenantId: string }) {
+export function AiSecretaryPanel({
+  tenantId,
+  slug,
+  canSendNotices,
+}: {
+  tenantId: string
+  slug: string
+  canSendNotices: boolean
+}) {
   const [open, setOpen] = useState(false)
-  const [messages, setMessages] = useState<Msg[]>([])
-  const [rawConversation, setRawConversation] = useState<any[]>([])
-  const [input, setInput] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
   const [hidden, setHidden] = useState(false)
-  const [copied, setCopied] = useState<number | null>(null)
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const lastY = useRef(0)
+  const pathname = usePathname()
+
+  // The full page IS the assistant. A floating button offering to open a
+  // small copy of what already fills the screen is noise.
+  const onSecretaryPage = (pathname ?? '').endsWith('/secretary')
+
+  useEffect(() => {
+    const openIt = () => setOpen(true)
+    window.addEventListener(AI_OPEN_EVENT, openIt)
+    return () => window.removeEventListener(AI_OPEN_EVENT, openIt)
+  }, [])
 
   /**
    * THE LAUNCHER GETS OUT OF THE WAY WHILE READING.
    *
-   * It is fixed to the bottom-right, so it sits on top of whatever
-   * happens to be under it — the Stations Filled count on the Lodge
-   * Room, a row of the Sent Communications table. Padding at the foot
-   * of the page only helps at the very bottom; scrolling past anything
-   * else still puts a gold pill over it.
-   *
-   * So: scrolling DOWN (reading) tucks it away, scrolling UP or
-   * stopping brings it back.
+   * Only relevant to the floating pill, which now exists on desktop
+   * only — the phone's launcher is in the top bar and has nothing to get
+   * out of the way of. Scrolling DOWN (reading) tucks it away, scrolling
+   * UP or stopping brings it back.
    */
   useEffect(() => {
+    let lastY = window.scrollY
     const onScroll = () => {
       const y = window.scrollY
-      const goingDown = y > lastY.current
-      if (Math.abs(y - lastY.current) > 4) {
-        setHidden(goingDown && y > HIDE_AFTER_SCROLL)
-        lastY.current = y
+      if (Math.abs(y - lastY) > 4) {
+        setHidden(y > lastY && y > HIDE_AFTER_SCROLL)
+        lastY = y
       }
     }
     window.addEventListener('scroll', onScroll, { passive: true })
@@ -100,55 +120,22 @@ export function AiSecretaryPanel({ tenantId }: { tenantId: string }) {
     if (!window.matchMedia('(max-width: 640px)').matches) return
     const previous = document.body.style.overflow
     document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = previous }
+    return () => {
+      document.body.style.overflow = previous
+    }
   }, [open])
 
+  /** Escape closes it, as it closes every other dialog in the app. */
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
-  }, [messages, loading])
-
-  const send = async (text: string) => {
-    if (!text.trim() || loading) return
-    setError('')
-    setInput('')
-    setMessages(prev => [...prev, { role: 'user', content: text }])
-    setLoading(true)
-
-    const nextConversation = [...rawConversation, { role: 'user', content: text }]
-
-    try {
-      const res = await fetch('/api/ai/secretary', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenantId, messages: nextConversation }),
-      })
-      const result = await res.json()
-      if (!res.ok) throw new Error(result.error || 'The AI Secretary hit an error.')
-
-      setMessages(prev => [...prev, { role: 'assistant', content: result.reply }])
-      setRawConversation(result.conversation)
-    } catch (e: any) {
-      setError(e.message)
-    } finally {
-      setLoading(false)
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
     }
-  }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open])
 
-  /**
-   * The whole point of a draft is to move it somewhere else — into a
-   * notice, into the minute book. Without this the officer had to
-   * select 400 words of text inside a scrolling box on a phone.
-   */
-  const copy = async (text: string, index: number) => {
-    try {
-      await navigator.clipboard.writeText(text)
-      setCopied(index)
-      setTimeout(() => setCopied(null), 2000)
-    } catch {
-      // Clipboard access can be refused outright; saying nothing beats
-      // an error the officer can do nothing about.
-    }
-  }
+  if (onSecretaryPage) return null
 
   if (!open) {
     return (
@@ -157,151 +144,46 @@ export function AiSecretaryPanel({ tenantId }: { tenantId: string }) {
         className="lodgeos-ai-launcher"
         aria-label="Ask the Secretary"
         style={{
-          position: 'fixed', bottom: '20px', right: '16px', zIndex: 50,
-          background: '#C9A84C', color: '#0A0E1A', border: 'none',
-          padding: '12px 20px', borderRadius: '999px', cursor: 'pointer',
-          fontFamily: 'Cinzel, serif', fontSize: '0.8rem', fontWeight: 700,
-          boxShadow: '0 4px 16px rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', gap: '8px',
+          position: 'fixed',
+          bottom: '20px',
+          right: '16px',
+          zIndex: 50,
+          background: '#C9A84C',
+          color: '#0A0E1A',
+          border: 'none',
+          padding: '11px 18px',
+          borderRadius: '999px',
+          cursor: 'pointer',
+          fontFamily: 'Cinzel, serif',
+          fontSize: '0.78rem',
+          fontWeight: 700,
+          boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '9px',
           // Tucked away while reading, not removed: a display:none
           // button cannot be tabbed back to, and the transform keeps it
           // reachable by keyboard throughout.
-          transform: hidden ? 'translateY(120%)' : 'translateY(0)',
+          transform: hidden ? 'translateY(140%)' : 'translateY(0)',
           opacity: hidden ? 0 : 1,
           transition: 'transform 0.22s ease, opacity 0.22s ease',
         }}
       >
-        <span aria-hidden="true">✦</span>
-        <span className="lodgeos-ai-launcher-label">Ask the Secretary</span>
+        <SquareAndCompasses size={17} />
+        <span>Ask the Secretary</span>
       </button>
     )
   }
 
   return (
     <div className="lodgeos-ai-panel" role="dialog" aria-label="AI Secretary">
-      <div className="lodgeos-ai-head">
-        <div>
-          <div style={{ fontFamily: 'Cinzel, serif', fontSize: '0.9rem', color: '#C9A84C' }}>AI Secretary</div>
-          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.58rem', color: '#B8B0A0' }}>
-            Reads live lodge data · drafts, doesn&apos;t send
-          </div>
-        </div>
-        <button
-          onClick={() => setOpen(false)}
-          aria-label="Close"
-          style={{
-            background: 'none', border: 'none', color: '#B8B0A0', cursor: 'pointer',
-            // A real touch target. The old 1.1rem × was a hard thing to
-            // hit with a thumb, on the one control that gets you out.
-            fontSize: '1.4rem', lineHeight: 1, padding: '10px 14px', margin: '-10px -14px',
-          }}
-        >×</button>
-      </div>
-
-      <div ref={scrollRef} className="lodgeos-ai-log">
-        {messages.length === 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <p style={{ color: '#B8B0A0', fontSize: '0.85rem', fontFamily: 'Crimson Pro, serif', fontStyle: 'italic', marginBottom: '4px' }}>
-              Ask about dues, attendance, a particular brother, events or petitions — or paste rough notes to draft into minutes.
-            </p>
-            {SUGGESTIONS.map(s => (
-              <button key={s} onClick={() => send(s)} style={{
-                textAlign: 'left', background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.15)',
-                color: '#C9A84C', padding: '10px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem',
-              }}>{s}</button>
-            ))}
-          </div>
-        )}
-
-        {messages.map((m, i) => (
-          <div
-            key={i}
-            style={{
-              alignSelf: m.role === 'user' ? 'flex-end' : 'stretch',
-              // A draft of minutes is a document, not a chat bubble. The
-              // assistant's replies run the full width so long text is
-              // readable; only the officer's own lines are bubbled.
-              maxWidth: m.role === 'user' ? '85%' : '100%',
-              background: m.role === 'user' ? 'rgba(201,168,76,0.15)' : '#0A0E1A',
-              border: `1px solid ${m.role === 'user' ? 'rgba(201,168,76,0.3)' : 'rgba(184,176,160,0.15)'}`,
-              color: '#F5F0E8', padding: '11px 13px', borderRadius: '8px',
-              fontSize: '0.88rem', lineHeight: 1.6, fontFamily: 'Crimson Pro, serif',
-              whiteSpace: 'pre-wrap',
-              // Without these a pasted URL or a long unbroken token in a
-              // draft pushes the panel wider than the screen, and the
-              // whole page scrolls sideways.
-              overflowWrap: 'anywhere', wordBreak: 'break-word', minWidth: 0,
-            }}
-          >
-            {m.role === 'assistant'
-              ? <span dangerouslySetInnerHTML={{ __html: formatReply(m.content) }} />
-              : m.content}
-
-            {m.role === 'assistant' && (
-              <button
-                onClick={() => copy(m.content, i)}
-                style={{
-                  display: 'block', marginTop: 10, background: 'none',
-                  border: '1px solid rgba(201,168,76,0.25)', borderRadius: 4,
-                  color: copied === i ? '#5DBE85' : '#C9A84C', cursor: 'pointer',
-                  fontFamily: 'JetBrains Mono, monospace', fontSize: '0.58rem',
-                  letterSpacing: '0.1em', padding: '6px 10px',
-                }}
-              >
-                {copied === i ? '✓ COPIED' : 'COPY'}
-              </button>
-            )}
-          </div>
-        ))}
-
-        {loading && (
-          <div style={{ alignSelf: 'flex-start', color: '#B8B0A0', fontSize: '0.75rem', fontFamily: 'JetBrains Mono, monospace' }}>
-            {/* "Checking the roster" was shown even when drafting a
-                condolence letter, which touches no roster at all. */}
-            Working…
-          </div>
-        )}
-        {error && (
-          <div style={{ alignSelf: 'flex-start', color: '#EC5B4B', fontSize: '0.75rem', fontFamily: 'JetBrains Mono, monospace', background: 'rgba(231,76,60,0.08)', border: '1px solid rgba(231,76,60,0.2)', padding: '8px 12px', borderRadius: '6px', overflowWrap: 'anywhere' }}>
-            {error}
-          </div>
-        )}
-      </div>
-
-      <div className="lodgeos-ai-compose">
-        <textarea
-          className="lodgeos-ai-input"
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => {
-            // Enter sends on a real keyboard. On a touch keyboard Enter
-            // IS the newline key, and sending there would make a second
-            // paragraph of meeting notes impossible to type — which is
-            // the longest thing anyone puts in this box.
-            const touch = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
-            if (e.key === 'Enter' && !e.shiftKey && !touch) {
-              e.preventDefault()
-              send(input)
-            }
-          }}
-          placeholder="Ask, or paste notes…"
-          rows={1}
-          style={{
-            flex: 1, resize: 'none', background: '#0A0E1A', border: '1px solid rgba(201,168,76,0.2)',
-            color: '#F5F0E8', padding: '10px 12px', borderRadius: '6px', fontFamily: 'Crimson Pro, serif',
-            outline: 'none', maxHeight: '120px', minWidth: 0,
-          }}
-        />
-        <button
-          onClick={() => send(input)}
-          disabled={loading || !input.trim()}
-          style={{
-            background: '#C9A84C', color: '#0A0E1A', border: 'none', padding: '0 18px', borderRadius: '6px',
-            cursor: loading || !input.trim() ? 'not-allowed' : 'pointer', fontFamily: 'Cinzel, serif',
-            fontSize: '0.75rem', fontWeight: 700, opacity: loading || !input.trim() ? 0.5 : 1,
-            whiteSpace: 'nowrap',
-          }}
-        >Ask</button>
-      </div>
+      <SecretaryConversation
+        tenantId={tenantId}
+        slug={slug}
+        canSendNotices={canSendNotices}
+        onClose={() => setOpen(false)}
+        onNavigate={() => setOpen(false)}
+      />
     </div>
   )
 }

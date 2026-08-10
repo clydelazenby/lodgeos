@@ -8,6 +8,7 @@ import { ConfirmDialog } from '@/components/lodge/ConfirmDialog'
 import { markNoticesRead } from '@/app/actions/markNoticesRead'
 import { upcomingSince } from '@/lib/dates'
 import { MM_AND_ABOVE, CANDIDATE_DEGREES } from '@/lib/degrees'
+import { takeStagedCompose } from '@/lib/ai/draft'
 
 /**
  * Communications.
@@ -160,6 +161,27 @@ export default function LodgeCommunicationsPage() {
   }
 
   useEffect(() => { load() }, [])
+
+  /**
+   * A draft handed over by the AI Secretary.
+   *
+   * The assistant deliberately stops at the draft — nothing it writes
+   * goes to the lodge without an officer putting his name to it. But
+   * that principle was being paid for with manual labour: select four
+   * hundred words inside a scrolling panel, navigate here, paste. The
+   * draft now travels in sessionStorage (a set of minutes is far too
+   * long for a query string) and lands in the compose form with the
+   * officer still the one who presses Send.
+   *
+   * Read once and cleared, so a later visit to this page does not
+   * resurrect a draft that was already sent or abandoned.
+   */
+  useEffect(() => {
+    const staged = takeStagedCompose()
+    if (!staged) return
+    setForm((p) => ({ ...p, subject: staged.subject || p.subject, body: staged.body }))
+    setNotice('Draft carried over from the AI Secretary. Review it, choose the recipients, then send.')
+  }, [])
 
   /**
    * The same filter the server applies, mirrored here so the count is
