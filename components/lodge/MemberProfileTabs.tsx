@@ -189,7 +189,7 @@ export function MemberProfileTabs({
                     {a.step_id ? ' · DEGREE WORK' : ''}
                   </div>
                 </div>
-                <span className={`pill ${statusPill(status)}`}>{statusLabel(status)}</span>
+                <span className={`pill ${statusPill(status)}`}>{statusLabel(status, a)}</span>
               </div>
             ))
           )}

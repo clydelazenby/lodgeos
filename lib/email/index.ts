@@ -299,10 +299,13 @@ export async function sendAssignmentEmail({
 // page, which for a proficiency learned the week before a degree is
 // too late to be any use.
 export async function sendAssignmentSubmittedEmail({
-  to, officerFirstName, brotherName, lodgeName, title, isDegreeWork, reviewUrl, brand,
+  to, officerFirstName, brotherName, lodgeName, title, needsAction, reviewUrl, brand,
 }: {
   to: string; officerFirstName: string; brotherName: string; lodgeName: string
-  title: string; isDegreeWork: boolean; reviewUrl: string; brand?: LodgeBrand
+  title: string
+  /** Degree work waits on him. A plain task is already finished. */
+  needsAction: boolean
+  reviewUrl: string; brand?: LodgeBrand
 }) {
   const b = resolveBrand(brand, lodgeName)
   const t = lodgeTitle(b)
@@ -310,25 +313,29 @@ export async function sendAssignmentSubmittedEmail({
   const body = {
     greeting: `Dear Brother ${officerFirstName},`,
     paragraphs: [
-      `${brotherName} says he has completed "${title}".`,
-      isDegreeWork
+      needsAction
+        ? `${brotherName} says he is ready on "${title}".`
+        : `${brotherName} has completed "${title}".`,
+      needsAction
         ? 'This is part of his degree work, so it waits on you: sign it off if you have heard it, or send it back with a word about what is still wanting.'
-        : 'Sign it off if you are satisfied, or send it back with a note.',
+        : 'Nothing is needed from you — this is so you know it is done.',
     ],
     details: [
       { label: 'Brother', value: brotherName },
       { label: 'Item', value: title },
-      { label: 'Kind', value: isDegreeWork ? 'Degree work' : 'Task' },
+      { label: 'Kind', value: needsAction ? 'Degree work' : 'Task' },
     ],
-    cta: { label: 'Sign Off or Send Back', url: reviewUrl },
+    cta: { label: needsAction ? 'Sign Off or Send Back' : 'See the Board', url: reviewUrl },
   }
 
   return send({
     from: `${t} <${FROM}>`,
     to,
     replyTo: b.email || undefined,
-    subject: `${brotherName} has finished: ${title}`,
-    html: renderLodgeEmail(b, body, `${brotherName} is waiting on your sign-off`),
+    subject: needsAction
+      ? `${brotherName} is ready: ${title}`
+      : `${brotherName} has finished: ${title}`,
+    html: renderLodgeEmail(b, body, needsAction ? `${brotherName} is waiting on your sign-off` : `${brotherName} has finished a task`),
     text: renderLodgeEmailText(b, body),
   }, 'submission notice')
 }

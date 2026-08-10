@@ -61,8 +61,8 @@ export default async function PortalAssignmentsPage() {
           Assignments
         </h1>
         <p style={{ fontFamily: 'Crimson Pro, serif', fontStyle: 'italic', color: '#B8B0A0', margin: 0 }}>
-          What the lodge has asked of you, and what you have already done. Mark something done and it
-          goes to an officer to sign off — he is told the moment you do.
+          What the lodge has asked of you, and what you have already done. Tasks you tick off
+          yourself; degree work goes to an officer, who signs it off once he has heard it.
         </p>
       </div>
 

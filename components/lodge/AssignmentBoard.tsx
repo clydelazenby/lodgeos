@@ -276,7 +276,7 @@ export function AssignmentBoard({
                 </div>
               )}
             </Link>
-            <span className={`pill ${statusPill(status)}`}>{statusLabel(status)}</span>
+            <span className={`pill ${statusPill(status)}`}>{statusLabel(status, a)}</span>
             {status === 'awaiting' && (
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 <button onClick={() => act(a.id, { action: 'signoff' })} disabled={busy}
