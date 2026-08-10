@@ -22,6 +22,8 @@ export default function LodgeMembersPage() {
   const [removeBusy, setRemoveBusy] = useState(false)
   const [removeError, setRemoveError] = useState('')
   const [notice, setNotice] = useState('')
+  // Brothers who asked for a login from the public lodge site.
+  const [accessRequests, setAccessRequests] = useState<any[]>([])
   const supabase = createClient()
 
   // Hoisted out of the effect so a completed roster import can call it
@@ -37,33 +39,131 @@ export default function LodgeMembersPage() {
       .eq('tenant_id', t.id)
       .order('created_at')
     setMembers(m ?? [])
+
+    // A request that lives only in the Secretary's inbox is a request
+    // that gets buried. RLS restricts these to lodge admins.
+    const { data: requests } = await supabase
+      .from('portal_access_requests')
+      .select('*')
+      .eq('tenant_id', t.id)
+      .eq('status', 'new')
+      .order('created_at', { ascending: false })
+    setAccessRequests(requests ?? [])
+
     setLoading(false)
+  }
+
+  /**
+   * Loads a request into the invite form rather than inviting straight
+   * from it. Nothing on that form is verified — the Secretary still has
+   * to set the degree and access level, and confirm he knows the man.
+   */
+  const useRequest = (req: any) => {
+    setInviteForm({
+      firstName: req.first_name || '',
+      lastName: req.last_name || '',
+      email: req.email || '',
+      degree: 'MM',
+      lodgeRole: req.lodge_role || '',
+      tenantRole: 'member',
+    })
+    setInviteMsg('')
+    setShowInvite(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const resolveRequest = async (req: any, status: 'invited' | 'dismissed') => {
+    setAccessRequests(prev => prev.filter(r => r.id !== req.id))
+    const { error } = await supabase
+      .from('portal_access_requests')
+      .update({ status, reviewed_at: new Date().toISOString() })
+      .eq('id', req.id)
+
+    if (error) {
+      // Put it back rather than letting it vanish from the page while
+      // still sitting unresolved in the table.
+      setAccessRequests(prev => [req, ...prev])
+      notify.error(`That request could not be updated: ${error.message}`)
+      return
+    }
+    notify.saved(status === 'invited' ? 'Marked as invited' : 'Request dismissed')
   }
 
   useEffect(() => {
     load()
   }, [])
 
+  /**
+   * WHY THE try/finally MATTERS — this is the bug that made the button
+   * say "Sending invitation..." forever.
+   *
+   * This used to call res.json() unconditionally with no try/catch. Any
+   * rejection — a dropped connection, or a platform timeout whose body
+   * is an HTML error page rather than JSON — left the promise rejected,
+   * so setInviting(false) never ran. The button stayed disabled and
+   * mid-flight for the rest of the page's life, with no error shown and
+   * nothing to retry. The Secretary had no way to tell a hung request
+   * from a slow one.
+   *
+   * Now: the spinner always clears, the body is parsed defensively, and
+   * the request has a deadline of its own so it cannot outlive the
+   * server's.
+   */
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault()
     setInviting(true)
     setInviteMsg('')
-    const res = await fetch('/api/members/invite', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tenantId: tenant.id, ...inviteForm }),
-    })
-    const data = await res.json()
-    if (res.ok) {
-      setInviteMsg('✓ Invitation sent successfully.')
+
+    // Comfortably beyond the route's own 30s ceiling, so this fires
+    // only when the request is genuinely lost rather than merely slow.
+    const controller = new AbortController()
+    const deadline = setTimeout(() => controller.abort(), 45000)
+
+    try {
+      const res = await fetch('/api/members/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId: tenant.id, ...inviteForm }),
+        signal: controller.signal,
+      })
+
+      // A gateway timeout or crashed function returns HTML, not JSON.
+      const raw = await res.text()
+      let data: any = null
+      try { data = raw ? JSON.parse(raw) : null } catch { /* handled below */ }
+
+      if (!res.ok) {
+        setInviteMsg(`Error: ${data?.error || `The server returned ${res.status}. The invitation was not completed.`}`)
+        return
+      }
+      if (!data) {
+        setInviteMsg('Error: The server sent an unreadable response. Check the roster before inviting again.')
+        return
+      }
+
+      // The brother is on the roster either way; the email is reported
+      // separately so "invitation sent" is never claimed falsely.
+      if (data.warning) {
+        setInviteMsg(`Added to the roster, but: ${data.warning}`)
+      } else if (data.method === 'magiclink') {
+        setInviteMsg('✓ Added. He already had a LodgeOS account, so he was emailed a sign-in link.')
+      } else {
+        setInviteMsg('✓ Invitation sent successfully.')
+      }
+
       setInviteForm({ firstName: '', lastName: '', email: '', degree: 'MM', lodgeRole: '', tenantRole: 'member' })
-      // Refresh
       const { data: m } = await supabase.from('tenant_members').select('*, profiles(first_name, last_name, email, phone, avatar_url)').eq('tenant_id', tenant.id).order('created_at')
       setMembers(m ?? [])
-    } else {
-      setInviteMsg(`Error: ${data.error}`)
+    } catch (err: any) {
+      setInviteMsg(
+        err?.name === 'AbortError'
+          ? 'Error: The invitation timed out. Check the roster below before trying again — he may already have been added.'
+          : `Error: ${err?.message || 'The invitation could not be sent.'}`
+      )
+    } finally {
+      clearTimeout(deadline)
+      setInviting(false)
     }
-    setInviting(false)
   }
 
   const FIELD_LABEL: Record<string, string> = { degree: 'Degree', dues_status: 'Dues status' }
@@ -156,6 +256,49 @@ export default function LodgeMembersPage() {
         <div style={{ background: 'rgba(93,190,133,0.12)', border: '1px solid rgba(93,190,133,0.3)', color: '#5DBE85', padding: '10px 14px', borderRadius: '4px', marginBottom: '1.5rem', fontFamily: 'Crimson Pro, serif', display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
           <span>{notice}</span>
           <button onClick={() => setNotice('')} aria-label="Dismiss" style={{ background: 'none', border: 'none', color: '#5DBE85', cursor: 'pointer' }}>×</button>
+        </div>
+      )}
+
+      {/* Portal access requests from the public lodge site */}
+      {accessRequests.length > 0 && (
+        <div style={{ background: '#141C2E', border: '1px solid rgba(201,168,76,0.3)', padding: '1.5rem 2rem', marginBottom: '2rem' }}>
+          <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1.05rem', color: '#C9A84C', marginBottom: '0.35rem' }}>
+            Portal Access Requested ({accessRequests.length})
+          </div>
+          <p style={{ fontFamily: 'Crimson Pro, serif', fontStyle: 'italic', color: '#B8B0A0', marginTop: 0, marginBottom: '1.25rem', lineHeight: 1.7 }}>
+            Asked for a login from the lodge website. None of these details are verified — invite a
+            brother only if you know him to be on the roster.
+          </p>
+
+          {accessRequests.map(req => (
+            <div key={req.id} style={{ borderTop: '1px solid rgba(201,168,76,0.12)', paddingTop: '1rem', marginTop: '1rem', display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+              <div style={{ minWidth: '240px', flex: 1 }}>
+                <div style={{ color: '#F5F0E8', fontFamily: 'Crimson Pro, serif', fontSize: '1.05rem' }}>
+                  {req.first_name} {req.last_name}
+                  {req.lodge_role ? <span style={{ color: '#B8B0A0', fontStyle: 'italic' }}> — {req.lodge_role}</span> : null}
+                </div>
+                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.68rem', color: '#B8B0A0', marginTop: 4 }}>
+                  {req.email}{req.phone ? ` · ${req.phone}` : ''}{req.years_a_member ? ` · ${req.years_a_member}` : ''}
+                </div>
+                {req.message && (
+                  <p style={{ fontFamily: 'Crimson Pro, serif', color: '#B8B0A0', fontSize: '0.95rem', lineHeight: 1.6, marginTop: 8, marginBottom: 0 }}>
+                    {req.message}
+                  </p>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <button onClick={() => useRequest(req)} className="btn-gold" style={{ fontSize: '0.62rem' }}>
+                  Invite This Brother
+                </button>
+                <button onClick={() => resolveRequest(req, 'invited')} className="btn-outline" style={{ fontSize: '0.62rem' }}>
+                  Mark Invited
+                </button>
+                <button onClick={() => resolveRequest(req, 'dismissed')} className="btn-outline" style={{ fontSize: '0.62rem' }}>
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

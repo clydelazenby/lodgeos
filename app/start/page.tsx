@@ -13,7 +13,7 @@ export default function HomePage() {
             <a key={l} href={h} style={{ fontFamily: 'Cinzel, serif', fontSize: '0.7rem', letterSpacing: '0.15em', color: 'var(--cream-dim)', textDecoration: 'none', textTransform: 'uppercase' }}>{l}</a>
           ))}
           <Link href="/auth/login" style={{ fontFamily: 'Cinzel, serif', fontSize: '0.7rem', color: 'var(--cream-dim)', textDecoration: 'none', letterSpacing: '0.1em' }}>Sign In</Link>
-          <Link href="/auth/signup" className="btn-gold" style={{ padding: '10px 24px', fontSize: '0.68rem' }}>Start Free Trial</Link>
+          <Link href="/request-access" className="btn-gold" style={{ padding: '10px 24px', fontSize: '0.68rem' }}>Request Access</Link>
         </div>
       </nav>
 
@@ -31,11 +31,11 @@ export default function HomePage() {
             Member management, dues collection, automated emails, and a beautiful public website — all in one platform built specifically for Masonic lodges.
           </p>
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '2rem' }}>
-            <Link href="/auth/signup" className="btn-gold">Start 14-Day Free Trial</Link>
+            <Link href="/request-access" className="btn-gold">Request Access</Link>
             <Link href="#features" className="btn-outline">See Features</Link>
           </div>
           <p style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.65rem', color: 'rgba(184,176,160,0.5)', letterSpacing: '0.1em' }}>
-            No credit card required · Set up in 10 minutes · Cancel anytime
+            No credit card required · We set your lodge up · Cancel anytime
           </p>
         </div>
       </section>
@@ -88,8 +88,8 @@ export default function HomePage() {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '2rem', maxWidth: '900px', margin: '0 auto' }}>
           {[
-            { step: '01', title: 'Create your account', desc: 'Sign up with your email. No credit card required for the 14-day trial.' },
-            { step: '02', title: 'Set up your lodge', desc: 'Enter your lodge name, number, location, and colors. Your site is live instantly.' },
+            { step: '01', title: 'Request access', desc: 'Tell us about your lodge. We reply within two business days. No credit card for the 14-day trial.' },
+            { step: '02', title: 'Set up your lodge', desc: 'We create your account, then you enter your location and colors. Your site goes live the same day.' },
             { step: '03', title: 'Add your brothers', desc: 'Enter member details or send email invitations. Brothers set up their own portals.' },
             { step: '04', title: 'Sit back', desc: 'Dues reminders send automatically. Brothers pay online. You manage from your dashboard.' },
           ].map(({ step, title, desc }) => (
@@ -125,8 +125,8 @@ export default function HomePage() {
                   <span style={{ fontSize: '0.9rem', color: 'var(--cream-dim)' }}>{f}</span>
                 </div>
               ))}
-              <Link href="/auth/signup" className={key === 'pro' ? 'btn-gold' : 'btn-outline'} style={{ display: 'block', textAlign: 'center', marginTop: '2rem', fontSize: '0.68rem' }}>
-                Start Free Trial
+              <Link href="/request-access" className={key === 'pro' ? 'btn-gold' : 'btn-outline'} style={{ display: 'block', textAlign: 'center', marginTop: '2rem', fontSize: '0.68rem' }}>
+                Request Access
               </Link>
             </div>
           ))}
@@ -137,8 +137,8 @@ export default function HomePage() {
       <section style={{ padding: '6rem 2rem', background: 'var(--navy-mid)', borderTop: '1px solid rgba(201,168,76,0.1)', textAlign: 'center' }}>
         <h2 style={{ fontFamily: 'Cinzel, serif', fontSize: '2.5rem', color: 'var(--cream)', marginBottom: '1rem' }}>Ready to modernize<br />your lodge?</h2>
         <p style={{ fontSize: '1.1rem', color: 'var(--cream-dim)', fontStyle: 'italic', marginBottom: '2.5rem', maxWidth: '500px', margin: '0 auto 2.5rem' }}>Join lodges across the country using LodgeOS to save time, collect dues online, and keep every brother informed.</p>
-        <Link href="/auth/signup" className="btn-gold" style={{ fontSize: '0.8rem', padding: '16px 48px' }}>Start Your Free Trial Today</Link>
-        <p style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.62rem', color: 'rgba(184,176,160,0.4)', marginTop: '1.5rem', letterSpacing: '0.1em' }}>14 days free · No credit card · Setup in 10 minutes</p>
+        <Link href="/request-access" className="btn-gold" style={{ fontSize: '0.8rem', padding: '16px 48px' }}>Request Access</Link>
+        <p style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.62rem', color: 'rgba(184,176,160,0.4)', marginTop: '1.5rem', letterSpacing: '0.1em' }}>14 days free · No credit card · We reply within two business days</p>
       </section>
 
       {/* FOOTER */}
@@ -146,7 +146,7 @@ export default function HomePage() {
         <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1.2rem', color: 'var(--gold)', letterSpacing: '0.2em', marginBottom: '0.5rem' }}>LODGEOS</div>
         <p style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.6rem', color: 'var(--cream-dim)', letterSpacing: '0.2em', marginBottom: '2rem' }}>THE OPERATING SYSTEM FOR YOUR LODGE</p>
         <div style={{ display: 'flex', gap: '2rem', justifyContent: 'center', marginBottom: '2rem', flexWrap: 'wrap' }}>
-          {[['Features', '#features'], ['Pricing', '#pricing'], ['Sign In', '/auth/login'], ['Start Free Trial', '/auth/signup']].map(([l, h]) => (
+          {[['Features', '#features'], ['Pricing', '#pricing'], ['Sign In', '/auth/login'], ['Request Access', '/request-access']].map(([l, h]) => (
             <Link key={l} href={h} style={{ fontFamily: 'Cinzel, serif', fontSize: '0.7rem', color: 'var(--cream-dim)', textDecoration: 'none', letterSpacing: '0.1em' }}>{l}</Link>
           ))}
         </div>

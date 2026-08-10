@@ -1,12 +1,28 @@
 ﻿'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+
+// app/auth/callback redirects here with ?error=… when an emailed link
+// cannot be exchanged for a session. Without this the brother lands on
+// a blank login form with no idea why, and no password to try.
+const LINK_ERRORS: Record<string, string> = {
+  link_expired:
+    'That invitation link has expired or was already used. Ask your Secretary to send you a new invitation.',
+  auth_failed: 'That sign-in link could not be verified. Please sign in below or request a new invitation.',
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // Read after mount rather than during render — the server has no
+  // query string to render from, and a mismatch would hydrate away.
+  useEffect(() => {
+    const reason = new URLSearchParams(window.location.search).get('error')
+    if (reason && LINK_ERRORS[reason]) setError(LINK_ERRORS[reason])
+  }, [])
 
  const handleLogin = async function (event: any) {
   event.preventDefault()
@@ -279,17 +295,22 @@ style: {
               marginTop: '1.5rem',
             },
           },
+          // Self-serve signup is no longer offered here: a lodge asks
+          // for access and is onboarded, and a brother is invited by
+          // his Secretary. Both paths start with a request, not an
+          // account. /auth/signup still exists for onboarding an
+          // approved lodge — it is simply no longer advertised.
           'Need an account? ',
           React.createElement(
             'a',
             {
-              href: '/auth/signup',
+              href: '/request-access',
               style: {
                 color: '#C9A84C',
                 textDecoration: 'none',
               },
             },
-            'Sign Up'
+            'Request Access'
           )
         )
       )

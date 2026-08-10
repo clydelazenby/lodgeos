@@ -13,7 +13,7 @@ const FROM = process.env.EMAIL_FROM || 'onboarding@resend.dev'
 // (webhooks, RSVP link checkers, some mail-security scanners) do not.
 // Keeping the fallback on www means a missing env var degrades to a
 // working URL rather than a redirecting one.
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://www.psalmslodge1827.com'
+export const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://www.psalmslodge1827.com'
 
 /**
  * Escapes text before it is interpolated into an email's HTML.
@@ -35,12 +35,36 @@ export function escapeHtml(input: string): string {
     .replace(/'/g, '&#39;')
 }
 
-// ── Welcome email when brother is invited ──
+/**
+ * Welcome email when a brother is invited.
+ *
+ * `actionUrl` is the one-time link minted by lib/auth/inviteLink.ts. It
+ * is what actually gets the brother into the portal — a new brother has
+ * no password, so a bare link to the login page is a dead end for him.
+ * The parameter is optional so the email still sends (pointing at the
+ * login page, and saying so) if a link could not be minted; a brother
+ * who hears from his Secretary that he's been added and finds nothing
+ * in his inbox is the worse outcome.
+ *
+ * THROWS when Resend rejects the message. The SDK does NOT throw on an
+ * API-level rejection — an unverified sending domain, an invalid
+ * recipient, a blown quota all RESOLVE, with the reason in `error`
+ * (sendLodgeNoticeBatch already accounts for this). Returning that
+ * object unchanged would let every caller's try/catch pass and report a
+ * delivery that never happened, which is the exact failure mode this
+ * whole change exists to end. Callers treat a throw as "not delivered",
+ * so surfacing it here fixes them all at once.
+ */
 export async function sendWelcomeEmail({
-  to, firstName, lodgeName, lodgeSlug, loginUrl,
-}: { to: string; firstName: string; lodgeName: string; lodgeSlug: string; loginUrl: string }) {
+  to, firstName, lodgeName, lodgeSlug, loginUrl, actionUrl,
+}: {
+  to: string; firstName: string; lodgeName: string; lodgeSlug: string
+  loginUrl: string; actionUrl?: string | null
+}) {
   const resend = getResend()
-  return resend.emails.send({
+  const ctaUrl = actionUrl || loginUrl
+  const ctaLabel = actionUrl ? 'Set Up Your Portal' : 'Access Your Portal'
+  const { data, error } = await resend.emails.send({
     from: `${lodgeName} via LodgeOS <${FROM}>`,
     to,
     subject: `Welcome to ${lodgeName} — Your portal is ready`,
@@ -62,8 +86,11 @@ export async function sendWelcomeEmail({
           </ul>
         </div>
         <div style="text-align:center;margin-bottom:32px;">
-          <a href="${loginUrl}" style="background:#C9A84C;color:#0A0E1A;font-family:Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;padding:14px 36px;text-decoration:none;display:inline-block;">Access Your Portal</a>
+          <a href="${ctaUrl}" style="background:#C9A84C;color:#0A0E1A;font-family:Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;padding:14px 36px;text-decoration:none;display:inline-block;">${ctaLabel}</a>
         </div>
+        ${actionUrl
+          ? `<p style="color:rgba(184,176,160,0.6);font-size:12px;line-height:1.7;text-align:center;margin-bottom:24px;">This link signs you in and lets you choose a password. It can only be used once — if it has expired, ask your Secretary to send a new invitation.</p>`
+          : `<p style="color:rgba(184,176,160,0.6);font-size:12px;line-height:1.7;text-align:center;margin-bottom:24px;">Sign in with this email address at <a href="${loginUrl}" style="color:#C9A84C;">${loginUrl}</a>.</p>`}
         <p style="color:#B8B0A0;font-size:13px;line-height:1.7;">If you have any questions contact your Secretary directly or reply to this email.</p>
         <div style="border-top:1px solid rgba(201,168,76,0.2);margin-top:32px;padding-top:16px;text-align:center;">
           <p style="color:rgba(184,176,160,0.4);font-size:11px;font-style:italic;">Liberty · Equality · Fraternity</p>
@@ -72,6 +99,12 @@ export async function sendWelcomeEmail({
       </div>
     `,
   })
+
+  if (error) {
+    throw new Error(error.message || 'Resend rejected the welcome email.')
+  }
+
+  return data
 }
 
 /**
@@ -279,6 +312,136 @@ export async function sendNewPetitionAlert({
       </div>
     `,
   })
+}
+
+/**
+ * A lodge has asked to use LodgeOS (see app/request-access). Goes to
+ * the platform owner, not to any lodge.
+ *
+ * Every field here is typed by an anonymous member of the public, so
+ * all of it is escaped. Unlike a lodge notice — where escaping is
+ * mostly a correctness measure for officers writing "Dues & Fees" —
+ * this genuinely is untrusted input arriving from the open internet.
+ */
+export async function sendPlatformAccessRequestAlert({
+  to, lodgeName, lodgeNumber, jurisdiction, contactName, contactEmail, contactPhone,
+  contactRole, memberCount, message,
+}: {
+  to: string; lodgeName: string; lodgeNumber?: string | null; jurisdiction?: string | null
+  contactName: string; contactEmail: string; contactPhone?: string | null
+  contactRole?: string | null; memberCount?: number | null; message?: string | null
+}) {
+  const resend = getResend()
+  const lodgeLabel = escapeHtml(lodgeNumber ? `${lodgeName} #${lodgeNumber}` : lodgeName)
+
+  const row = (label: string, value?: string | null) => value
+    ? `<tr><td style="padding:6px 0;color:#B8B0A0;">${escapeHtml(label)}</td><td style="text-align:right;color:#F5F0E8;">${escapeHtml(value)}</td></tr>`
+    : ''
+
+  const { data, error } = await resend.emails.send({
+    from: `LodgeOS <${FROM}>`,
+    to,
+    replyTo: contactEmail,
+    subject: `Access request — ${lodgeNumber ? `${lodgeName} #${lodgeNumber}` : lodgeName}`,
+    html: `
+      <div style="font-family:Georgia,serif;max-width:600px;margin:0 auto;background:#0A0E1A;color:#F5F0E8;padding:40px;">
+        <div style="text-align:center;margin-bottom:32px;">
+          <div style="font-family:'Arial',sans-serif;font-size:24px;font-weight:700;color:#C9A84C;letter-spacing:0.2em;">LODGEOS</div>
+        </div>
+        <h1 style="font-family:'Arial',sans-serif;font-size:20px;color:#F5F0E8;margin-bottom:8px;">New Access Request</h1>
+        <p style="color:#B8B0A0;line-height:1.7;margin-bottom:24px;">${lodgeLabel} has asked for access to LodgeOS.</p>
+        <div style="background:#141C2E;padding:20px;margin-bottom:24px;border-left:3px solid #C9A84C;">
+          <table style="width:100%;font-size:14px;">
+            ${row('Lodge', lodgeNumber ? `${lodgeName} #${lodgeNumber}` : lodgeName)}
+            ${row('Jurisdiction', jurisdiction)}
+            ${row('Contact', contactName)}
+            ${row('Office', contactRole)}
+            ${row('Email', contactEmail)}
+            ${row('Phone', contactPhone)}
+            ${row('Members', memberCount != null ? String(memberCount) : null)}
+          </table>
+        </div>
+        ${message
+          ? `<div style="background:#141C2E;padding:20px;margin-bottom:24px;color:#B8B0A0;font-size:14px;line-height:1.7;">${escapeHtml(message).replace(/\n/g, '<br>')}</div>`
+          : ''}
+        <p style="color:rgba(184,176,160,0.6);font-size:12px;line-height:1.7;">Replying to this email reaches ${escapeHtml(contactName)} directly.</p>
+        <div style="border-top:1px solid rgba(201,168,76,0.2);margin-top:32px;padding-top:16px;text-align:center;">
+          <p style="color:rgba(184,176,160,0.3);font-size:11px;">Powered by LodgeOS</p>
+        </div>
+      </div>
+    `,
+  })
+
+  if (error) throw new Error(error.message || 'Resend rejected the access request alert.')
+  return data
+}
+
+/**
+ * A brother has asked his lodge for a portal login (see
+ * app/[slug]/request-access). Goes to the Secretary.
+ *
+ * Deliberately states that nothing has been granted. The Secretary is
+ * the one who knows whether this is really a brother of the lodge, and
+ * the only thing that creates an account is him choosing to invite the
+ * man from the Members page.
+ */
+export async function sendPortalAccessRequestAlert({
+  to, secretaryName, lodgeName, requesterName, requesterEmail, requesterPhone,
+  yearsAMember, lodgeRole, message, membersUrl,
+}: {
+  to: string; secretaryName: string; lodgeName: string
+  requesterName: string; requesterEmail: string; requesterPhone?: string | null
+  yearsAMember?: string | null; lodgeRole?: string | null; message?: string | null
+  membersUrl: string
+}) {
+  const resend = getResend()
+
+  const row = (label: string, value?: string | null) => value
+    ? `<tr><td style="padding:6px 0;color:#B8B0A0;">${escapeHtml(label)}</td><td style="text-align:right;color:#F5F0E8;">${escapeHtml(value)}</td></tr>`
+    : ''
+
+  const { data, error } = await resend.emails.send({
+    from: `${lodgeName} via LodgeOS <${FROM}>`,
+    to,
+    replyTo: requesterEmail,
+    subject: `Portal access requested — ${requesterName}`,
+    html: `
+      <div style="font-family:Georgia,serif;max-width:600px;margin:0 auto;background:#0A0E1A;color:#F5F0E8;padding:40px;">
+        <div style="text-align:center;margin-bottom:32px;">
+          <div style="font-family:'Arial',sans-serif;font-size:24px;font-weight:700;color:#C9A84C;letter-spacing:0.2em;">LODGEOS</div>
+        </div>
+        <h1 style="font-family:'Arial',sans-serif;font-size:20px;color:#F5F0E8;margin-bottom:8px;">Portal Access Requested</h1>
+        <p style="color:#B8B0A0;line-height:1.7;margin-bottom:24px;">Brother ${escapeHtml(secretaryName)}, someone has asked for portal access to <strong style="color:#C9A84C;">${escapeHtml(lodgeName)}</strong>.</p>
+        <div style="background:#141C2E;padding:20px;margin-bottom:24px;border-left:3px solid #C9A84C;">
+          <table style="width:100%;font-size:14px;">
+            ${row('Name', requesterName)}
+            ${row('Email', requesterEmail)}
+            ${row('Phone', requesterPhone)}
+            ${row('Years a member', yearsAMember)}
+            ${row('Office', lodgeRole)}
+          </table>
+        </div>
+        ${message
+          ? `<div style="background:#141C2E;padding:20px;margin-bottom:24px;color:#B8B0A0;font-size:14px;line-height:1.7;">${escapeHtml(message).replace(/\n/g, '<br>')}</div>`
+          : ''}
+        <div style="background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.25);padding:16px;margin-bottom:24px;">
+          <p style="color:#B8B0A0;font-size:13px;line-height:1.7;margin:0;">
+            <strong style="color:#C9A84C;">Nothing has been granted.</strong> None of the details above are verified.
+            If you know this man to be a brother of the lodge, invite him from the Members page — that is what creates his login.
+          </p>
+        </div>
+        <div style="text-align:center;margin-bottom:24px;">
+          <a href="${membersUrl}" style="background:#C9A84C;color:#0A0E1A;font-family:Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;padding:14px 36px;text-decoration:none;display:inline-block;">Open the Members Page</a>
+        </div>
+        <div style="border-top:1px solid rgba(201,168,76,0.2);margin-top:32px;padding-top:16px;text-align:center;">
+          <p style="color:rgba(184,176,160,0.3);font-size:11px;">Powered by LodgeOS</p>
+        </div>
+      </div>
+    `,
+  })
+
+  if (error) throw new Error(error.message || 'Resend rejected the portal access request alert.')
+  return data
 }
 
 // ── Event reminder (48hrs before) ──
