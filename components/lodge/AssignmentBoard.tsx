@@ -1,5 +1,6 @@
 'use client'
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { assignmentStatus, statusPill, statusLabel, dueLabel, type Assignment } from '@/lib/assignments'
 import { CURRICULUM_DEGREES, DEGREE_TITLE } from '@/lib/curriculum'
@@ -18,6 +19,7 @@ import { callApi, errorMessage } from '@/lib/clientFetch'
  * officer signs off once he has heard it. See lib/assignments.ts.
  */
 export function AssignmentBoard({
+  slug,
   tenantId,
   members,
   assignments,
@@ -25,6 +27,7 @@ export function AssignmentBoard({
   documents,
   curriculumCounts,
 }: {
+  slug: string
   tenantId: string
   members: { user_id: string; name: string; degree: string; email: string | null }[]
   assignments: (Assignment & { assigned_to: string })[]
@@ -231,19 +234,30 @@ export function AssignmentBoard({
           </div>
         ) : rows.map(({ a, status }) => (
           <div key={a.id} style={{ padding: '0.9rem 1.4rem', borderBottom: '1px solid rgba(201,168,76,0.05)', display: 'flex', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: 200 }}>
+            {/* THE WHOLE ROW OPENS THE BROTHER IT WAS GIVEN TO.
+                Nothing here was clickable before, so an officer wanting
+                to see how a man was getting on had no way in from the
+                list — and the only link anywhere near this feature was
+                the email's, which goes to the reader's OWN portal. That
+                is why opening a task landed you on your own account. */}
+            <Link
+              href={`/lodge/${slug}/members/${a.assigned_to}?tab=Tasks`}
+              style={{ flex: 1, minWidth: 200, textDecoration: 'none' }}
+            >
               <div style={{ fontFamily: 'Cinzel, serif', fontSize: '0.88rem', color: '#F5F0E8' }}>{a.title}</div>
-              <div style={{ fontFamily: 'Crimson Pro, serif', fontSize: '0.85rem', color: '#B8B0A0' }}>
-                {nameOf(a.assigned_to)}
-                {a.assigned_by_name ? ` · asked by ${a.assigned_by_name}` : ''}
-                {dueLabel(a.due_date) ? ` · ${dueLabel(a.due_date)}` : ''}
+              <div style={{ fontFamily: 'Crimson Pro, serif', fontSize: '0.85rem', color: '#C9A84C' }}>
+                {nameOf(a.assigned_to)} →
+                <span style={{ color: '#B8B0A0' }}>
+                  {a.assigned_by_name ? ` · asked by ${a.assigned_by_name}` : ''}
+                  {dueLabel(a.due_date) ? ` · ${dueLabel(a.due_date)}` : ''}
+                </span>
               </div>
               {a.step_id && (
                 <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.55rem', color: '#918879', marginTop: 3 }}>
                   DEGREE WORK · SIGNED OFF ON THE DEGREES PAGE
                 </div>
               )}
-            </div>
+            </Link>
             <span className={`pill ${statusPill(status)}`}>{statusLabel(status)}</span>
             {(status === 'open' || status === 'overdue') && (
               <button onClick={() => act(a.id, { cancel: true })} disabled={busy}

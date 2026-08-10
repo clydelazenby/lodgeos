@@ -98,6 +98,7 @@ export default async function LodgeAssignmentsPage({ params }: { params: { slug:
       </div>
 
       <AssignmentBoard
+        slug={params.slug}
         tenantId={tenant.id}
         members={roster}
         assignments={(assignments ?? []) as any}
