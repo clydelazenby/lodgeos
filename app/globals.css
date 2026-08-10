@@ -237,10 +237,38 @@ textarea:user-invalid + .lodgeos-field-hint::after {
     grid-template-columns: 1fr !important;
   }
 
-  /* Genuinely spatial grids: keep the shape, scroll to reach it. */
+  /* Genuinely spatial grids: keep the shape, scroll to reach it.
+     min-width: 0 IS THE HALF THAT WAS MISSING, and without it the
+     overflow-x above did nothing at all.
+
+     The heatmap inside carries min-width: 320px so its cells stay
+     tappable. A grid item's automatic minimum size is its content's
+     min-content size, so that 320px propagated straight back up: the
+     single collapsed track could not go below 320 + the card's 40px of
+     padding = 362px, whatever the viewport was. On anything narrower
+     than about 378px the whole DOCUMENT became 362px wide, and since
+     the sticky header is a block child of the same box, the header
+     stretched with it and carried Sign out off the right-hand edge —
+     which is how a heatmap three cards down clipped a button in the
+     top bar.
+
+     Zeroing the minimum lets the track shrink to the viewport, at
+     which point overflow-x: auto finally has something to do and the
+     heatmap scrolls inside its own card as intended. Measured before
+     and after at 320, 375, 390 and 430. */
   .lodgeos-keep-grid-scroll {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    min-width: 0;
+  }
+
+  /* Grid and flex items default to min-width: auto, which means "never
+     smaller than my contents" — the single most common cause of a page
+     that scrolls sideways on a phone. The collapse above puts every
+     grid into one column; this lets that column actually be as narrow
+     as the screen. */
+  .lodgeos-app-main [style*="grid-template-columns"] > * {
+    min-width: 0;
   }
 
   /* Stat figures are sized for a desktop column; at full width on a
@@ -251,6 +279,16 @@ textarea:user-invalid + .lodgeos-field-hint::after {
        the bottom and was covering the last card on the page — on the
        Lodge Room that is the Stations Filled count. */
     padding-bottom: 5.5rem !important;
+  }
+
+  /* ...but only where that button still exists. Below 641px the
+     launcher moved into the top bar beside the notice bell, and this
+     reservation became 88px of empty page under every screen on a
+     phone — scrolled past on the way to nothing. Reserving space for a
+     button that is no longer there is worse than the collision it was
+     added to prevent. */
+  @media (max-width: 640px) {
+    .lodgeos-app-main { padding-bottom: 1.5rem !important; }
   }
 
   /* Quick actions are the exception to the one-column rule: they are
