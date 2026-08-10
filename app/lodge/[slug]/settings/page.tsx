@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useParams } from 'next/navigation'
 import { revalidateLodgePage } from '@/app/actions/revalidate'
 import { notify } from '@/lib/toast'
+import { LogoUpload } from '@/components/lodge/LogoUpload'
 
 export default function LodgeSettingsPage() {
   const params = useParams()
@@ -105,6 +106,47 @@ export default function LodgeSettingsPage() {
       {/* Branding */}
       <div style={sectionStyle}>
         <div style={sectionTitle}>Branding & Colors</div>
+
+        {/* The crest and these two lines are what make an email look
+            like the lodge's own stationery rather than a notification
+            from a piece of software. See lib/email/layout.ts. */}
+        <div style={{ marginBottom: '1.5rem' }}>
+          <label style={labelStyle}>Lodge Crest</label>
+          {tenant && (
+            <LogoUpload
+              tenantId={tenant.id}
+              currentUrl={form.logo_url || null}
+              onUploaded={(url) => setForm((p: any) => ({ ...p, logo_url: url }))}
+            />
+          )}
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+          <div>
+            <label style={labelStyle}>Tagline</label>
+            <input
+              value={form.tagline || ''}
+              onChange={e => setForm((p: any) => ({ ...p, tagline: e.target.value }))}
+              placeholder="Faith · Brotherhood · Service"
+              style={inputStyle}
+            />
+            <p style={{ fontSize: '0.78rem', color: '#918879', fontStyle: 'italic', marginTop: 4 }}>
+              Sits under the lodge name at the top of every email.
+            </p>
+          </div>
+          <div>
+            <label style={labelStyle}>Footer Motto</label>
+            <input
+              value={form.motto || ''}
+              onChange={e => setForm((p: any) => ({ ...p, motto: e.target.value }))}
+              placeholder="Making good men better since 1827"
+              style={inputStyle}
+            />
+            <p style={{ fontSize: '0.78rem', color: '#918879', fontStyle: 'italic', marginTop: 4 }}>
+              Closes the footer, beneath your contact details.
+            </p>
+          </div>
+        </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
           <div>
             <label style={labelStyle}>Primary Color (accent)</label>

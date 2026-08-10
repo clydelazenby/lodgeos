@@ -4,6 +4,7 @@ import { requireTenantAdmin } from '@/lib/auth/requireTenantAdmin'
 import { sendEventInviteEmail } from '@/lib/email'
 import { buildIcsEvent, icsUidForEvent, eventTimesFromRow } from '@/lib/ics'
 import { format } from 'date-fns'
+import { LODGE_BRAND_COLUMNS, toLodgeBrand } from '@/lib/email/brand'
 
 export async function POST(request: Request) {
   try {
@@ -18,7 +19,7 @@ export async function POST(request: Request) {
     const { data: event } = await supabase.from('lodge_events').select('*').eq('id', eventId).eq('tenant_id', tenantId).single()
     if (!event) return NextResponse.json({ error: 'Event not found for this lodge' }, { status: 404 })
 
-    const { data: tenant } = await supabase.from('tenants').select('name, number').eq('id', tenantId).single()
+    const { data: tenant } = await supabase.from('tenants').select(LODGE_BRAND_COLUMNS).eq('id', tenantId).single()
     if (!tenant) return NextResponse.json({ error: 'Tenant not found' }, { status: 404 })
 
     const { data: sender } = await supabase.from('profiles').select('first_name, last_name, email').eq('id', auth.userId).single()
@@ -77,6 +78,7 @@ export async function POST(request: Request) {
           to: profile.email,
           firstName: profile.first_name ?? 'Brother',
           lodgeName,
+          brand: toLodgeBrand(tenant),
           eventTitle: event.title,
           eventDateLabel: dateLabel,
           location: event.location,

@@ -4,6 +4,7 @@ import { sendWelcomeEmail, APP_URL } from '@/lib/email'
 import { requireTenantRole, TenantRole } from '@/lib/auth/requireTenantAdmin'
 import { createInviteLink } from '@/lib/auth/inviteLink'
 import { upsertProfilePreservingIdentity } from '@/lib/auth/profile'
+import { LODGE_BRAND_COLUMNS, toLodgeBrand } from '@/lib/email/brand'
 
 const ADMIN_TIER_ROLES = new Set<TenantRole>(['admin', 'secretary', 'grand_master'])
 
@@ -127,7 +128,7 @@ export async function POST(request: Request) {
     // have him invite the same brother again and again.
 
     const { data: tenant } = await serviceClient
-      .from('tenants').select('name, number, slug').eq('id', tenantId).maybeSingle()
+      .from('tenants').select(`id, ${LODGE_BRAND_COLUMNS}`).eq('id', tenantId).maybeSingle()
 
     let emailed = false
     let warning = invite.warning
@@ -143,6 +144,7 @@ export async function POST(request: Request) {
           lodgeSlug: tenant.slug,
           loginUrl: `${APP_URL}/auth/login`,
           actionUrl: invite.actionUrl,
+          brand: toLodgeBrand(tenant),
         })
         emailed = true
       } catch (mailErr: any) {
