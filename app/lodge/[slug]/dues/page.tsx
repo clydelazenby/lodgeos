@@ -58,7 +58,7 @@ export default async function LodgeDuesPage({ params }: { params: { slug: string
 
   const [{ data: members }, { data: payments }, { data: charges }] = await Promise.all([
     supabase.from('tenant_members').select('*, profiles(first_name, last_name, email)').eq('tenant_id', tenant.id).eq('is_active', true).order('created_at'),
-    supabase.from('payments').select('*, profiles(first_name, last_name)').eq('tenant_id', tenant.id).eq('status', 'succeeded').order('created_at', { ascending: false }).limit(20),
+    supabase.from('payments').select('*, profiles!payments_member_id_fkey(first_name, last_name)').eq('tenant_id', tenant.id).eq('status', 'succeeded').order('created_at', { ascending: false }).limit(20),
     supabase
       .from('member_charges')
       .select('*, profiles!member_charges_member_id_fkey(first_name, last_name)')
@@ -73,7 +73,7 @@ export default async function LodgeDuesPage({ params }: { params: { slug: string
   // bank yet. Card payments never appear here — Stripe confirms those.
   const { data: pendingTransfers } = await supabase
     .from('payments')
-    .select('id, member_id, amount, dues_year, payment_method, reported_at, reference_note, profiles(first_name, last_name)')
+    .select('id, member_id, amount, dues_year, payment_method, reported_at, reference_note, profiles!payments_member_id_fkey(first_name, last_name)')
     .eq('tenant_id', tenant.id)
     .eq('status', 'pending')
     .not('payment_method', 'is', null)
