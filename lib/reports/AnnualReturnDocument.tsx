@@ -8,15 +8,20 @@ import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
  * data plumbing already existed, the report itself was the only
  * missing piece.
  *
- * Honest gap, not hidden: the schema has no distinct "deceased" or
- * "demitted" status — tenant_members only has is_active (true/false).
- * A member who died and one who simply stopped renewing look identical
- * in this data. This report cannot distinguish them and does not
- * pretend to; it reports "became inactive during the period" as one
- * category rather than fabricating a breakdown the data doesn't
- * support. If a jurisdiction's return form requires that distinction,
- * the schema needs a real status field added — see the note at the
- * bottom of the generated PDF.
+ * THE LOSSES BREAKDOWN IS REAL NOW. This used to carry a printed
+ * apology: tenant_members had only is_active, so a brother who died and
+ * one who simply stopped renewing were indistinguishable, and the
+ * return reported a single combined "became inactive" figure. Migration
+ * 025 added the reason and the date it took effect, so demits,
+ * suspensions, expulsions and deaths are counted separately and each is
+ * confined to the year being reported.
+ *
+ * What has NOT changed is the principle underneath that apology.
+ * Memberships that went inactive before the lodge began recording
+ * reasons are reported as unaccounted, on their own line, rather than
+ * being distributed across the four real categories to make the columns
+ * add up. A fabricated breakdown on a Grand Lodge return is worse than
+ * an honest gap, and the Secretary is the only one who can close it.
  */
 
 const styles = StyleSheet.create({
@@ -45,7 +50,13 @@ export type AnnualReturnData = {
   periodStart: string
   periodEnd: string
   generatedAt: string
-  memberCounts: { activeStart: number; activeEnd: number; becameInactive: number }
+  memberCounts: {
+    activeStart: number
+    activeEnd: number
+    becameInactive: number
+    losses: { demitted: number; suspended: number; expelled: number; deceased: number }
+    unaccountedLosses: number
+  }
   degreesConferredEA: number
   degreesConferredFC: number
   degreesConferredMM: number
@@ -71,7 +82,18 @@ export function AnnualReturnDocument({ data }: { data: AnnualReturnData }) {
           <Text style={styles.sectionTitle}>Membership</Text>
           <View style={styles.row}><Text style={styles.label}>Active members, start of period</Text><Text style={styles.value}>{data.memberCounts.activeStart}</Text></View>
           <View style={styles.row}><Text style={styles.label}>Active members, end of period</Text><Text style={styles.value}>{data.memberCounts.activeEnd}</Text></View>
-          <View style={styles.row}><Text style={styles.label}>Became inactive during period (see note)</Text><Text style={styles.value}>{data.memberCounts.becameInactive}</Text></View>
+          <View style={styles.row}><Text style={styles.label}>Losses during period (total)</Text><Text style={styles.value}>{data.memberCounts.becameInactive}</Text></View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Losses, by Cause</Text>
+          <View style={styles.row}><Text style={styles.label}>Demitted</Text><Text style={styles.value}>{data.memberCounts.losses.demitted}</Text></View>
+          <View style={styles.row}><Text style={styles.label}>Suspended</Text><Text style={styles.value}>{data.memberCounts.losses.suspended}</Text></View>
+          <View style={styles.row}><Text style={styles.label}>Expelled</Text><Text style={styles.value}>{data.memberCounts.losses.expelled}</Text></View>
+          <View style={styles.row}><Text style={styles.label}>Died</Text><Text style={styles.value}>{data.memberCounts.losses.deceased}</Text></View>
+          {data.memberCounts.unaccountedLosses > 0 && (
+            <View style={styles.row}><Text style={styles.label}>Inactive, cause or date not recorded (see note)</Text><Text style={styles.value}>{data.memberCounts.unaccountedLosses}</Text></View>
+          )}
         </View>
 
         <View style={styles.section}>
@@ -108,13 +130,9 @@ export function AnnualReturnDocument({ data }: { data: AnnualReturnData }) {
         </View>
 
         <Text style={styles.note}>
-          Note on membership status: this system currently records only whether a member is active or
-          inactive — it does not yet distinguish death, demit, suspension, or other reasons for a status
-          change. The "became inactive" figure above is a single combined count for all such cases during
-          the period. If your jurisdiction's return requires this breakdown, it must currently be determined
-          manually by cross-referencing lodge records, or a status field should be added to the system to
-          track it going forward. This report does not fabricate a breakdown the underlying data does not
-          support.
+          {data.memberCounts.unaccountedLosses > 0
+            ? `Note on membership status: ${data.memberCounts.unaccountedLosses} membership(s) are recorded as inactive without a cause or an effective date. These predate the lodge recording why a brother left the rolls, and they are shown on their own line rather than being distributed across the four causes above — this report does not fabricate a breakdown the underlying data does not support. Setting the cause and date on those records in the Members page will bring them into the figures. The four causes above count only changes whose effective date falls inside the period.`
+            : 'Note on membership status: the causes above count only changes whose effective date falls inside the reporting period. Every inactive membership in this lodge has a recorded cause and date.'}
         </Text>
 
         <Text style={styles.footer} fixed>

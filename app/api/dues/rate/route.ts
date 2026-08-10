@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireTenantRole } from '@/lib/auth/requireTenantAdmin'
 import { revalidatePath } from 'next/cache'
+import { recordAudit, actorName } from '@/lib/audit'
 
 /**
  * Sets the lodge's annual dues rate.
@@ -62,6 +63,17 @@ export async function POST(request: Request) {
     // information, so purge it rather than leaving a stale figure up for
     // an hour.
     if (tenant?.slug) revalidatePath(`/${tenant.slug}`)
+
+    await recordAudit({
+      tenantId,
+      actorId: auth.userId,
+      actorName: await actorName(auth.userId),
+      action: 'dues.rate_changed',
+      summary: `Set the annual dues rate to $${tenant.dues_amount}`,
+      entityType: 'tenant',
+      entityId: tenantId,
+      detail: { duesAmount: tenant.dues_amount },
+    })
 
     return NextResponse.json({ success: true, duesAmount: tenant.dues_amount })
   } catch (error: any) {

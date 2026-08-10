@@ -83,3 +83,37 @@ export function eventTimesFromRow(eventDate: string, eventTime: string | null): 
   const end = new Date(start.getTime() + 2 * 60 * 60 * 1000)
   return { start, end }
 }
+
+
+/**
+ * RFC 5545 requires lines longer than 75 octets to be folded onto
+ * continuation lines beginning with a space.
+ *
+ * The single-event route skips this and gets away with it because a
+ * title and a location are short. A feed carries event DESCRIPTIONS —
+ * free text a Secretary typed, routinely a paragraph — and Outlook in
+ * particular rejects an over-length line rather than tolerating it,
+ * which would break the whole calendar rather than one field.
+ *
+ * Measured in UTF-8 bytes, not characters: the limit is octets, and a
+ * naive character count would let a description of accented text or an
+ * em dash through at over the limit.
+ */
+export function foldIcsLine(line: string): string {
+  const bytes = Buffer.from(line, 'utf8')
+  if (bytes.length <= 75) return line
+
+  const out: string[] = []
+  let start = 0
+  let limit = 75
+  while (start < bytes.length) {
+    let end = Math.min(start + limit, bytes.length)
+    // Never split a multi-byte character: continuation bytes are
+    // 10xxxxxx, so walk back to the start of the sequence.
+    while (end > start && end < bytes.length && (bytes[end] & 0xc0) === 0x80) end--
+    out.push(bytes.subarray(start, end).toString('utf8'))
+    start = end
+    limit = 74 // continuation lines lose one octet to the leading space
+  }
+  return out.join('\r\n ')
+}

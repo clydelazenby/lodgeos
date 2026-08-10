@@ -124,6 +124,10 @@ export default async function LodgeAdminLayout({
         { label: 'Lodge Room', href: `${base}/lodge-room` },
         { label: 'Meeting Mode', href: `${base}/meeting`, need: 'meetings' },
         { label: 'Attendance', href: `${base}/attendance`, need: 'meetings' },
+        // The lodge's principal record. Under Meetings rather than
+        // Records because writing them up is part of running a meeting,
+        // and it is the officer who just ran one who does it.
+        { label: 'Minutes', href: `${base}/minutes`, need: 'meetings' },
         { label: 'Events', href: `${base}/events` },
       ],
     },
@@ -145,6 +149,10 @@ export default async function LodgeAdminLayout({
         { label: 'Communications', href: `${base}/communications`, need: 'communications' },
         { label: 'Analytics', href: `${base}/analytics`, need: 'insight' },
         { label: 'Reports', href: `${base}/reports`, need: 'insight' },
+        // Narrower than the section it sits in: the page itself and the
+        // RLS policy behind it restrict the trail to the administrative
+        // office. 'settings' is the closest capability we have to that.
+        { label: 'Audit Trail', href: `${base}/audit`, need: 'settings' },
       ],
     },
     {

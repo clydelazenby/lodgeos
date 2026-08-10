@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import { revalidateLodgePage } from '@/app/actions/revalidate'
 import { notify } from '@/lib/toast'
 import { LogoUpload } from '@/components/lodge/LogoUpload'
+import { CalendarSubscribe } from '@/components/lodge/CalendarSubscribe'
 
 export default function LodgeSettingsPage() {
   const params = useParams()
@@ -320,6 +321,25 @@ export default function LodgeSettingsPage() {
         </div>
         <a href="/api/billing/portal" className="btn-outline" style={{ fontSize: '0.68rem', display: 'inline-block' }}>Manage Billing →</a>
       </div>
+
+      {/* THE CALENDAR SUBSCRIPTION.
+          Shown here as well as in the portal because the Secretary is
+          the one who puts the link in a notice, and because he is the
+          one who needs to be told what rotating it would do. */}
+      {tenant.calendar_token && (
+        <div style={sectionStyle}>
+          <div style={sectionTitle}>Lodge Calendar Subscription</div>
+          <div style={{ margin: '-1rem -1.4rem' }}>
+            <CalendarSubscribe token={tenant.calendar_token} />
+          </div>
+          <p style={{ fontFamily: 'Crimson Pro, serif', fontStyle: 'italic', fontSize: '0.88rem', color: '#918879', margin: '1rem 0 0' }}>
+            Every brother sees this same link on his own Events page, so it does not need to be sent
+            round. It carries the whole schedule, including meetings not marked public — which is
+            why the address is a long random one rather than the lodge&apos;s name. A calendar app
+            cannot sign in, so the address is the only thing standing in for a password.
+          </p>
+        </div>
+      )}
     </div>
   )
 }

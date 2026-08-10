@@ -4,6 +4,7 @@ import { requireTenantRole } from '@/lib/auth/requireTenantAdmin'
 import { collectRecipients, sendLodgeNoticeBatch } from '@/lib/email/lodgeNotice'
 import { MM_AND_ABOVE, CANDIDATE_DEGREES } from '@/lib/degrees'
 import { LODGE_BRAND_COLUMNS, toLodgeBrand } from '@/lib/email/brand'
+import { recordAudit, actorName } from '@/lib/audit'
 
 /**
  * Sends a lodge-wide notice and records what actually happened.
@@ -443,6 +444,19 @@ export async function POST(request: Request) {
     if (draftId) {
       await serviceClient.from('communications').delete().eq('id', draftId).eq('tenant_id', tenantId).eq('is_draft', true)
     }
+
+    await recordAudit({
+      tenantId,
+      actorId: auth.userId,
+      actorName: await actorName(auth.userId),
+      action: 'communication.sent',
+      summary: scheduleIso
+        ? `Scheduled the notice "${subject}" to ${total} recipient(s) for ${scheduleIso}`
+        : `Sent the notice "${subject}" to ${sent} of ${total} recipient(s)`,
+      entityType: 'communication',
+      entityId: (comm as any)?.id ?? null,
+      detail: { subject, sent, failed: allFailures.length, total, recipientGroup },
+    })
 
     return NextResponse.json({
       success: sent > 0,

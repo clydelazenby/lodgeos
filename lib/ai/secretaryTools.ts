@@ -98,6 +98,18 @@ export const SECRETARY_TOOLS = [
     description: 'Who was present, absent or excused at one past meeting. Defaults to the most recent.',
     input_schema: { type: 'object' as const, properties: {}, required: [] },
   },
+  {
+    name: 'get_meeting_record',
+    description:
+      'Everything recorded about one past meeting: its agenda as worked through, who was present, absent and excused, and which visiting brethren signed the register. Use this to DRAFT MINUTES — it is the lodge\'s own record of the evening, so minutes built from it do not depend on the officer retyping his notes. Defaults to the most recent past meeting.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        eventId: { type: 'string', description: 'A specific meeting id, when one is known. Otherwise the most recent past meeting is used.' },
+      },
+      required: [],
+    },
+  },
 ] as const
 
 type ToolName = typeof SECRETARY_TOOLS[number]['name']
@@ -372,6 +384,98 @@ export async function runSecretaryTool(
         event: lastEvent,
         attendance: (attendance ?? []).map((a: any) => ({
           name: fullName(a.profiles), status: a.status,
+        })),
+      }
+    }
+
+    case 'get_meeting_record': {
+      /**
+       * The material a set of minutes is actually made of.
+       *
+       * Before this, drafting minutes meant the Secretary retyping his
+       * notes into the panel — while the lodge had already recorded the
+       * agenda as it was worked through, who answered the roll, and who
+       * visited. The draft should be built from the record, not from
+       * the officer's memory of it an hour later.
+       */
+      let eventId = typeof input.eventId === 'string' ? input.eventId : null
+
+      if (!eventId) {
+        const { data: recent } = await supabase
+          .from('lodge_events')
+          .select('id')
+          .eq('tenant_id', tenantId)
+          .lte('event_date', new Date().toISOString().slice(0, 10))
+          .order('event_date', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        eventId = (recent as any)?.id ?? null
+      }
+
+      if (!eventId) return { event: null, note: 'No past meetings recorded.' }
+
+      const [{ data: event }, { data: agenda }, { data: attendance }, { data: visitors }, { data: existing }] =
+        await Promise.all([
+          supabase
+            .from('lodge_events')
+            .select('id, title, event_date, event_time, location, event_type, opened_at, closed_at')
+            .eq('id', eventId)
+            .eq('tenant_id', tenantId)
+            .maybeSingle(),
+          supabase
+            .from('meeting_agenda_items')
+            .select('label, completed, notes, sort_order')
+            .eq('event_id', eventId)
+            .eq('tenant_id', tenantId)
+            .order('sort_order'),
+          supabase
+            .from('attendance')
+            .select('status, profiles(first_name, last_name), tenant_members!inner(lodge_role)')
+            .eq('event_id', eventId)
+            .eq('tenant_id', tenantId),
+          supabase
+            .from('event_visitors')
+            .select('name, title, visiting_from, jurisdiction')
+            .eq('event_id', eventId)
+            .eq('tenant_id', tenantId)
+            .order('created_at'),
+          supabase
+            .from('meeting_minutes')
+            .select('status, approved_on')
+            .eq('event_id', eventId)
+            .eq('tenant_id', tenantId)
+            .maybeSingle(),
+        ])
+
+      if (!event) return { event: null, note: 'That meeting does not belong to this lodge.' }
+
+      const named = (rows: any[], status: string) =>
+        rows.filter((a) => a.status === status).map((a) => fullName(a.profiles)).filter(Boolean)
+
+      const all = attendance ?? []
+
+      return {
+        event,
+        // Reported so the model says "minutes already exist for this
+        // meeting" rather than cheerfully drafting a second set.
+        existingMinutes: existing ? { status: (existing as any).status, approvedOn: (existing as any).approved_on } : null,
+        agenda: (agenda ?? []).map((a: any) => ({
+          item: a.label,
+          completed: a.completed,
+          note: a.notes ?? null,
+        })),
+        attendance: {
+          present: named(all, 'present'),
+          absent: named(all, 'absent'),
+          excused: named(all, 'excused'),
+          presentCount: all.filter((a: any) => a.status === 'present').length,
+        },
+        // The minutes of a stated communication traditionally name the
+        // visitors, and until the register existed they could not.
+        visitors: (visitors ?? []).map((v: any) => ({
+          name: v.title ? `${v.title} ${v.name}` : v.name,
+          from: v.visiting_from ?? null,
+          jurisdiction: v.jurisdiction ?? null,
         })),
       }
     }

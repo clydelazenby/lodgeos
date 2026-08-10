@@ -40,6 +40,10 @@ export function PortalNav({
     ['Events', '/portal/events'],
     ['Notices', '/portal/notices'],
     ['Roster', '/portal/roster'],
+    // Approved minutes only — RLS enforces it, not this link. A brother
+    // who was absent has every right to know what was done in his
+    // lodge; that is why they are read aloud at all.
+    ['Minutes', '/portal/minutes'],
     ['Documents', '/portal/documents'],
     ['Dues', '/portal/dues'],
     ['Profile', '/portal/profile'],

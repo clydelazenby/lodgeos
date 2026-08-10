@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { T, pillTone } from '@/lib/designTokens'
 import { Users, DollarSign, CalendarPlus, UserPlus, BookOpen, BarChart3 } from 'lucide-react'
 import { upcomingSince } from '@/lib/dates'
+import { anniversariesInMonth, anniversaryDay, serviceLabel } from '@/lib/anniversaries'
 
 // Traditional fixed lodge stations, same list as the prior vellum
 // dashboard — carried over unchanged, since this is a visual reskin,
@@ -73,7 +74,7 @@ export default async function LodgeDashboardPage({ params }: { params: { slug: s
     supabase.from('tenant_members').select('*', { count: 'exact', head: true }).eq('tenant_id', tenant.id).eq('dues_status', 'due').eq('is_active', true),
     supabase.from('lodge_events').select('*').eq('tenant_id', tenant.id).gte('event_date', today).order('event_date').limit(4),
     supabase.from('payments').select('*, profiles(first_name, last_name)').eq('tenant_id', tenant.id).eq('status', 'succeeded').order('created_at', { ascending: false }).limit(5),
-    supabase.from('tenant_members').select('user_id, lodge_role, profiles(first_name, last_name)').eq('tenant_id', tenant.id).eq('is_active', true),
+    supabase.from('tenant_members').select('user_id, lodge_role, raised_date, profiles(first_name, last_name)').eq('tenant_id', tenant.id).eq('is_active', true),
     supabase.from('petitions').select('id, first_name, last_name, created_at').eq('tenant_id', tenant.id).order('created_at', { ascending: false }).limit(4),
     supabase.from('communications').select('id, subject, created_at, is_draft').eq('tenant_id', tenant.id).eq('is_draft', false).order('created_at', { ascending: false }).limit(4),
     // Attendance joined through lodge_events for its date, filtered to
@@ -83,6 +84,18 @@ export default async function LodgeDashboardPage({ params }: { params: { slug: s
     supabase.from('attendance').select('member_id, status, lodge_events!inner(event_date)').eq('tenant_id', tenant.id).gte('lodge_events.event_date', yearStart),
     supabase.from('tenant_members').select('*', { count: 'exact', head: true }).eq('tenant_id', tenant.id).eq('dues_status', 'paid').eq('is_active', true),
   ])
+
+  /**
+   * WHOSE ANNIVERSARY FALLS THIS MONTH.
+   *
+   * The cron writes to the brother; this tells the LODGE, which is the
+   * more important half. A fiftieth year is called in open lodge, and
+   * the officers can only do that if they know before the meeting
+   * rather than after it. Reuses the roster already fetched above, so
+   * it costs one extra column and no extra query.
+   */
+  const anniversaries = anniversariesInMonth((allActiveMembers ?? []) as any, new Date())
+    .sort((a, b) => anniversaryDay(a.raisedDate) - anniversaryDay(b.raisedDate))
 
   const duesCollectedPct = memberCount ? Math.round(((paidCount ?? 0) / memberCount) * 100) : 0
 
@@ -163,6 +176,43 @@ export default async function LodgeDashboardPage({ params }: { params: { slug: s
         lodgeNumber={tenant.number}
         subline={tenant.city ? `${tenant.city}, ${tenant.state}` : 'Lodge Admin Dashboard'}
       />
+
+      {/* YEARS OF SERVICE FALLING THIS MONTH.
+          High on the page, above the numbers, because it is the one
+          item here with a deadline attached: it has to be read BEFORE
+          the meeting, and a fiftieth year called a month late is worse
+          than not calling it. Absent entirely when there are none —
+          an empty "no anniversaries" card every month for eleven
+          months would train officers to stop looking at the twelfth. */}
+      {anniversaries.length > 0 && (
+        <div style={{ background: T.bgCard, border: `1px solid ${T.gold}33`, borderRadius: T.radius, padding: '1.25rem', marginBottom: '1.5rem' }}>
+          <div style={{ fontFamily: T.mono, fontSize: '10px', letterSpacing: '0.14em', color: T.gold, textTransform: 'uppercase', marginBottom: '0.9rem' }}>
+            Years of Service This Month
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+            {anniversaries.map((a) => (
+              <div key={a.memberId} style={{ display: 'flex', alignItems: 'baseline', gap: '0.8rem', flexWrap: 'wrap' }}>
+                <span style={{ fontFamily: T.mono, fontSize: '0.62rem', color: T.inkFaint, minWidth: 28 }}>
+                  {anniversaryDay(a.raisedDate)}
+                </span>
+                <span style={{ fontFamily: T.display, fontSize: '0.95rem', color: T.ink, flex: 1, minWidth: 160 }}>
+                  {a.name}
+                </span>
+                <span
+                  className={`pill ${a.milestone ? 'pill-fc' : 'pill-new'}`}
+                  title={a.milestone ? 'A milestone year — worth calling in open lodge' : undefined}
+                >
+                  {serviceLabel(a.years)}
+                </span>
+              </div>
+            ))}
+          </div>
+          <div style={{ fontFamily: T.body, fontSize: '0.82rem', color: T.inkFaint, fontStyle: 'italic', marginTop: '0.9rem' }}>
+            Each brother is also written to once, in the month it falls. Milestone years are marked
+            in gold.
+          </div>
+        </div>
+      )}
 
       {/* KPI cards — icon-badge style matching the reference: a circular
           gold-tinted icon badge, large headline number, label + sub-label. */}
