@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { DuesTransferOptions } from '@/components/portal/DuesTransferOptions'
 
 export default function PortalDuesPage() {
   const [membership, setMembership] = useState<any>(null)
@@ -14,7 +15,7 @@ export default function PortalDuesPage() {
       if (!user) return
 
       const [{ data: m }, { data: p }] = await Promise.all([
-        supabase.from('tenant_members').select('*, tenants(id, name, number, dues_amount)').eq('user_id', user.id).eq('is_active', true).single(),
+        supabase.from('tenant_members').select('*, tenants(id, name, number, dues_amount, cashapp_handle, venmo_handle, zelle_handle, zelle_name)').eq('user_id', user.id).eq('is_active', true).single(),
         supabase.from('payments').select('*').eq('member_id', user.id).eq('status', 'succeeded').order('created_at', { ascending: false }),
       ])
       setMembership(m)
@@ -83,7 +84,8 @@ export default function PortalDuesPage() {
             {loading ? 'Redirecting to payment...' : `Pay $${tenant?.dues_amount} Now →`}
           </button>
           <p style={{ fontSize: '0.8rem', color: 'rgba(184,176,160,0.5)', marginTop: '1rem', fontStyle: 'italic' }}>
-            Secure payment powered by Stripe. Your card details never touch our servers.
+            Card payment is instant and marks you paid automatically. The lodge pays a small
+            processing fee — the free options below cost it nothing.
           </p>
         </div>
       ) : (
@@ -92,6 +94,20 @@ export default function PortalDuesPage() {
           <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1.1rem', color: '#5DBE85', marginBottom: '0.5rem' }}>Dues paid — Good Standing</div>
           <p style={{ fontSize: '0.95rem', color: '#B8B0A0', fontStyle: 'italic' }}>Your {new Date().getFullYear()} dues are paid. Thank you, Brother.</p>
         </div>
+      )}
+
+      {duesDue && tenant && (
+        <DuesTransferOptions
+          tenantId={tenant.id}
+          lodgeName={`${tenant.name} #${tenant.number}`}
+          amount={Number(tenant.dues_amount ?? 0)}
+          year={new Date().getFullYear()}
+          cashapp={tenant.cashapp_handle ?? null}
+          venmo={tenant.venmo_handle ?? null}
+          zelle={tenant.zelle_handle ?? null}
+          zelleName={tenant.zelle_name ?? null}
+          alreadyReported={payments.some((p: any) => p.status === 'pending' && p.payment_method && p.payment_method !== 'card')}
+        />
       )}
 
       {/* Payment history */}

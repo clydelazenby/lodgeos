@@ -7,6 +7,7 @@ import { T } from '@/lib/designTokens'
 import { DuesReminderButton } from '@/components/lodge/DuesReminderButton'
 import { DuesRateEditor } from '@/components/lodge/DuesRateEditor'
 import { ChargesPanel } from '@/components/lodge/ChargesPanel'
+import { PendingTransfers } from '@/components/lodge/PendingTransfers'
 
 /**
  * REBUILT ON THE SHARED DESIGN SYSTEM.
@@ -67,6 +68,17 @@ export default async function LodgeDuesPage({ params }: { params: { slug: string
       .order('status')
       .order('created_at', { ascending: false }),
   ])
+
+  // Transfers a brother has reported but nobody has checked against the
+  // bank yet. Card payments never appear here — Stripe confirms those.
+  const { data: pendingTransfers } = await supabase
+    .from('payments')
+    .select('id, member_id, amount, dues_year, payment_method, reported_at, reference_note, profiles(first_name, last_name)')
+    .eq('tenant_id', tenant.id)
+    .eq('status', 'pending')
+    .not('payment_method', 'is', null)
+    .neq('payment_method', 'card')
+    .order('reported_at', { ascending: false })
 
   const rate = tenant.dues_amount ?? 60
   const paid = members?.filter((m: any) => m.dues_status === 'paid') ?? []
@@ -199,6 +211,10 @@ export default async function LodgeDuesPage({ params }: { params: { slug: string
           </div>
         )}
       </div>
+
+      {canManageFinance && (
+        <PendingTransfers tenantId={tenant.id} pending={(pendingTransfers ?? []) as any} />
+      )}
 
       {canManageFinance && (
         <ChargesPanel
