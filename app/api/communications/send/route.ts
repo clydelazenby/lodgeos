@@ -24,13 +24,23 @@ import { LODGE_BRAND_COLUMNS, toLodgeBrand } from '@/lib/email/brand'
  * or Admin's to send.
  */
 
-const ALLOWED_GROUPS = new Set(['all', 'mm_only', 'candidates', 'dues_outstanding'])
+const ALLOWED_GROUPS = new Set(['all', 'mm_only', 'candidates', 'dues_outstanding', 'selected', 'manual'])
+
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+/**
+ * A cap on hand-typed addresses. This path can send from the lodge's
+ * verified domain to people who never joined anything, so it is
+ * deliberately a short list for a visiting brother or a Grand Lodge
+ * officer — not a second mailing list living in a textarea.
+ */
+const MAX_MANUAL_RECIPIENTS = 25
 const MAX_SUBJECT = 200
 const MAX_BODY = 20000
 
 export async function POST(request: Request) {
   try {
-    const { tenantId, subject, body, recipientGroup, mode, draftId, scheduledAt, eventId, meetingUrl } = await request.json()
+    const { tenantId, subject, body, recipientGroup, mode, draftId, scheduledAt, eventId, meetingUrl, memberIds, extraEmails } = await request.json()
 
     // Scheduling. Resend holds the message and releases it at the given
     // instant, so this costs nothing to support and does not require a
@@ -209,17 +219,110 @@ export async function POST(request: Request) {
     if (group === 'candidates') query = query.in('degree', CANDIDATE_DEGREES)
     if (group === 'dues_outstanding') query = query.eq('dues_status', 'due')
 
+    // Hand-picked brethren. The ids are filtered against THIS lodge's
+    // active membership, so an id belonging to another lodge — or to a
+    // brother who has been removed — cannot be addressed by pasting it
+    // into the request.
+    if (group === 'selected') {
+      const ids = Array.isArray(memberIds)
+        ? memberIds.filter((id: unknown) => typeof id === 'string' && id.length > 0)
+        : []
+      if (ids.length === 0) {
+        return NextResponse.json({ error: 'Choose at least one brother to write to.' }, { status: 400 })
+      }
+      query = query.in('user_id', ids)
+    }
+
+    // 'manual' addresses nobody on the roster, so it starts from an
+    // empty roster query rather than the whole lodge.
+    if (group === 'manual') {
+      query = query.eq('user_id', '00000000-0000-0000-0000-000000000000')
+    }
+
     const { data: members, error: membersError } = await query
     if (membersError) throw membersError
+
+    /**
+     * Addresses typed by hand.
+     *
+     * SUPER ADMIN ONLY, checked against the database here rather than
+     * trusted from the request. Every other recipient in this route is
+     * a brother the lodge has already vetted and added to its roster;
+     * this is the one path that can send from the lodge's verified
+     * domain to an address nobody has vetted at all. Held to the
+     * platform owner, it is a useful way to include a visiting brother
+     * or a Grand Lodge officer. Available to any officer, it is a way
+     * to make the lodge's sending domain carry mail to strangers.
+     */
+    const manualRequested = Array.isArray(extraEmails)
+      ? extraEmails
+          .map((e: unknown) => String(e ?? '').trim().toLowerCase())
+          .filter((e: string) => e.length > 0)
+      : []
+
+    const manualRecipients: { email: string; firstName: string }[] = []
+
+    if (manualRequested.length > 0) {
+      const { data: callerProfile } = await serviceClient
+        .from('profiles')
+        .select('platform_role')
+        .eq('id', auth.userId)
+        .maybeSingle()
+
+      if (callerProfile?.platform_role !== 'super_admin') {
+        return NextResponse.json(
+          { error: 'Only a platform administrator may send to addresses that are not on the roster.' },
+          { status: 403 }
+        )
+      }
+
+      if (manualRequested.length > MAX_MANUAL_RECIPIENTS) {
+        return NextResponse.json(
+          { error: `At most ${MAX_MANUAL_RECIPIENTS} typed addresses per notice.` },
+          { status: 400 }
+        )
+      }
+
+      const invalid = manualRequested.filter((e) => !EMAIL_SHAPE.test(e))
+      if (invalid.length > 0) {
+        return NextResponse.json(
+          { error: `Not a valid email address: ${invalid[0]}` },
+          { status: 400 }
+        )
+      }
+
+      // De-duplicated against each other AND against the roster
+      // selection, so nobody receives the same notice twice because he
+      // was both picked and typed.
+      const alreadyGoing = new Set(
+        (members ?? []).map((m: any) => (m.profiles?.email ?? '').toLowerCase()).filter(Boolean)
+      )
+      for (const email of Array.from(new Set(manualRequested))) {
+        if (!alreadyGoing.has(email)) manualRecipients.push({ email, firstName: 'Brother' })
+      }
+    }
 
     // Validation happens before any network call, so one unusable
     // address can't reject a batch of 100 good ones.
     const { valid, failed: unreachable } = collectRecipients(
-      (members ?? []).map((m: any) => ({
-        email: m.profiles?.email,
-        firstName: m.profiles?.first_name,
-      }))
+      [
+        ...(members ?? []).map((m: any) => ({
+          email: m.profiles?.email,
+          firstName: m.profiles?.first_name,
+        })),
+        // Hand-typed addresses go through the same validation and the
+        // same batch as everyone else — they are not a second send
+        // path, just extra rows on this one.
+        ...manualRecipients,
+      ]
     )
+
+    if (valid.length === 0) {
+      return NextResponse.json(
+        { error: 'Nobody in that selection has an email address on file.' },
+        { status: 400 }
+      )
+    }
 
     // Lets the per-recipient delivery rows point back at a real brother,
     // so a bounce can be shown against a name rather than a bare address.
