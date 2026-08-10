@@ -2,6 +2,13 @@ import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireTenantRole } from '@/lib/auth/requireTenantAdmin'
 
+// The tiers that count as the lodge's administrative office. Kept as
+// one set so the last-officer guard below cannot drift from the list
+// of who holds administrative access — if grand_master counted as
+// admin-tier everywhere except in the count, a lodge could be left
+// with no administrative officer at all.
+const ADMIN_TIER_ROLES = new Set(['admin', 'secretary', 'grand_master'])
+
 /**
  * Removes a brother from a lodge roster.
  *
@@ -49,7 +56,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const auth = await requireTenantRole(tenantId, ['admin', 'secretary'])
+    const auth = await requireTenantRole(tenantId, ['admin', 'secretary', 'grand_master'])
     if (!auth.ok) return auth.response
 
     const supabase = createServiceClient()
@@ -83,13 +90,13 @@ export async function POST(request: Request) {
 
     // Last-officer check. Only meaningful if the person being removed
     // actually holds one of the administrative tiers.
-    if (target.tenant_role === 'admin' || target.tenant_role === 'secretary') {
+    if (ADMIN_TIER_ROLES.has(target.tenant_role)) {
       const { count, error: countError } = await supabase
         .from('tenant_members')
         .select('id', { count: 'exact', head: true })
         .eq('tenant_id', tenantId)
         .eq('is_active', true)
-        .in('tenant_role', ['admin', 'secretary'])
+        .in('tenant_role', Array.from(ADMIN_TIER_ROLES))
 
       if (countError) throw countError
 

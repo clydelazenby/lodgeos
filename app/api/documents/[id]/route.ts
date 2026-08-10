@@ -54,7 +54,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Document not found.' }, { status: 404 })
     }
 
-    const auth = await requireTenantRole(doc.tenant_id, ['admin', 'secretary'])
+    const auth = await requireTenantRole(doc.tenant_id, ['admin', 'secretary', 'grand_master'])
     if (!auth.ok) return auth.response
 
     // Documents uploaded before migration 007 have no storage_path —

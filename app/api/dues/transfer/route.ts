@@ -19,7 +19,7 @@ import { sendPaymentReceiptEmail } from '@/lib/email'
  */
 
 const METHODS = new Set(['zelle', 'cashapp', 'venmo', 'cash', 'check', 'other'])
-const FINANCE_TIERS = ['admin', 'secretary', 'treasurer', 'worshipful_master'] as const
+const FINANCE_TIERS = ['admin', 'secretary', 'grand_master', 'treasurer', 'worshipful_master'] as const
 
 /** Brother: "I've sent my dues." */
 export async function POST(request: Request) {

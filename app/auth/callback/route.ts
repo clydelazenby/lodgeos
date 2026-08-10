@@ -9,7 +9,7 @@ import type { EmailOtpType } from '@supabase/supabase-js'
 // Treasurer, Warden, Deacon, or Worshipful Master confirming their
 // email via this callback would be silently routed to the plain
 // member portal instead of their real dashboard.
-const OFFICER_TIERS = new Set(['admin', 'secretary', 'worshipful_master', 'treasurer', 'warden', 'deacon'])
+const OFFICER_TIERS = new Set(['admin', 'secretary', 'grand_master', 'worshipful_master', 'treasurer', 'warden', 'deacon'])
 
 /**
  * `next` comes off a link in an email, so it is attacker-influencable

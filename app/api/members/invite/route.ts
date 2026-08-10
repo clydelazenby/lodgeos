@@ -5,7 +5,7 @@ import { requireTenantRole, TenantRole } from '@/lib/auth/requireTenantAdmin'
 import { createInviteLink } from '@/lib/auth/inviteLink'
 import { upsertProfilePreservingIdentity } from '@/lib/auth/profile'
 
-const ADMIN_TIER_ROLES = new Set<TenantRole>(['admin', 'secretary'])
+const ADMIN_TIER_ROLES = new Set<TenantRole>(['admin', 'secretary', 'grand_master'])
 
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
 
     // Inviting new members/officers is a Secretary-level administrative
     // action, not something every officer tier should do.
-    const auth = await requireTenantRole(tenantId, ['secretary', 'worshipful_master', 'admin'])
+    const auth = await requireTenantRole(tenantId, ['secretary', 'grand_master', 'worshipful_master', 'admin'])
     if (!auth.ok) return auth.response
 
     // A Worshipful Master calling this route could otherwise assign the
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
     // access themselves. Only an existing admin/secretary can grant
     // admin-tier roles to someone else.
     if (tenantRole && ADMIN_TIER_ROLES.has(tenantRole) && !ADMIN_TIER_ROLES.has(auth.tenantRole)) {
-      return NextResponse.json({ error: `Only a Secretary or admin can assign the '${tenantRole}' role` }, { status: 403 })
+      return NextResponse.json({ error: `Only a Secretary, Grand Master or admin can assign the '${tenantRole}' role` }, { status: 403 })
     }
 
     const serviceClient = createServiceClient()

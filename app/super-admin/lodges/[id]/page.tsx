@@ -13,6 +13,7 @@ const TIER_OPTIONS = [
   { value: 'treasurer', label: 'Treasurer — full financial access' },
   { value: 'worshipful_master', label: 'Worshipful Master — meetings, events & communications' },
   { value: 'secretary', label: 'Secretary — full lodge management' },
+  { value: 'grand_master', label: 'Grand Master — full access, presides over the Grand Lodge' },
   { value: 'admin', label: 'Admin — full access' },
 ]
 

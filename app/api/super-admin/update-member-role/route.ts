@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireSuperAdmin } from '@/lib/auth/requireSuperAdmin'
 
 // Matches lib/migrations/004_officer_role_tiers.sql's check constraint.
-const VALID_TIERS = new Set(['secretary', 'worshipful_master', 'treasurer', 'warden', 'deacon', 'admin', 'member'])
+const VALID_TIERS = new Set(['secretary', 'grand_master', 'worshipful_master', 'treasurer', 'warden', 'deacon', 'admin', 'member'])
 
 /**
  * Directly reassigns an existing tenant_members row's tenant_role

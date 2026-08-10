@@ -5,6 +5,10 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 export type TenantRole =
   | 'admin'
   | 'secretary'
+  // Presides over the Grand Lodge, not this one — but outranks every
+  // officer in it when he visits. Full access, same as admin. See
+  // migration 022.
+  | 'grand_master'
   | 'worshipful_master'
   | 'treasurer'
   | 'warden'
@@ -18,6 +22,7 @@ export type AuthResult =
 const OFFICER_TIERS = new Set<TenantRole>([
   'admin',
   'secretary',
+  'grand_master',
   'worshipful_master',
   'treasurer',
   'warden',

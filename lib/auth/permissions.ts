@@ -48,22 +48,23 @@ export type Capability =
 /**
  * Tiers granted each capability, mirroring the route guards exactly.
  *
- * `admin` and `secretary` hold everything: between them they are the
- * lodge's administrative office. The narrower grants below are the
+ * `admin`, `secretary` and `grand_master` hold everything: the first
+ * two are the lodge's administrative office, and the Grand Master
+ * outranks all of it when he is present. The narrower grants below are the
  * interesting ones, and each matches a deliberate decision already made
  * in the corresponding route — a Deacon has real duties in this app,
  * but fining a brother and speaking for the lodge by email are not
  * among them.
  */
 const GRANTS: Record<Capability, TenantRole[]> = {
-  finance: ['admin', 'secretary', 'treasurer', 'worshipful_master'],
-  communications: ['admin', 'secretary', 'worshipful_master'],
-  roster: ['admin', 'secretary'],
-  documents: ['admin', 'secretary'],
-  events: ['admin', 'secretary', 'worshipful_master'],
-  meetings: ['admin', 'secretary', 'worshipful_master', 'treasurer', 'warden', 'deacon'],
-  settings: ['admin', 'secretary'],
-  insight: ['admin', 'secretary', 'worshipful_master', 'treasurer', 'warden', 'deacon'],
+  finance: ['admin', 'secretary', 'grand_master', 'treasurer', 'worshipful_master'],
+  communications: ['admin', 'secretary', 'grand_master', 'worshipful_master'],
+  roster: ['admin', 'secretary', 'grand_master'],
+  documents: ['admin', 'secretary', 'grand_master'],
+  events: ['admin', 'secretary', 'grand_master', 'worshipful_master'],
+  meetings: ['admin', 'secretary', 'grand_master', 'worshipful_master', 'treasurer', 'warden', 'deacon'],
+  settings: ['admin', 'secretary', 'grand_master'],
+  insight: ['admin', 'secretary', 'grand_master', 'worshipful_master', 'treasurer', 'warden', 'deacon'],
 }
 
 /**

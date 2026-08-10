@@ -33,7 +33,7 @@ export async function DELETE(
     }
 
     const auth = await requireTenantRole(tenantId, [
-      'admin', 'secretary', 'worshipful_master',
+      'admin', 'secretary', 'grand_master', 'worshipful_master',
     ])
     if (!auth.ok) return auth.response
 
