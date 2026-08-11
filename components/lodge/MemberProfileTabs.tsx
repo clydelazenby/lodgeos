@@ -9,6 +9,7 @@ import { MemberChargeForm } from '@/components/lodge/MemberChargeForm'
 import { MasonicDates } from '@/components/lodge/MasonicDates'
 import { assignmentStatus, statusPill, statusLabel, dueLabel } from '@/lib/assignments'
 import { MemberPermissions } from '@/components/lodge/MemberPermissions'
+import { MemberDetailsForm } from '@/components/lodge/MemberDetailsForm'
 import type { CapabilityOverrides } from '@/lib/auth/permissions'
 
 const TABS = ['Overview', 'Tasks', 'Attendance', 'Dues', 'History', 'Permissions', 'Notes'] as const
@@ -145,6 +146,59 @@ export function MemberProfileTabs({
             <div style={labelStyle}>Member Since</div>
             <div style={{ fontFamily: T.body, fontSize: '0.9rem', color: T.ink }}>{membership.joined_date ? format(new Date(membership.joined_date), 'MMMM yyyy') : 'Not recorded'}</div>
           </div>
+
+          {/* The register entry itself. Everything above is a summary of
+
+              it, and until now the summary was the only thing on this page
+
+              — his office and his degree were changeable from a table
+
+              elsewhere, and his address from nowhere at all. */}
+
+          <div style={{ gridColumn: '1 / -1' }}>
+
+            <MemberDetailsForm
+
+              tenantId={tenant.id}
+
+              memberId={membership.user_id}
+
+              email={p?.email ?? null}
+
+              canEdit={canEditDates}
+
+              initial={{
+
+                first_name: p?.first_name ?? '',
+
+                last_name: p?.last_name ?? '',
+
+                phone: p?.phone ?? '',
+
+                address: p?.address ?? '',
+
+                city: p?.city ?? '',
+
+                state: p?.state ?? '',
+
+                zip: p?.zip ?? '',
+
+                date_of_birth: p?.date_of_birth ?? '',
+
+                degree: membership.degree ?? 'MM',
+
+                lodge_role: membership.lodge_role ?? '',
+
+                dues_status: membership.dues_status ?? 'paid',
+
+                joined_date: membership.joined_date ?? '',
+
+              }}
+
+            />
+
+          </div>
+
 
           {/* Initiated, passed, raised — the dates a brother would
               actually name, and the ones the app held none of. */}
@@ -318,13 +372,11 @@ export function MemberProfileTabs({
           memberId={membership.user_id}
           memberName={`${p?.first_name ?? ''} ${p?.last_name ?? ''}`.trim() || 'This brother'}
           tenantRole={membership.tenant_role}
-          degree={membership.degree}
           overrides={capabilityOverrides}
           positionOverrides={positionOverrides}
           lodgeRole={membership.lodge_role}
           slug={slug}
           canSetPermissions={canSetPermissions}
-          canEditDegree={canEditDates}
           isSelf={viewerIsSelf}
           isPlatformAdmin={targetIsPlatformAdmin}
         />

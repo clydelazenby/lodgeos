@@ -3,9 +3,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { T } from '@/lib/designTokens'
-import { DegreeOptions } from '@/components/DegreeOptions'
 import { callApi, errorMessage } from '@/lib/clientFetch'
-import { degreeLabel } from '@/lib/degrees'
 import {
   CAPABILITIES, CAPABILITY_META, SOURCE_LABEL, roleLabel, tierGrants, grantedTiers,
   resolveCapability, type Capability, type CapabilityOverrides,
@@ -27,10 +25,10 @@ import type { TenantRole } from '@/lib/auth/requireTenantAdmin'
  * chair until December. Before this the answer to each was to promote
  * the man a whole tier — handing him six things to fix one.
  *
- * His DEGREE is here because it is the other thing that governs what he
- * can reach: documents have a degree floor, and some work is not put in
- * front of a candidate. It has only ever been editable from a dropdown
- * in the roster table, which is not where anyone looks for it.
+ * HIS DEGREE IS NOT HERE. It lives on the Overview tab with the rest of
+ * his register entry, where a Secretary correcting his address and his
+ * office finds it in the same form. It sat here briefly and was the
+ * only field on this screen that was not about permission at all.
  *
  * EVERY CONTROL SHOWS WHAT THE TIER WOULD SAY, next to what is actually
  * set. A permissions screen that shows only the answer, and not whether
@@ -42,7 +40,6 @@ type Props = {
   memberId: string
   memberName: string
   tenantRole: TenantRole
-  degree: string | null
   /** What was decided about HIM — the layer this screen edits. */
   overrides: CapabilityOverrides
   /** What his chair carries. Read-only here; set on the Permissions
@@ -53,8 +50,6 @@ type Props = {
   /** Admin, Secretary or Grand Master — the fixed tier that may set
    *  tiers and exceptions. Not itself delegable; see the API route. */
   canSetPermissions: boolean
-  /** The 'roster' capability, which IS delegable. */
-  canEditDegree: boolean
   /** Nobody edits his own — there would be no one left to undo it. */
   isSelf: boolean
   /** A platform administrator's access does not come from this lodge,
@@ -79,13 +74,12 @@ const ROLE_ORDER: TenantRole[] = [
 ]
 
 export function MemberPermissions({
-  tenantId, memberId, memberName, tenantRole, degree, overrides,
+  tenantId, memberId, memberName, tenantRole, overrides,
   positionOverrides, lodgeRole, slug,
-  canSetPermissions, canEditDegree, isSelf, isPlatformAdmin,
+  canSetPermissions, isSelf, isPlatformAdmin,
 }: Props) {
   const router = useRouter()
   const [role, setRole] = useState<TenantRole>(tenantRole)
-  const [deg, setDeg] = useState(degree ?? 'MM')
   const [ex, setEx] = useState<CapabilityOverrides>(overrides)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState('')
@@ -221,29 +215,6 @@ export function MemberPermissions({
         <div style={{ fontFamily: T.body, fontSize: '0.86rem', color: T.inkFainter, marginTop: '8px' }}>
           {ROLE_BLURB[role]}
         </div>
-      </div>
-
-      {/* ---------------------------------------------------------- */}
-      <div style={card}>
-        <div style={eyebrow}>Degree</div>
-        <p style={help}>
-          What he has taken. Documents can be held to a degree, and this is what
-          they are held against.
-        </p>
-        <select
-          value={deg}
-          disabled={!canEditDegree || busy === 'degree'}
-          aria-label={`Degree for ${memberName}`}
-          onChange={(e) => {
-            const next = e.target.value
-            const previous = deg
-            setDeg(next)
-            save('degree', { degree: next }, () => setDeg(previous), `Recorded as ${degreeLabel(next)}.`)
-          }}
-          style={{ ...select, opacity: canEditDegree ? 1 : 0.6, cursor: canEditDegree ? 'pointer' : 'not-allowed' }}
-        >
-          <DegreeOptions />
-        </select>
       </div>
 
       {/* ---------------------------------------------------------- */}
