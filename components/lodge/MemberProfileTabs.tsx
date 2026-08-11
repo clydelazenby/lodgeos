@@ -163,6 +163,8 @@ export function MemberProfileTabs({
 
               memberId={membership.user_id}
 
+              slug={slug}
+
               email={p?.email ?? null}
 
               canEdit={canEditDates}

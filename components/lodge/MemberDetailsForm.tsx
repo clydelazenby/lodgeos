@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { T } from '@/lib/designTokens'
 import { DegreeOptions } from '@/components/DegreeOptions'
@@ -43,10 +44,11 @@ type Fields = {
 }
 
 export function MemberDetailsForm({
-  tenantId, memberId, email, initial, canEdit,
+  tenantId, memberId, slug, email, initial, canEdit,
 }: {
   tenantId: string
   memberId: string
+  slug: string
   email: string | null
   initial: Fields
   /** The 'roster' capability. The route is the authority. */
@@ -176,6 +178,20 @@ export function MemberDetailsForm({
               and it carries whatever the Permissions page gave the chair. */}
           <div style={{ fontFamily: T.body, fontSize: '0.78rem', color: T.inkFainter, marginTop: '3px' }}>
             Seats him in the Lodge Room, and carries whatever that chair has been given.
+            {/* The most useful moment for this link is the one where an
+                officer has just put a man in a chair and is wondering
+                whether he knows what it involves. */}
+            {form.lodge_role ? (
+              <>
+                {' '}
+                <Link
+                  href={`/lodge/${slug}/duties?office=${encodeURIComponent(form.lodge_role)}`}
+                  style={{ color: T.gold }}
+                >
+                  What the {form.lodge_role} does →
+                </Link>
+              </>
+            ) : null}
           </div>
         </div>
 
