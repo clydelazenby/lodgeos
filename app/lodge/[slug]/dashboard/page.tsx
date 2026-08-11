@@ -5,7 +5,7 @@ import { notFound } from 'next/navigation'
 import { format, formatDistanceToNow } from 'date-fns'
 import Link from 'next/link'
 import { T, pillTone } from '@/lib/designTokens'
-import { Users, DollarSign, CalendarPlus, UserPlus, BookOpen, BarChart3 } from 'lucide-react'
+import { Users, DollarSign, CalendarPlus, UserPlus, BookOpen, BarChart3, ScrollText } from 'lucide-react'
 import { upcomingSince } from '@/lib/dates'
 import { anniversariesInMonth, anniversaryDay, serviceLabel } from '@/lib/anniversaries'
 
@@ -56,6 +56,9 @@ export default async function LodgeDashboardPage({ params }: { params: { slug: s
     viewer ? getProfile(viewer.id) : Promise.resolve(null),
     viewer ? getMembership(tenant.id, viewer.id) : Promise.resolve(null),
   ])
+
+  // The chair this officer holds, for the duties tile below.
+  const viewerOffice = ((viewerMembership as any)?.lodge_role ?? '').trim()
 
   const [
     { count: memberCount },
@@ -348,6 +351,23 @@ export default async function LodgeDashboardPage({ params }: { params: { slug: s
           { Icon: UserPlus, label: 'Add Candidate', href: `/lodge/${params.slug}/petitions` },
           { Icon: BookOpen, label: 'Lodge Minutes', href: `/lodge/${params.slug}/documents` },
           { Icon: BarChart3, label: 'View Reports', href: `/lodge/${params.slug}/reports` },
+          /**
+           * HIS OWN CHAIR FIRST, if he holds one.
+           *
+           * An officer opening the dashboard and wondering what he is
+           * responsible for should not have to know the page is called
+           * "Officer Duties" and lives under Lodge. The tile names his
+           * office back to him and opens straight to it; a brother with
+           * no chair gets the whole list, which is what he would want
+           * before accepting one.
+           */
+          {
+            Icon: ScrollText,
+            label: viewerOffice ? `My Duties · ${viewerOffice}` : 'Officer Duties',
+            href: viewerOffice
+              ? `/lodge/${params.slug}/duties?office=${encodeURIComponent(viewerOffice)}`
+              : `/lodge/${params.slug}/duties`,
+          },
         ].map(({ Icon, label, href }) => (
           <Link
             key={label}

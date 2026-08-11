@@ -43,6 +43,11 @@ export function PortalNav({
     ['Events', '/portal/events'],
     ['Notices', '/portal/notices'],
     ['Roster', '/portal/roster'],
+    // Every brother, not only officers. The lodge-side page is behind a
+    // layout that redirects the member tier away, so without this half
+    // the roster could never read what a chair involves — and the man
+    // deciding whether to accept one is exactly who needs to.
+    ['Officer Duties', '/portal/duties'],
     // Approved minutes only — RLS enforces it, not this link. A brother
     // who was absent has every right to know what was done in his
     // lodge; that is why they are read aloud at all.

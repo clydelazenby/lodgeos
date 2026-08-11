@@ -35,12 +35,16 @@ type Duty = {
 }
 
 export function DutiesBoard({
-  tenantId, slug, duties: initial, canEdit, openOffice,
+  tenantId, slug, duties: initial, canEdit, openOffice, showPermissionsLink = true,
 }: {
   tenantId: string
   slug: string
   duties: Duty[]
   canEdit: boolean
+  /** Off in the portal: a plain member cannot open that page, and a
+   *  link to somewhere he will be redirected away from is worse than
+   *  no link at all. */
+  showPermissionsLink?: boolean
   /** ?office=Senior+Warden — a link straight to one chair. */
   openOffice?: string
 }) {
@@ -113,7 +117,7 @@ export function DutiesBoard({
         </div>
       )}
 
-      {!canEdit && (
+      {!canEdit && showPermissionsLink && (
         <div style={{ background: T.infoDim, border: '1px solid rgba(123,184,212,0.3)', color: T.info, padding: '10px 14px', borderRadius: '6px', marginBottom: '1rem', fontFamily: T.body, fontSize: '0.9rem' }}>
           Anyone may read these. Changing them is for an admin, the Worshipful Master or the
           Senior Warden.
@@ -216,11 +220,13 @@ export function DutiesBoard({
         })}
       </div>
 
-      <div style={{ marginTop: '1.5rem', fontFamily: T.body, fontSize: '0.86rem', color: T.inkFainter }}>
-        Who sits where is set on each brother&rsquo;s profile, and what each chair can reach in the
-        app is on the{' '}
-        <Link href={`/lodge/${slug}/permissions`} style={{ color: T.gold }}>Permissions page</Link>.
-      </div>
+      {showPermissionsLink && (
+        <div style={{ marginTop: '1.5rem', fontFamily: T.body, fontSize: '0.86rem', color: T.inkFainter }}>
+          Who sits where is set on each brother&rsquo;s profile, and what each chair can reach in the
+          app is on the{' '}
+          <Link href={`/lodge/${slug}/permissions`} style={{ color: T.gold }}>Permissions page</Link>.
+        </div>
+      )}
     </div>
   )
 }

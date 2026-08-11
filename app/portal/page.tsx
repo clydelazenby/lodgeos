@@ -147,6 +147,20 @@ export default async function PortalPage() {
         <div style={{ background: '#141C2E', padding: '1.4rem' }}>
           <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.56rem', letterSpacing: '0.2em', color: '#C9A84C', textTransform: 'uppercase', marginBottom: '0.6rem' }}>Role</div>
           <div style={{ fontFamily: 'Crimson Pro, serif', fontSize: '1.1rem', color: '#F5F0E8' }}>{(membership as any).lodge_role || 'Member'}</div>
+          {/* THE CARD THAT NAMES HIS CHAIR IS WHERE HE WILL LOOK.
+              A brother wondering what he has agreed to do reads his own
+              office first — putting the link anywhere else asks him to
+              go hunting for the answer to the question he is already
+              looking at. A brother with no office gets the whole list,
+              which is what he would want before accepting one. */}
+          <Link
+            href={(membership as any).lodge_role
+              ? `/portal/duties?office=${encodeURIComponent((membership as any).lodge_role)}`
+              : '/portal/duties'}
+            style={{ display: 'inline-block', marginTop: '0.5rem', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.58rem', letterSpacing: '0.12em', color: '#C9A84C', textDecoration: 'none' }}
+          >
+            {(membership as any).lodge_role ? 'MY DUTIES →' : 'OFFICER DUTIES →'}
+          </Link>
         </div>
       </div>
 
