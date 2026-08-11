@@ -249,6 +249,40 @@ export function can(
   return GRANTS[capability].includes(role)
 }
 
+/**
+ * can(), for a page whose ROUTE accepts a wider tier list than the
+ * capability's default.
+ *
+ * A handful of routes have always been wider than the nav — approving
+ * minutes and writing the curriculum both accept the Worshipful Master,
+ * while 'settings' is admin/secretary/grand_master. Those routes pass
+ * their own list to requireCapability(); this is the same rule for the
+ * page that renders the button, and it exists because doing it by hand
+ * went wrong:
+ *
+ *   can(role, 'settings', isSuper, overrides) || role === 'worshipful_master'
+ *
+ * That reads as "or he is the Master", and the `||` sits OUTSIDE the
+ * override check — so a lodge that denied 'settings' to the Master's
+ * chair had the refusal honoured by the route and ignored by the page.
+ * He was shown Approve and got a 403 on pressing it, which is the exact
+ * failure this whole layer was built to prevent.
+ *
+ * Mirrors requireCapability() line for line. Keep them that way.
+ */
+export function canWithTiers(
+  role: TenantRole | null | undefined,
+  capability: Capability,
+  isSuperAdmin: boolean,
+  overrides: CapabilityOverrides | null | undefined,
+  allowedTiers: TenantRole[]
+): boolean {
+  if (isSuperAdmin) return true
+  const exception = overrides?.[capability]
+  if (exception !== undefined) return exception
+  return !!role && allowedTiers.includes(role)
+}
+
 /** Whether a tier grants this on its own, ignoring any exception. */
 export function tierGrants(role: TenantRole | null | undefined, capability: Capability): boolean {
   if (!role) return false
