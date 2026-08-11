@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { revalidateLodgePage } from '@/app/actions/revalidate'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireCapability } from '@/lib/auth/capabilities'
 
@@ -38,6 +39,18 @@ export async function PATCH(request: Request) {
       .single()
 
     if (error) throw error
+
+    // Turning the section on or off changes the NAV as well as the
+    // page, so both have to be regenerated or the menu keeps offering
+    // a Gallery the site no longer shows.
+    try {
+      const { data: lodge } = await createServiceClient()
+        .from('tenants').select('slug').eq('id', tenantId).maybeSingle()
+      if ((lodge as any)?.slug) await revalidateLodgePage((lodge as any).slug)
+    } catch (e) {
+      console.error('Gallery cache purge failed (the setting itself is saved):', e)
+    }
+
     return NextResponse.json({ success: true, settings: data })
   } catch (error: any) {
     console.error('Gallery settings error:', error)
