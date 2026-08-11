@@ -1,5 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import { getSessionUser, getTenantBySlug, getMembership, getProfile } from '@/lib/supabase/queries'
+import { loadOverrides } from '@/lib/auth/capabilities'
 import { createClient } from '@/lib/supabase/server'
 import { can } from '@/lib/auth/permissions'
 import { AssignmentBoard } from '@/components/lodge/AssignmentBoard'
@@ -25,7 +26,8 @@ export default async function LodgeAssignmentsPage({ params }: { params: { slug:
   const isSuperAdmin = profile?.platform_role === 'super_admin'
   if (!membership && !isSuperAdmin) redirect('/auth/login')
 
-  if (!can((membership as any)?.tenant_role ?? null, 'assignments', isSuperAdmin)) {
+  const overrides = await loadOverrides(tenant.id, user.id)
+  if (!can((membership as any)?.tenant_role ?? null, 'assignments', isSuperAdmin, overrides)) {
     redirect(`/lodge/${params.slug}/dashboard`)
   }
 

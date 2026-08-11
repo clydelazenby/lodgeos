@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { requireTenantAdmin } from '@/lib/auth/requireTenantAdmin'
+import { requireCapability } from '@/lib/auth/capabilities'
 import { renderToBuffer } from '@react-pdf/renderer'
 import { TrestleboardDocument, TrestleboardData } from '@/lib/reports/TrestleboardDocument'
 import React from 'react'
@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     const { tenantId, month, year, announcement } = await request.json()
     if (!tenantId || !month || !year) return NextResponse.json({ error: 'Missing tenantId, month, or year' }, { status: 400 })
 
-    const auth = await requireTenantAdmin(tenantId)
+    const auth = await requireCapability(tenantId, 'insight')
     if (!auth.ok) return auth.response
 
     const supabase = await createClient()

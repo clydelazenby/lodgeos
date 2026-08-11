@@ -5,6 +5,7 @@ import { AiSecretaryPanel, AiSecretaryLauncherButton } from '@/components/lodge/
 import { ResponsiveNavShell } from '@/components/lodge/ResponsiveNavShell'
 import { cookies } from 'next/headers'
 import { can, type Capability } from '@/lib/auth/permissions'
+import { loadOverrides } from '@/lib/auth/capabilities'
 import { NoticeBell } from '@/components/lodge/NoticeBell'
 import { createClient } from '@/lib/supabase/server'
 
@@ -55,7 +56,28 @@ export default async function LodgeAdminLayout({
     redirect('/auth/login')
   }
 
-  if (membership && membership.tenant_role === 'member') {
+  /**
+   * A brother on the 'member' tier belongs in the portal — UNLESS the
+   * lodge has deliberately given him something (migration 035).
+   *
+   * The Chaplain who sends the sick-and-distressed notice is an
+   * ordinary member and always was; before per-brother permissions the
+   * only way to let him send it was to promote him a whole tier. Now
+   * the Master grants him 'communications' and nothing else — but the
+   * grant is worthless if this line still bounces him to the portal
+   * before he can reach the page.
+   *
+   * So: one granted exception is enough to get in, and the nav below
+   * shows him that one thing. Nothing else opens with him — every page
+   * behind those links reads through RLS, which keys off tenant_role
+   * and still says 'member'.
+   */
+  const viewerOverrides = membership
+    ? await loadOverrides(tenant.id, userId)
+    : {}
+  const hasGrantedException = Object.values(viewerOverrides).some(Boolean)
+
+  if (membership && membership.tenant_role === 'member' && !hasGrantedException) {
     redirect('/portal')
   }
 
@@ -109,7 +131,16 @@ export default async function LodgeAdminLayout({
    */
   const viewerRole = (membership as any)?.tenant_role ?? null
   const viewerIsSuperAdmin = profile?.platform_role === 'super_admin'
-  const allow = (c: Capability) => can(viewerRole, c, viewerIsSuperAdmin)
+  const allow = (c: Capability) => can(viewerRole, c, viewerIsSuperAdmin, viewerOverrides)
+
+  /**
+   * Entries with no `need` are "open to every officer tier" — which was
+   * an unambiguous statement while only officers were ever here. A
+   * member admitted by a single granted exception is not an officer,
+   * and the Dashboard, the Lodge Room and the roster are not what he
+   * was given. He sees the thing he was given and nothing else.
+   */
+  const openToOfficers = viewerIsSuperAdmin || (!!viewerRole && viewerRole !== 'member')
 
   const allNavEntries: ({ label: string; href: string; need?: Capability } | { label: string; need?: Capability; items: { label: string; href: string; need?: Capability }[] })[] = [
     { label: 'Dashboard', href: `${base}/dashboard` },
@@ -176,14 +207,16 @@ export default async function LodgeAdminLayout({
    * This is presentation only. Every route behind these links re-checks
    * the tier server-side; see lib/auth/permissions.ts.
    */
+  const visible = (need?: Capability) => (need ? allow(need) : openToOfficers)
+
   const navEntries = allNavEntries
     .map((entry) => {
       if (!('items' in entry)) return entry
-      const items = entry.items.filter((i) => !i.need || allow(i.need))
+      const items = entry.items.filter((i) => visible(i.need))
       return items.length ? { ...entry, items } : null
     })
     .filter((entry): entry is NonNullable<typeof entry> =>
-      entry !== null && (!('href' in entry) || !entry.need || allow(entry.need))
+      entry !== null && (!('href' in entry) || visible(entry.need))
     )
 
   return (

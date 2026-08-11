@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { requireTenantRole } from '@/lib/auth/requireTenantAdmin'
+import { requireCapability } from '@/lib/auth/capabilities'
 
 /**
  * Bulk historical attendance import.
@@ -106,7 +106,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const auth = await requireTenantRole(tenantId, ['admin', 'secretary', 'grand_master'])
+    const auth = await requireCapability(tenantId, 'roster')
     if (!auth.ok) return auth.response
 
     // ---- Parse -------------------------------------------------

@@ -8,14 +8,18 @@ import { MemberQrCode } from '@/components/lodge/MemberQrCode'
 import { MemberChargeForm } from '@/components/lodge/MemberChargeForm'
 import { MasonicDates } from '@/components/lodge/MasonicDates'
 import { assignmentStatus, statusPill, statusLabel, dueLabel } from '@/lib/assignments'
+import { MemberPermissions } from '@/components/lodge/MemberPermissions'
+import type { CapabilityOverrides } from '@/lib/auth/permissions'
 
-const TABS = ['Overview', 'Tasks', 'Attendance', 'Dues', 'History', 'Notes'] as const
+const TABS = ['Overview', 'Tasks', 'Attendance', 'Dues', 'History', 'Permissions', 'Notes'] as const
 type Tab = typeof TABS[number]
 
 export function MemberProfileTabs({
   slug, tenant, membership, attendanceHistory, paymentHistory, degreeHistory,
   charges = [], canCharge = false, canEditDates = false,
   assignments = [], signedOffStepIds = [], initialTab,
+  capabilityOverrides = {}, canSetPermissions = false, viewerIsSelf = false,
+  targetIsPlatformAdmin = false,
 }: {
   slug: string; tenant: any; membership: any
   attendanceHistory: any[]; paymentHistory: any[]; degreeHistory: any[]
@@ -31,6 +35,15 @@ export function MemberProfileTabs({
   signedOffStepIds?: string[]
   /** Lets a link say which tab to land on, e.g. ?tab=Tasks. */
   initialTab?: string
+  /** His exceptions to what his tier grants — migration 035. */
+  capabilityOverrides?: CapabilityOverrides
+  /** Secretary tier. Fixed, and deliberately not itself delegable:
+   *  see the note in /api/members/permissions. */
+  canSetPermissions?: boolean
+  /** Whether the viewer is looking at his own profile. */
+  viewerIsSelf?: boolean
+  /** A platform administrator's access doesn't come from this lodge. */
+  targetIsPlatformAdmin?: boolean
 }) {
   const [tab, setTab] = useState<Tab>(
     // A link from the Assignments board arrives with ?tab=Tasks, so
@@ -294,6 +307,21 @@ export function MemberProfileTabs({
             </div>
           ))}
         </div>
+      )}
+
+      {tab === 'Permissions' && (
+        <MemberPermissions
+          tenantId={tenant.id}
+          memberId={membership.user_id}
+          memberName={`${p?.first_name ?? ''} ${p?.last_name ?? ''}`.trim() || 'This brother'}
+          tenantRole={membership.tenant_role}
+          degree={membership.degree}
+          overrides={capabilityOverrides}
+          canSetPermissions={canSetPermissions}
+          canEditDegree={canEditDates}
+          isSelf={viewerIsSelf}
+          isPlatformAdmin={targetIsPlatformAdmin}
+        />
       )}
 
       {tab === 'Notes' && (

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { requireTenantAdmin } from '@/lib/auth/requireTenantAdmin'
+import { requireCapability } from '@/lib/auth/capabilities'
 import { DEGREE_VALUES } from '@/lib/degrees'
 
 /**
@@ -78,7 +78,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Unknown access level "${accessLevel}".` }, { status: 400 })
     }
 
-    const auth = await requireTenantAdmin(tenantId)
+    const auth = await requireCapability(tenantId, 'documents')
     if (!auth.ok) return auth.response
 
     const supabase = createServiceClient()

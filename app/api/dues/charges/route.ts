@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { requireTenantRole } from '@/lib/auth/requireTenantAdmin'
+import { requireCapability } from '@/lib/auth/capabilities'
 import { sendChargeAddedEmail, APP_URL } from '@/lib/email'
 import { LODGE_BRAND_COLUMNS, toLodgeBrand } from '@/lib/email/brand'
 import { recordAudit, actorName } from '@/lib/audit'
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Unknown charge type "${chargeType}".` }, { status: 400 })
     }
 
-    const auth = await requireTenantRole(tenantId, [...FINANCE_TIERS])
+    const auth = await requireCapability(tenantId, 'finance')
     if (!auth.ok) return auth.response
 
     const supabase = createServiceClient()
@@ -174,7 +174,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: `Unknown action "${action}".` }, { status: 400 })
     }
 
-    const auth = await requireTenantRole(tenantId, [...FINANCE_TIERS])
+    const auth = await requireCapability(tenantId, 'finance')
     if (!auth.ok) return auth.response
 
     const supabase = createServiceClient()

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { requireTenantAdmin } from '@/lib/auth/requireTenantAdmin'
+import { requireCapability } from '@/lib/auth/capabilities'
 
 /**
  * Signs a visiting brother into the register, and removes a mistake.
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const auth = await requireTenantAdmin(tenantId)
+    const auth = await requireCapability(tenantId, 'meetings')
     if (!auth.ok) return auth.response
 
     const supabase = await createClient()
@@ -94,7 +94,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Missing tenantId or visitorId.' }, { status: 400 })
     }
 
-    const auth = await requireTenantAdmin(tenantId)
+    const auth = await requireCapability(tenantId, 'meetings')
     if (!auth.ok) return auth.response
 
     const supabase = await createClient()

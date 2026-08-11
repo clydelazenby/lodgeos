@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { sendDuesReminderEmail } from '@/lib/email'
-import { requireTenantRole } from '@/lib/auth/requireTenantAdmin'
+import { requireCapability } from '@/lib/auth/capabilities'
 import { createClient } from '@/lib/supabase/server'
 import { LODGE_BRAND_COLUMNS, toLodgeBrand } from '@/lib/email/brand'
 
@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     // handle dues, not every officer. A Deacon or Warden shouldn't be
     // able to blast dues reminders even though they're legitimate
     // officers with other real access elsewhere in the app.
-    const auth = await requireTenantRole(tenantId, ['secretary', 'grand_master', 'treasurer', 'worshipful_master', 'admin'])
+    const auth = await requireCapability(tenantId, 'finance')
     if (!auth.ok) return auth.response
 
     const supabase = await createClient()

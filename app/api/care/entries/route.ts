@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { requireTenantAdmin } from '@/lib/auth/requireTenantAdmin'
+import { requireCapability } from '@/lib/auth/capabilities'
 
 const VALID_CARE_TYPES = new Set(['sickness', 'distress', 'widow', 'other'])
 const VALID_STATUSES = new Set(['open', 'monitoring', 'resolved'])
@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     // administrative act any officer might legitimately need to do —
     // it's READ visibility that's narrowed (via RLS, see migration
     // 005), not who can act on an entry they're already permitted to see.
-    const auth = await requireTenantAdmin(tenantId)
+    const auth = await requireCapability(tenantId, 'insight')
     if (!auth.ok) return auth.response
 
     const supabase = await createClient()

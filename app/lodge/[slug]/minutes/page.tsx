@@ -1,5 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import { getSessionUser, getTenantBySlug, getMembership, getProfile } from '@/lib/supabase/queries'
+import { loadOverrides } from '@/lib/auth/capabilities'
 import { createClient } from '@/lib/supabase/server'
 import { can } from '@/lib/auth/permissions'
 import { MinuteBook } from '@/components/lodge/MinuteBook'
@@ -41,7 +42,7 @@ export default async function LodgeMinutesPage({ params }: { params: { slug: str
   // Approval is an act of the lodge, and someone must be answerable for
   // recording that it happened. Same tiers the route enforces.
   const canApprove =
-    can(role, 'settings', isSuperAdmin) || role === 'worshipful_master'
+    can(role, 'settings', isSuperAdmin, await loadOverrides(tenant.id, user.id)) || role === 'worshipful_master'
 
   const supabase = await createClient()
   const today = new Date().toISOString().slice(0, 10)

@@ -19,7 +19,14 @@ export type AuthResult =
   | { ok: true; userId: string; tenantRole: TenantRole }
   | { ok: false; response: NextResponse }
 
-const OFFICER_TIERS = new Set<TenantRole>([
+/**
+ * Every tier that is an officer of the lodge — everyone except a plain
+ * member. Exported because a few routes are deliberately open to all of
+ * them while the capability that names them is narrower, and those
+ * routes pass this list to requireCapability() so their answer does not
+ * change; see lib/auth/capabilities.ts.
+ */
+export const OFFICER_TIERS: TenantRole[] = [
   'admin',
   'secretary',
   'grand_master',
@@ -27,10 +34,10 @@ const OFFICER_TIERS = new Set<TenantRole>([
   'treasurer',
   'warden',
   'deacon',
-])
+]
 
 export async function requireTenantAdmin(tenantId: string): Promise<AuthResult> {
-  return requireTenantRole(tenantId, Array.from(OFFICER_TIERS))
+  return requireTenantRole(tenantId, OFFICER_TIERS)
 }
 
 /**

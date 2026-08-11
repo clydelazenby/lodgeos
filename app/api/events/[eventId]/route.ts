@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { requireTenantRole } from '@/lib/auth/requireTenantAdmin'
+import { requireCapability } from '@/lib/auth/capabilities'
 
 /**
  * Deletes a lodge event.
@@ -32,9 +32,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Missing tenantId.' }, { status: 400 })
     }
 
-    const auth = await requireTenantRole(tenantId, [
-      'admin', 'secretary', 'grand_master', 'worshipful_master',
-    ])
+    const auth = await requireCapability(tenantId, 'events')
     if (!auth.ok) return auth.response
 
     const supabase = createServiceClient()

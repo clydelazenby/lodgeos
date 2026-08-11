@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { requireTenantAdmin, requireTenantRole } from '@/lib/auth/requireTenantAdmin'
+import { OFFICER_TIERS } from '@/lib/auth/requireTenantAdmin'
+import { requireCapability } from '@/lib/auth/capabilities'
 import { recordAudit, actorName } from '@/lib/audit'
 import { CURRICULUM_DEGREES, STARTER_OUTLINE, type CurriculumDegree } from '@/lib/curriculum'
 
@@ -36,9 +37,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'That is not a degree this app knows.' }, { status: 400 })
     }
 
-    const auth = await requireTenantRole(tenantId, [
-      'admin', 'secretary', 'grand_master', 'worshipful_master',
-    ])
+    const auth = await requireCapability(tenantId, 'settings', ['admin', 'secretary', 'grand_master', 'worshipful_master'])
     if (!auth.ok) return auth.response
 
     const supabase = await createClient()
@@ -156,9 +155,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Missing tenantId or stepId.' }, { status: 400 })
     }
 
-    const auth = await requireTenantRole(tenantId, [
-      'admin', 'secretary', 'grand_master', 'worshipful_master',
-    ])
+    const auth = await requireCapability(tenantId, 'settings', ['admin', 'secretary', 'grand_master', 'worshipful_master'])
     if (!auth.ok) return auth.response
 
     const supabase = await createClient()
@@ -240,9 +237,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Missing tenantId or stepId.' }, { status: 400 })
     }
 
-    const auth = await requireTenantRole(tenantId, [
-      'admin', 'secretary', 'grand_master', 'worshipful_master',
-    ])
+    const auth = await requireCapability(tenantId, 'settings', ['admin', 'secretary', 'grand_master', 'worshipful_master'])
     if (!auth.ok) return auth.response
 
     const supabase = await createClient()
@@ -275,7 +270,12 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Missing tenantId, memberId or stepId.' }, { status: 400 })
     }
 
-    const auth = await requireTenantAdmin(tenantId)
+    // Every seated officer, as it has been since 022 — a Deacon is very
+    // often the man actually hearing the catechism, so this passes the
+    // full officer list rather than the 'assignments' default. The
+    // capability is still named so a lodge can take sign-off away from
+    // one brother, or give it to one who is not an officer at all.
+    const auth = await requireCapability(tenantId, 'assignments', OFFICER_TIERS)
     if (!auth.ok) return auth.response
 
     /**

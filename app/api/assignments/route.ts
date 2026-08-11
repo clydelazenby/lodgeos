@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
-import { requireTenantRole, requireTenantAdmin } from '@/lib/auth/requireTenantAdmin'
+import { requireTenantAdmin } from '@/lib/auth/requireTenantAdmin'
+import { requireCapability } from '@/lib/auth/capabilities'
 import { sendAssignmentEmail, sendAssignmentSubmittedEmail, sendAssignmentDeclinedEmail } from '@/lib/email'
 import { LODGE_BRAND_COLUMNS, toLodgeBrand } from '@/lib/email/brand'
 import { recordAudit, actorName } from '@/lib/audit'
@@ -41,7 +42,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing tenantId or memberId.' }, { status: 400 })
     }
 
-    const auth = await requireTenantRole(tenantId, [...ASSIGNING_TIERS])
+    const auth = await requireCapability(tenantId, 'assignments')
     if (!auth.ok) return auth.response
 
     const supabase = await createClient()
@@ -540,7 +541,7 @@ export async function PATCH(request: Request) {
 
     // ── Withdrawn by an officer ──
     if (action === 'cancel') {
-      const officer = await requireTenantRole(tenantId, [...ASSIGNING_TIERS])
+      const officer = await requireCapability(tenantId, 'assignments')
       if (!officer.ok) return officer.response
 
       const { error } = await supabase

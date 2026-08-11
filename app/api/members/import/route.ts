@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { requireTenantRole, type TenantRole } from '@/lib/auth/requireTenantAdmin'
+import { type TenantRole } from '@/lib/auth/requireTenantAdmin'
+import { requireCapability } from '@/lib/auth/capabilities'
 import { sendWelcomeEmail, APP_URL } from '@/lib/email'
 import { createInviteLink } from '@/lib/auth/inviteLink'
 import { upsertProfilePreservingIdentity } from '@/lib/auth/profile'
@@ -74,7 +75,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const auth = await requireTenantRole(tenantId, ['admin', 'secretary', 'grand_master', 'worshipful_master'])
+    const auth = await requireCapability(tenantId, 'roster', ['admin', 'secretary', 'grand_master', 'worshipful_master'])
     if (!auth.ok) return auth.response
 
     const supabase = createServiceClient()

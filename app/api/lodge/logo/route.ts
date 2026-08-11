@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
-import { requireTenantRole } from '@/lib/auth/requireTenantAdmin'
+import { requireCapability } from '@/lib/auth/capabilities'
 
 /**
  * Uploads the lodge's crest.
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
 
     // Same tier as the rest of lodge settings.
-    const auth = await requireTenantRole(tenantId, ['admin', 'secretary', 'grand_master'])
+    const auth = await requireCapability(tenantId, 'settings')
     if (!auth.ok) return auth.response
 
     const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])

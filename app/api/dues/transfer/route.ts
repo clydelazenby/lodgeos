@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
-import { requireTenantRole } from '@/lib/auth/requireTenantAdmin'
+import { requireCapability } from '@/lib/auth/capabilities'
 import { sendPaymentReceiptEmail } from '@/lib/email'
 
 /**
@@ -122,7 +122,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: `Unknown action "${action}".` }, { status: 400 })
     }
 
-    const auth = await requireTenantRole(tenantId, [...FINANCE_TIERS])
+    const auth = await requireCapability(tenantId, 'finance')
     if (!auth.ok) return auth.response
 
     const service = createServiceClient()

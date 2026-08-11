@@ -1,5 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import { getSessionUser, getTenantBySlug, getMembership, getProfile } from '@/lib/supabase/queries'
+import { loadOverrides } from '@/lib/auth/capabilities'
 import { createClient } from '@/lib/supabase/server'
 import { can } from '@/lib/auth/permissions'
 import { auditActionLabel } from '@/lib/audit'
@@ -48,7 +49,8 @@ export default async function LodgeAuditPage({ params }: { params: { slug: strin
   // often being asked about, and a man should be able to see the record
   // of what he did.
   const role = (membership as any)?.tenant_role ?? null
-  const allowed = can(role, 'settings', isSuperAdmin) || role === 'treasurer' || role === 'worshipful_master'
+  const overrides = await loadOverrides(tenant.id, user.id)
+  const allowed = can(role, 'settings', isSuperAdmin, overrides) || role === 'treasurer' || role === 'worshipful_master'
   if (!allowed) redirect(`/lodge/${params.slug}/dashboard`)
 
   const supabase = await createClient()
