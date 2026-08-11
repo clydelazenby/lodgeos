@@ -8,6 +8,7 @@ import { can, type Capability } from '@/lib/auth/permissions'
 import { loadOverrides } from '@/lib/auth/capabilities'
 import { noteFirstSignIn } from '@/lib/firstSignIn'
 import { NoticeBell } from '@/components/lodge/NoticeBell'
+import { Toaster } from '@/components/ui/Toaster'
 import { createClient } from '@/lib/supabase/server'
 
 export default async function LodgeAdminLayout({
@@ -275,6 +276,19 @@ export default async function LodgeAdminLayout({
           {children}
         </ResponsiveNavShell>
       </div>
+
+      {/*
+        * THE CONFIRMATIONS HAD NOWHERE TO LAND.
+        *
+        * lib/toast dispatches on a window event and one <Toaster/> per
+        * layout listens. It was mounted on the portal and the
+        * super-admin layouts and NOT here — so every notify.saved() on
+        * the lodge side, and there are two dozen of them, fired into an
+        * empty room. Saving a member's degree, deleting a document,
+        * changing a dues rate: all of them succeeded silently, which is
+        * indistinguishable from nothing happening at all.
+        */}
+      <Toaster />
 
       <AiSecretaryPanel
         tenantId={tenant.id}

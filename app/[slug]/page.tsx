@@ -132,6 +132,18 @@ if (!tenant) notFound()
     .order('sort_order')
     .order('created_at')
 
+  /**
+   * The front page shows a dozen; /[slug]/gallery shows them all.
+   *
+   * A lodge with two hundred photographs should not push its calendar
+   * and its contact details off the bottom of the front page — and the
+   * gallery page is what gets emailed and shared anyway, so it is the
+   * one that has to hold everything.
+   */
+  const GALLERY_PREVIEW = 12
+  const galleryPreview = (galleryPhotos ?? []).slice(0, GALLERY_PREVIEW)
+  const galleryMore = (galleryPhotos?.length ?? 0) - galleryPreview.length
+
   // The section AND the nav link hang off this one condition. A lodge
   // with no photographs previously still advertised a Gallery in its
   // menu, and it scrolled to four empty gold boxes.
@@ -177,7 +189,16 @@ const panel = '#142234'
     ['About Us', '#about'],
     ['Freemasonry', '#freemasonry'],
     ['Events', '#events'],
-    ...(showGallery ? [['Gallery', '#gallery']] : []),
+    /**
+     * THE GALLERY'S OWN PAGE, not an anchor.
+     *
+     * An in-page anchor only works if the section is rendered on the
+     * page you happen to be on, and scrolls nowhere at all when it is
+     * not — which is indistinguishable from a broken link, and was
+     * reported as one. A real href either loads a page or 404s, and
+     * this one loads.
+     */
+    ...(showGallery ? [['Gallery', `/${params.slug}/gallery`]] : []),
     ['Contact', '#contact'],
   ] as [string, string][]
 
@@ -653,7 +674,11 @@ h('img', {
             h('a', { href: '#about' }, 'About Us'),
             h('a', { href: '#freemasonry' }, 'Freemasonry'),
             h('a', { href: '#events' }, 'Events'),
-            h('a', { href: '#gallery' }, 'Gallery'),
+            // Was hardcoded and unconditional while the desktop nav
+            // was conditional — so a lodge with no photographs still
+            // advertised a Gallery on a phone, which is the device
+            // most visitors are on.
+            showGallery ? h('a', { key: 'gallery', href: `/${params.slug}/gallery` }, 'Gallery') : null,
             h('a', { href: '#contact' }, 'Contact'),
             h(
               'a',
@@ -1336,7 +1361,21 @@ h(Icon, {
           tenant.gallery_intro
             ? h('p', { style: { fontFamily: 'Crimson Pro, Georgia, serif', fontSize: '1.05rem', color: dim, maxWidth: '46rem', marginBottom: '2rem', lineHeight: 1.7 } }, tenant.gallery_intro)
             : null,
-          h(PublicGallery, { photos: galleryPhotos as any, lodgeName: `${tenant.name} #${tenant.number}` })
+          h(PublicGallery, { photos: galleryPreview as any, lodgeName: `${tenant.name} #${tenant.number}` }),
+          h(
+            'div',
+            { style: { marginTop: '2rem' } },
+            h(
+              'a',
+              {
+                href: `/${params.slug}/gallery`,
+                style: { fontFamily: 'JetBrains Mono, monospace', fontSize: '0.65rem', letterSpacing: '0.2em', color: gold, textDecoration: 'none', textTransform: 'uppercase', border: `1px solid ${gold}40`, padding: '11px 20px', display: 'inline-block' },
+              },
+              galleryMore > 0
+                ? `See all ${(galleryPhotos ?? []).length} photographs →`
+                : 'Open the gallery →'
+            )
+          )
         )
       )
     : null

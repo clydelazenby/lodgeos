@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { T } from '@/lib/designTokens'
 import { callApi, errorMessage } from '@/lib/clientFetch'
+import { notify } from '@/lib/toast'
 import {
   CAPABILITIES, CAPABILITY_META, SOURCE_LABEL, roleLabel, tierGrants, grantedTiers,
   resolveCapability, type Capability, type CapabilityOverrides,
@@ -106,12 +107,15 @@ export function MemberPermissions({
         body: { tenantId, memberId, ...body },
       })
       flash(ok)
+      notify.saved(ok)
       // The nav, the page guards and every route read this — refresh so
       // a change made here is visible everywhere without a reload.
       router.refresh()
     } catch (e) {
       revert()
-      setError(errorMessage(e, 'That could not be saved.'))
+      const message = errorMessage(e, 'That could not be saved.')
+      setError(message)
+      notify.error(message)
     } finally {
       setBusy(null)
     }

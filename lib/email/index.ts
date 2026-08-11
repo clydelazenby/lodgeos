@@ -771,6 +771,70 @@ export async function sendBrotherRemovedAlert({
   }, 'brother removed alert')
 }
 
+// ── New photographs on the public site ──
+//
+// GOES TO THE WHOLE LODGE, unlike the roster notices above, and is the
+// only one of these a brother on the plain member tier receives. So it
+// says nothing an outsider could not see: it points at the public page
+// the photographs are already on, and carries no roster detail.
+
+export async function sendGalleryPhotosEmail({
+  to, firstName, lodgeName, count, galleryUrl, settingsUrl, addedBy, captions, brand,
+}: {
+  to: string; firstName: string; lodgeName: string
+  count: number
+  /** The lodge's public gallery page — shareable with anyone. */
+  galleryUrl: string
+  /**
+   * Where he switches these off. Goes through the sign-in page carrying
+   * where he was headed, so one tap lands him on the setting whether or
+   * not he happens to be signed in.
+   */
+  settingsUrl: string
+  addedBy?: string | null
+  /** A few, to show what they are of. Not all of them. */
+  captions?: string[]
+  brand?: LodgeBrand
+}) {
+  const b = resolveBrand(brand, lodgeName)
+  const many = count !== 1
+  const body = {
+    greeting: `Dear Brother ${firstName},`,
+    paragraphs: [
+      `${count} new photograph${many ? 's have' : ' has'} been added to the ${lodgeTitle(b)} gallery.`,
+      ...(captions?.length ? [captions.map((c) => `\u2022 ${c}`).join('\n')] : []),
+      'The gallery is a public page, so the link below can be passed on to anyone \u2014 a widow, a visiting brother, a man thinking of petitioning.',
+      /**
+       * THE WAY OUT IS IN THE EMAIL ITSELF.
+       *
+       * This is the only notice that reaches every brother, so it is
+       * the one most likely to become an annoyance — and a brother with
+       * no visible way to stop it marks it as spam, which takes the
+       * lodge's whole mailing reputation with it. Saying so here costs
+       * two lines and keeps the channel usable.
+       *
+       * Deliberately narrow: it turns off THESE, not the Secretary's
+       * notices, and it says so.
+       */
+      `If you would rather not hear about new photographs, you can switch just these off in your portal \u2014 it will take you straight there when you sign in: ${settingsUrl}`,
+    ],
+    ...(addedBy ? { details: [{ label: 'Added by', value: addedBy }] } : {}),
+    cta: { label: many ? 'See the Photographs' : 'See the Photograph', url: galleryUrl },
+    ctaNote: 'Lodge notices from the Secretary are separate and are not affected.',
+    signOff: { closing: 'Fraternally,', lines: [lodgeTitle(b)] },
+  }
+
+  return send({
+    from: `${lodgeTitle(b)} <${FROM}>`,
+    to,
+    subject: many
+      ? `${count} new photographs in the lodge gallery`
+      : 'A new photograph in the lodge gallery',
+    html: renderLodgeEmail(b, body, `${count} new photograph${many ? 's' : ''} from ${lodgeTitle(b)}.`),
+    text: renderLodgeEmailText(b, body),
+  }, 'gallery photos email')
+}
+
 // ── A lodge asking to use LodgeOS ──
 //
 // The one email here that is genuinely FROM the platform rather than

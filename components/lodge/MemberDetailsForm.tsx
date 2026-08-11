@@ -5,6 +5,7 @@ import { T } from '@/lib/designTokens'
 import { DegreeOptions } from '@/components/DegreeOptions'
 import { OfficeSelect } from '@/components/lodge/OfficeSelect'
 import { callApi, errorMessage } from '@/lib/clientFetch'
+import { notify } from '@/lib/toast'
 
 /**
  * The Secretary's register entry for one brother, editable where he is
@@ -81,10 +82,19 @@ export function MemberDetailsForm({
         body: { tenantId, memberId, fields },
       })
       setSaved(true)
-      if (data.warning) setWarning(data.warning)
+      // Named, so it is obvious WHAT was written — "Saved" beside an
+      // eleven-field form leaves an officer wondering which of them.
+      notify.saved(
+        dirty.length === 1
+          ? `${dirty[0].replace(/_/g, ' ')} saved`
+          : `${dirty.length} details saved`
+      )
+      if (data.warning) { setWarning(data.warning); notify.info(data.warning) }
       router.refresh()
     } catch (e) {
-      setError(errorMessage(e, 'Those details could not be saved.'))
+      const message = errorMessage(e, 'Those details could not be saved.')
+      setError(message)
+      notify.error(message)
     } finally {
       setSaving(false)
     }
@@ -226,7 +236,7 @@ export function MemberDetailsForm({
             </span>
           )}
           {saved && dirty.length === 0 && (
-            <span style={{ color: T.success, fontFamily: T.mono, fontSize: '11px' }}>✓ Saved</span>
+            <span className="lodgeos-stage-in" style={{ color: T.success, fontFamily: T.mono, fontSize: '11px' }}>✓ Saved</span>
           )}
         </div>
       )}

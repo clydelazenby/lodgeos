@@ -3,8 +3,16 @@ import { redirect } from 'next/navigation'
 import { format } from 'date-fns'
 import { AvatarUpload } from '@/components/lodge/AvatarUpload'
 import { MemberQrCode } from '@/components/lodge/MemberQrCode'
+import { MyNotifications } from '@/components/portal/MyNotifications'
+import type { NotificationEvent } from '@/lib/notifications'
 
-export default async function PortalProfilePage() {
+export default async function PortalProfilePage({
+  searchParams,
+}: {
+  /** ?notifications=1 arrives from the "switch this off" link in an
+   *  emailed gallery announcement. */
+  searchParams?: { notifications?: string }
+}) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
@@ -19,6 +27,25 @@ export default async function PortalProfilePage() {
   if (!membership) redirect('/onboarding/setup')
   const tenant = (membership as any).tenants
   const initials = `${profile?.first_name?.[0] ?? ''}${profile?.last_name?.[0] ?? ''}`.toUpperCase() || '?'
+
+  /**
+   * His own notification switches.
+   *
+   * They belong here rather than only on the lodge-side Notifications
+   * page because the gallery notice reaches every brother, and the
+   * plain member tier is redirected out of the lodge side — a switch
+   * there would be one he could never reach.
+   */
+  const { data: prefRows } = await supabase
+    .from('notification_preferences')
+    .select('event_type, enabled')
+    .eq('tenant_id', membership.tenant_id)
+    .eq('member_id', user.id)
+
+  const prefs: Partial<Record<NotificationEvent, boolean>> = {}
+  for (const row of prefRows ?? []) {
+    prefs[(row as any).event_type as NotificationEvent] = (row as any).enabled
+  }
 
   const { data: degreeProgress } = await supabase
     .from('degree_progress')
@@ -81,6 +108,17 @@ export default async function PortalProfilePage() {
             <span style={{ color: '#F5F0E8', fontSize: '0.85rem' }}>{d.conferred_date ? format(new Date(d.conferred_date), 'MMM d, yyyy') : 'Not yet'}</span>
           </div>
         ))}
+      </div>
+
+      <div style={{ marginTop: '1.5rem' }}>
+        <MyNotifications
+          tenantId={membership.tenant_id}
+          memberId={user.id}
+          tenantRole={(membership as any).tenant_role}
+          lodgeRole={(membership as any).lodge_role}
+          prefs={prefs}
+          highlight={searchParams?.notifications === '1'}
+        />
       </div>
     </div>
   )

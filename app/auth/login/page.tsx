@@ -13,17 +13,37 @@ const LINK_ERRORS: Record<string, string> = {
   auth_failed: 'That sign-in link could not be verified. Please sign in below or request a new invitation.',
 }
 
+/**
+ * ONLY A PATH ON THIS SITE.
+ *
+ * `next` arrives in a URL and a URL can be edited by anyone who sends
+ * one, so it is treated as untrusted. Anything absolute, protocol-
+ * relative ("//evil.example") or backslash-mangled is dropped rather
+ * than corrected — a sign-in page that will forward to another host on
+ * request is a phishing tool, and this one is emailed to brethren.
+ */
+function safeNext(value: string | null): string | null {
+  if (!value) return null
+  if (!value.startsWith('/')) return null
+  if (value.startsWith('//') || value.startsWith('/\\')) return null
+  if (value.includes('\\')) return null
+  return value
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [next, setNext] = useState<string | null>(null)
 
   // Read after mount rather than during render — the server has no
   // query string to render from, and a mismatch would hydrate away.
   useEffect(() => {
-    const reason = new URLSearchParams(window.location.search).get('error')
+    const params = new URLSearchParams(window.location.search)
+    const reason = params.get('error')
     if (reason && LINK_ERRORS[reason]) setError(LINK_ERRORS[reason])
+    setNext(safeNext(params.get('next')))
   }, [])
 
  const handleLogin = async function (event: any) {
@@ -57,7 +77,9 @@ export default function LoginPage() {
     // session cookie is attached to a fresh request to the destination
     // and its server component tree renders authenticated on the first
     // pass. replace() also keeps the login page out of history.
-    window.location.replace(result.redirectTo || '/portal')
+    // Where he was actually going, if middleware recorded one; the
+    // route's own idea of home otherwise.
+    window.location.replace(next || result.redirectTo || '/portal')
   } catch (err: any) {
     console.error('Login request failed:', err)
     setError(err?.message || 'Something went wrong signing in.')

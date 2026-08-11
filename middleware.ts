@@ -72,7 +72,25 @@ export async function middleware(request: NextRequest) {
 
   if (!user && isProtectedRoute) {
     const loginPath = path.startsWith('/onboarding') ? '/auth/signup' : '/auth/login'
-    return NextResponse.redirect(new URL(loginPath, request.url))
+    const url = new URL(loginPath, request.url)
+
+    /**
+     * REMEMBER WHERE HE WAS GOING, so signing in finishes the journey
+     * rather than dumping him at a dashboard.
+     *
+     * The case this exists for: an emailed link to
+     * /portal/profile?notifications=1 — "turn this off" — followed by a
+     * brother who is not signed in. Without this he signs in, lands on
+     * the portal home, and has to go and find the setting he was
+     * already being taken to, which is how a one-click opt-out becomes
+     * a complaint to the Secretary instead.
+     *
+     * Search is kept; the path alone would drop the very parameter that
+     * says what he came for. Only ever a path from this request, never
+     * anything a caller supplied, so it cannot become an open redirect.
+     */
+    url.searchParams.set('next', path + request.nextUrl.search)
+    return NextResponse.redirect(url)
   }
 
   // Super-admin route protection: this needs the user's REAL

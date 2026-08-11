@@ -1,9 +1,11 @@
 'use client'
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { T } from '@/lib/designTokens'
 import { callApi, errorMessage } from '@/lib/clientFetch'
-import { prepareForGallery, fileFrom, formatBytes } from '@/lib/images'
+import { formatBytes } from '@/lib/images'
+import { GalleryComposer } from '@/components/lodge/GalleryComposer'
+import { notify } from '@/lib/toast'
 
 /**
  * The lodge's photographs, managed from the dashboard.
@@ -56,56 +58,39 @@ export function GalleryManager({
   settings: Settings
 }) {
   const router = useRouter()
-  const fileInput = useRef<HTMLInputElement>(null)
   const [photos, setPhotos] = useState<Photo[]>(initial)
   const [settings, setSettings] = useState(initialSettings)
   const [busy, setBusy] = useState<string | null>(null)
-  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
-  const [saved, setSaved] = useState<number>(0)
   const [error, setError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const [removing, setRemoving] = useState<string | null>(null)
 
-  const flashError = (e: unknown, fallback: string) => setError(errorMessage(e, fallback))
+  const flashError = (e: unknown, fallback: string) => {
+    const message = errorMessage(e, fallback)
+    setError(message)
+    notify.error(message)
+  }
 
-  // ---------------------------------------------------------- upload
-  const upload = async (files: FileList | null) => {
-    if (!files?.length) return
-    setError('')
-    setSaved(0)
-    const list = Array.from(files)
-    setProgress({ done: 0, total: list.length })
-
-    let bytesSaved = 0
-    for (let i = 0; i < list.length; i++) {
-      const file = list[i]
-      try {
-        const prepared = await prepareForGallery(file)
-        bytesSaved += Math.max(0, file.size - prepared.display.blob.size)
-
-        const form = new FormData()
-        form.append('tenantId', tenantId)
-        form.append('file', fileFrom(prepared.display, 'photo.jpg'))
-        form.append('thumb', fileFrom(prepared.thumb, 'thumb.jpg'))
-        form.append('width', String(prepared.display.width))
-        form.append('height', String(prepared.display.height))
-
-        const res = await fetch('/api/gallery', { method: 'POST', body: form })
-        const data = await res.json().catch(() => ({}))
-        if (!res.ok) throw new Error(data.error || 'Upload failed.')
-        setPhotos(p => [...p, data.photo])
-      } catch (e) {
-        // NAMED, AND THE REST CONTINUE. One unreadable file out of
-        // twenty must not abandon the other nineteen, and "an upload
-        // failed" without saying which is a message nobody can act on.
-        setError(`${file.name}: ${errorMessage(e, 'could not be uploaded.')}`)
-      }
-      setProgress({ done: i + 1, total: list.length })
-    }
-
-    setSaved(bytesSaved)
-    setProgress(null)
-    if (fileInput.current) fileInput.current.value = ''
+  /**
+   * Posting is the composer's job now — see GalleryComposer. It hands
+   * back the rows that actually landed, and whether the lodge is to be
+   * told, once the officer has pressed Post.
+   */
+  const afterPost = async (landed: any[], tellBrethren: boolean) => {
+    setPhotos(p => [...p, ...landed])
     router.refresh()
+    if (!tellBrethren || !landed.length) return
+    try {
+      const data = await callApi('/api/gallery/announce', {
+        method: 'POST',
+        body: { tenantId, photoIds: landed.map(x => x.id) },
+      })
+      if (data.message) notify.info(data.message)
+    } catch (e) {
+      // The photographs are up. Saying otherwise would have an officer
+      // post them a second time.
+      notify.error(`Posted, but the lodge could not be told: ${errorMessage(e, 'unknown error')}`)
+    }
   }
 
   // ----------------------------------------------------------- edit
@@ -116,6 +101,11 @@ export function GalleryManager({
     setError('')
     try {
       await callApi('/api/gallery', { method: 'PATCH', body: { tenantId, photoId, ...body } })
+      notify.saved(
+        'isPublished' in body
+          ? (body.isPublished ? 'Showing on the site' : 'Hidden from the site')
+          : 'Saved'
+      )
       router.refresh()
     } catch (e) {
       if (before) setPhotos(p => p.map(x => (x.id === photoId ? before : x)))
@@ -127,11 +117,20 @@ export function GalleryManager({
 
   const remove = async (photoId: string) => {
     const before = photos
-    setPhotos(p => p.filter(x => x.id !== photoId))
     setConfirmDelete(null)
     setBusy(photoId)
+    /**
+     * COLLAPSES OUT, then goes. A row that simply vanishes leaves the
+     * eye asking what moved; one that folds away answers it. Removed
+     * from state only after the animation, so the two do not fight.
+     */
+    setRemoving(photoId)
+    await new Promise(r => setTimeout(r, 300))
+    setPhotos(p => p.filter(x => x.id !== photoId))
+    setRemoving(null)
     try {
       await callApi('/api/gallery', { method: 'DELETE', body: { tenantId, photoId } })
+      notify.saved('Photograph deleted')
       router.refresh()
     } catch (e) {
       setPhotos(before)
@@ -157,6 +156,7 @@ export function GalleryManager({
         method: 'PATCH',
         body: { tenantId, order: next.map(p => p.id) },
       })
+      notify.saved('Order saved')
       router.refresh()
     } catch (e) {
       setPhotos(before)
@@ -174,6 +174,7 @@ export function GalleryManager({
     }))
     try {
       await callApi('/api/gallery/settings', { method: 'PATCH', body: { tenantId, ...body } })
+      notify.saved('Saved')
       router.refresh()
     } catch (e) {
       setSettings(before)
@@ -264,42 +265,7 @@ export function GalleryManager({
         </div>
       </div>
 
-      {/* --------------------------------------------------- uploading */}
-      <div style={card}>
-        <div style={eyebrow}>Add photographs</div>
-        <p style={{ fontFamily: T.body, fontSize: '0.88rem', color: T.inkFaint, marginTop: 0, marginBottom: '0.9rem' }}>
-          Pick as many as you like. They are resized in this browser before they are sent, so a
-          gallery of phone photographs still loads quickly for a visitor on a poor signal — the
-          originals stay on your device untouched.
-        </p>
-
-        <input
-          ref={fileInput}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          multiple
-          disabled={!!progress}
-          onChange={e => upload(e.target.files)}
-          style={{ fontFamily: T.body, fontSize: '0.88rem', color: T.inkFaint }}
-        />
-
-        {progress && (
-          <div style={{ marginTop: '0.9rem' }}>
-            <div style={{ fontFamily: T.mono, fontSize: '10px', letterSpacing: '0.1em', color: T.gold, marginBottom: 5 }}>
-              UPLOADING {progress.done} OF {progress.total}
-            </div>
-            <div style={{ height: 4, background: T.border, borderRadius: 2, overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${(progress.done / progress.total) * 100}%`, background: T.gold, transition: 'width 0.2s' }} />
-            </div>
-          </div>
-        )}
-
-        {!progress && saved > 0 && (
-          <div style={{ fontFamily: T.body, fontSize: '0.88rem', color: T.success, marginTop: '0.8rem' }}>
-            Done — {formatBytes(saved)} of needless download saved for every visitor.
-          </div>
-        )}
-      </div>
+      <GalleryComposer tenantId={tenantId} onPosted={afterPost} />
 
       {/* ----------------------------------------------------- the set */}
       {photos.length === 0 ? (
@@ -314,6 +280,7 @@ export function GalleryManager({
           {photos.map((photo, i) => (
             <div
               key={photo.id}
+              className={removing === photo.id ? 'lodgeos-removing' : 'lodgeos-stage-in'}
               style={{
                 ...card, marginBottom: 0, opacity: busy === photo.id ? 0.5 : 1,
                 display: 'grid', gridTemplateColumns: 'minmax(0, 150px) minmax(0, 1fr)',
