@@ -60,7 +60,24 @@ export function ConfirmDialog({
 
   if (!open) return null
 
-  const ready = !requireTyping || typed.trim() === requireTyping.trim()
+  /**
+   * FORGIVING ABOUT THE TYPING, STRICT ABOUT THE INTENT.
+   *
+   * This was an exact, case-sensitive, whitespace-sensitive comparison
+   * — so "Bylaws 2024.pdf" typed as "bylaws 2024.pdf", or with a double
+   * space the file name happens to contain, left the button quietly
+   * disabled. Clicking it then did NOTHING AT ALL, with no hint why,
+   * which reads as a broken button rather than an unmet condition. It
+   * was reported as exactly that.
+   *
+   * The point of the gate is to make a destructive act deliberate, and
+   * typing the name in any case with any spacing is deliberate. What it
+   * must not accept is an empty box or a stray keypress, and it does
+   * not.
+   */
+  const normalise = (v: string) => v.trim().replace(/\s+/g, ' ').toLowerCase()
+  const ready = !requireTyping || normalise(typed) === normalise(requireTyping)
+  const started = typed.trim().length > 0
 
   return (
     <div
@@ -81,6 +98,7 @@ export function ConfirmDialog({
     >
       <div
         onClick={(e) => e.stopPropagation()}
+        className="lodgeos-dialog-in"
         style={{
           background: T.bgCard,
           border: '1px solid rgba(231,76,60,0.35)',
@@ -132,19 +150,41 @@ export function ConfirmDialog({
               ref={inputRef}
               value={typed}
               onChange={(e) => setTyped(e.target.value)}
+              // Enter finishes it, the way any other confirmation field
+              // would. Only once it matches, so the key cannot commit a
+              // destruction the box does not yet agree to.
+              onKeyDown={(e) => { if (e.key === 'Enter' && ready && !busy) onConfirm() }}
               style={{
                 width: '100%',
                 background: T.bg,
-                border: `1px solid ${T.goldBorder}`,
+                border: `1px solid ${ready ? 'rgba(93,190,133,0.5)' : started ? 'rgba(231,76,60,0.4)' : T.goldBorder}`,
                 color: T.ink,
                 padding: '10px 13px',
                 fontFamily: 'Crimson Pro, serif',
-                fontSize: '0.95rem',
+                fontSize: '16px',
                 outline: 'none',
                 borderRadius: 4,
                 boxSizing: 'border-box',
+                transition: 'border-color 0.2s',
               }}
             />
+            {/* SAYS WHY THE BUTTON IS STILL GREY. A disabled control
+                with no explanation is the thing that gets reported as
+                "I pressed it and nothing happened". */}
+            <div
+              aria-live="polite"
+              style={{
+                fontFamily: 'Crimson Pro, serif', fontSize: '0.84rem', marginTop: 6,
+                color: ready ? T.success : started ? T.danger : T.inkFainter,
+                minHeight: '1.2em',
+              }}
+            >
+              {ready
+                ? '✓ That matches — the button below is ready.'
+                : started
+                  ? 'That does not match yet. Capitals and extra spaces do not matter.'
+                  : ''}
+            </div>
           </div>
         )}
 
@@ -202,7 +242,7 @@ export function ConfirmDialog({
               cursor: busy || !ready ? 'not-allowed' : 'pointer',
             }}
           >
-            {busy ? 'Working…' : confirmLabel}
+            {busy ? 'Deleting…' : confirmLabel}
           </button>
         </div>
       </div>

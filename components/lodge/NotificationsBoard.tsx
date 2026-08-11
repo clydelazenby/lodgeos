@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { T } from '@/lib/designTokens'
 import { callApi, errorMessage } from '@/lib/clientFetch'
+import { notify } from '@/lib/toast'
 import { NOTIFICATION_EVENTS, EVENT_META, notifiedByDefault, defaultReason, type NotificationEvent } from '@/lib/notifications'
 import { roleLabel } from '@/lib/auth/permissions'
 
@@ -65,10 +66,15 @@ export function NotificationsBoard({
         method: 'PATCH',
         body: { tenantId, memberId: m.userId, event, enabled: next },
       })
+      notify.saved(
+        `${EVENT_META[event].label} ${next ? 'on' : 'off'} for ${m.userId === viewerId ? 'you' : m.name}`
+      )
       router.refresh()
     } catch (e) {
       setRows(before)
-      setError(errorMessage(e, 'That could not be saved.'))
+      const message = errorMessage(e, 'That could not be saved.')
+      setError(message)
+      notify.error(message)
     } finally {
       setBusy(null)
     }

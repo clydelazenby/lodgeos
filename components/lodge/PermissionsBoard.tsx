@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { T } from '@/lib/designTokens'
 import { callApi, errorMessage } from '@/lib/clientFetch'
+import { notify } from '@/lib/toast'
 import { ALL_OFFICES } from '@/lib/stations'
 import {
   CAPABILITIES, CAPABILITY_META, SOURCE_LABEL, roleLabel, resolveCapability,
@@ -102,14 +103,15 @@ export function PermissionsBoard({
       })
       const who: string[] = data.holders ?? []
       const label = CAPABILITY_META[capability].label
-      setNotice(
+      const said =
         next === null
           ? `${label} follows the tier again for the ${office}.`
           : `${office}: ${label} ${next ? 'allowed' : 'denied'}.` +
             (who.length
               ? ` That is ${who.join(' and ')}.`
               : ' Nobody holds that office at present, so this takes effect when somebody does.')
-      )
+      setNotice(said)
+      notify.saved(said)
       setTimeout(() => setNotice(''), 6000)
       router.refresh()
     } catch (e) {
@@ -119,7 +121,9 @@ export function PermissionsBoard({
         else forOffice[capability] = previous
         return { ...p, [office]: forOffice }
       })
-      setError(errorMessage(e, 'That could not be saved.'))
+      const message = errorMessage(e, 'That could not be saved.')
+      setError(message)
+      notify.error(message)
     } finally {
       setBusy(null)
     }
