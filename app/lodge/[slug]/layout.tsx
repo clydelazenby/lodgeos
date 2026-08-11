@@ -194,6 +194,10 @@ export default async function LodgeAdminLayout({
       label: 'Lodge',
       items: [
         { label: 'Settings', href: `${base}/settings`, need: 'settings' },
+        // The public site's photographs. Under Lodge because it is
+        // configuration of what the world sees, not a record the lodge
+        // keeps for itself.
+        { label: 'Gallery', href: `${base}/gallery`, need: 'settings' },
         // Readable by every officer, editable by the administrative
         // office alone — the page enforces that itself. No `need` here
         // because who may do what is not a secret kept from the men it
