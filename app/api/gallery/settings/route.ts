@@ -14,9 +14,12 @@ import { requireCapability } from '@/lib/auth/capabilities'
  * written to fix. Splitting the two settings would let a lodge
  * reintroduce it.
  */
+/** Kept in step with the check constraint in migration 040. */
+const THUMB_LABELS = new Set(['caption', 'caption_date', 'date', 'none'])
+
 export async function PATCH(request: Request) {
   try {
-    const { tenantId, enabled, heading, intro } = await request.json()
+    const { tenantId, enabled, heading, intro, thumbLabel } = await request.json()
     if (!tenantId) return NextResponse.json({ error: 'Missing tenantId' }, { status: 400 })
 
     const auth = await requireCapability(tenantId, 'settings')
@@ -26,6 +29,14 @@ export async function PATCH(request: Request) {
     if (enabled !== undefined) patch.gallery_enabled = Boolean(enabled)
     if (heading !== undefined) patch.gallery_heading = String(heading ?? '').trim().slice(0, 120) || null
     if (intro !== undefined) patch.gallery_intro = String(intro ?? '').trim().slice(0, 400) || null
+    if (thumbLabel !== undefined) {
+      // Checked against the same list as the database constraint, so a
+      // bad value is a clean 400 rather than a 500 from Postgres.
+      if (!THUMB_LABELS.has(String(thumbLabel))) {
+        return NextResponse.json({ error: `'${thumbLabel}' is not a thumbnail setting.` }, { status: 400 })
+      }
+      patch.gallery_thumb_label = String(thumbLabel)
+    }
 
     if (!Object.keys(patch).length) {
       return NextResponse.json({ error: 'Nothing to change.' }, { status: 400 })
@@ -35,7 +46,7 @@ export async function PATCH(request: Request) {
       .from('tenants')
       .update(patch)
       .eq('id', tenantId)
-      .select('gallery_enabled, gallery_heading, gallery_intro')
+      .select('gallery_enabled, gallery_heading, gallery_intro, gallery_thumb_label')
       .single()
 
     if (error) throw error

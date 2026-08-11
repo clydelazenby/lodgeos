@@ -24,7 +24,7 @@ async function load(slug: string) {
   const supabase = createServiceClient()
   const { data: tenant } = await supabase
     .from('tenants')
-    .select('id, name, number, slug, rite, city, state, gallery_enabled, gallery_heading, gallery_intro')
+    .select('id, name, number, slug, rite, city, state, gallery_enabled, gallery_heading, gallery_intro, gallery_thumb_label')
     .eq('slug', slug)
     .maybeSingle()
 
@@ -105,7 +105,11 @@ export default async function PublicGalleryPage({ params }: { params: { slug: st
           </p>
         ) : (
           <div style={{ marginTop: '2rem' }}>
-            <PublicGallery photos={photos as any} lodgeName={`${tenant.name} #${tenant.number}`} />
+            <PublicGallery
+              photos={photos as any}
+              lodgeName={`${tenant.name} #${tenant.number}`}
+              thumbLabel={tenant.gallery_thumb_label ?? 'caption'}
+            />
           </div>
         )}
 

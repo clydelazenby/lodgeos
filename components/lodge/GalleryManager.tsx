@@ -5,6 +5,7 @@ import { T } from '@/lib/designTokens'
 import { callApi, errorMessage } from '@/lib/clientFetch'
 import { formatBytes } from '@/lib/images'
 import { GalleryComposer } from '@/components/lodge/GalleryComposer'
+import { GalleryRows } from '@/components/lodge/GalleryRows'
 import { notify } from '@/lib/toast'
 
 /**
@@ -47,6 +48,7 @@ type Settings = {
   gallery_enabled: boolean
   gallery_heading: string | null
   gallery_intro: string | null
+  gallery_thumb_label: string
 }
 
 export function GalleryManager({
@@ -62,7 +64,6 @@ export function GalleryManager({
   const [settings, setSettings] = useState(initialSettings)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState('')
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [removing, setRemoving] = useState<string | null>(null)
 
   const flashError = (e: unknown, fallback: string) => {
@@ -117,7 +118,6 @@ export function GalleryManager({
 
   const remove = async (photoId: string) => {
     const before = photos
-    setConfirmDelete(null)
     setBusy(photoId)
     /**
      * COLLAPSES OUT, then goes. A row that simply vanishes leaves the
@@ -164,13 +164,14 @@ export function GalleryManager({
     }
   }
 
-  const saveSettings = async (body: Partial<{ enabled: boolean; heading: string; intro: string }>) => {
+  const saveSettings = async (body: Partial<{ enabled: boolean; heading: string; intro: string; thumbLabel: string }>) => {
     const before = settings
     setSettings(s => ({
       ...s,
       ...(body.enabled !== undefined ? { gallery_enabled: body.enabled } : {}),
       ...(body.heading !== undefined ? { gallery_heading: body.heading } : {}),
       ...(body.intro !== undefined ? { gallery_intro: body.intro } : {}),
+      ...(body.thumbLabel !== undefined ? { gallery_thumb_label: body.thumbLabel } : {}),
     }))
     try {
       await callApi('/api/gallery/settings', { method: 'PATCH', body: { tenantId, ...body } })
@@ -257,6 +258,31 @@ export function GalleryManager({
           </div>
         </div>
 
+        {/* WHAT IS PRINTED OVER THE PICTURE in the public grid.
+            Always right for "Installation night, 2025"; wrong for a
+            wall of portraits, where the same band of text over twenty
+            faces hides the thing a visitor came to look at. */}
+        <div style={{ marginTop: '0.9rem', maxWidth: 380 }}>
+          <label style={{ ...smallLabel, marginBottom: '4px' }} htmlFor="g-thumb">
+            On each thumbnail, show
+          </label>
+          <select
+            id="g-thumb"
+            value={settings.gallery_thumb_label}
+            onChange={e => saveSettings({ thumbLabel: e.target.value })}
+            style={{ ...input, cursor: 'pointer' }}
+          >
+            <option value="caption">The description</option>
+            <option value="caption_date">The description and the month</option>
+            <option value="date">The month only</option>
+            <option value="none">Nothing — just the picture</option>
+          </select>
+          <div style={{ fontFamily: T.body, fontSize: '0.82rem', color: T.inkFainter, marginTop: '3px' }}>
+            Opening a photograph always shows everything it has; this is only what covers the
+            picture in the grid.
+          </div>
+        </div>
+
         <div style={{ fontFamily: T.mono, fontSize: '10px', letterSpacing: '0.08em', color: T.inkFainter, marginTop: '0.9rem' }}>
           {published} SHOWING · {photos.length - published} HIDDEN ·{' '}
           <a href={`/${slug}#gallery`} target="_blank" rel="noreferrer" style={{ color: T.gold }}>
@@ -276,128 +302,16 @@ export function GalleryManager({
           </div>
         </div>
       ) : (
-        <div style={{ display: 'grid', gap: '1rem' }}>
-          {photos.map((photo, i) => (
-            <div
-              key={photo.id}
-              className={removing === photo.id ? 'lodgeos-removing' : 'lodgeos-stage-in'}
-              style={{
-                ...card, marginBottom: 0, opacity: busy === photo.id ? 0.5 : 1,
-                display: 'grid', gridTemplateColumns: 'minmax(0, 150px) minmax(0, 1fr)',
-                gap: '1rem', alignItems: 'start',
-              }}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element -- user-uploaded Storage URL, not a static local asset */}
-              <img
-                src={photo.thumb_url || photo.url}
-                alt={photo.alt_text || photo.caption || 'Lodge photograph'}
-                style={{
-                  width: '100%', aspectRatio: '4 / 3', objectFit: 'cover', borderRadius: '6px',
-                  border: `1px solid ${T.border}`, display: 'block',
-                  filter: photo.is_published ? 'none' : 'grayscale(1) opacity(0.5)',
-                }}
-              />
-
-              <div style={{ minWidth: 0 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.7rem' }}>
-                  <div>
-                    <label style={smallLabel}>Description (optional)</label>
-                    <input
-                      defaultValue={photo.caption ?? ''}
-                      placeholder="Installation night, 2025"
-                      onBlur={e => e.target.value !== (photo.caption ?? '') &&
-                        patch(photo.id, { caption: e.target.value }, { caption: e.target.value || null })}
-                      style={input}
-                    />
-                  </div>
-
-                  <div>
-                    <label style={smallLabel}>Alt text — for screen readers</label>
-                    <input
-                      defaultValue={photo.alt_text ?? ''}
-                      placeholder="What the photograph shows"
-                      onBlur={e => e.target.value !== (photo.alt_text ?? '') &&
-                        patch(photo.id, { altText: e.target.value }, { alt_text: e.target.value || null })}
-                      style={input}
-                    />
-                  </div>
-
-                  <div>
-                    <label style={smallLabel}>Date taken (optional)</label>
-                    <input
-                      type="date"
-                      defaultValue={photo.taken_on ?? ''}
-                      onBlur={e => e.target.value !== (photo.taken_on ?? '') &&
-                        patch(photo.id, { takenOn: e.target.value }, { taken_on: e.target.value || null })}
-                      style={input}
-                    />
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '0.8rem' }}>
-                  <Action
-                    onClick={() => patch(photo.id, { isPublished: !photo.is_published }, { is_published: !photo.is_published })}
-                    tone={photo.is_published ? T.inkFaint : T.success}
-                  >
-                    {photo.is_published ? 'Hide from the site' : 'Show on the site'}
-                  </Action>
-
-                  <Action onClick={() => move(photo.id, -1)} disabled={i === 0} tone={T.inkFaint}>↑ Earlier</Action>
-                  <Action onClick={() => move(photo.id, 1)} disabled={i === photos.length - 1} tone={T.inkFaint}>↓ Later</Action>
-
-                  {confirmDelete === photo.id ? (
-                    <>
-                      <Action onClick={() => remove(photo.id)} tone={T.danger}>Delete for good</Action>
-                      <Action onClick={() => setConfirmDelete(null)} tone={T.inkFaint}>Keep it</Action>
-                    </>
-                  ) : (
-                    <Action onClick={() => setConfirmDelete(photo.id)} tone={T.danger}>Delete</Action>
-                  )}
-
-                  <span style={{ fontFamily: T.mono, fontSize: '9px', letterSpacing: '0.08em', color: T.inkFainter, marginLeft: 'auto' }}>
-                    {photo.width && photo.height ? `${photo.width}×${photo.height}` : ''}
-                    {photo.bytes ? ` · ${formatBytes(photo.bytes)}` : ''}
-                  </span>
-                </div>
-
-                {/* Deleting is the one thing here that cannot be undone,
-                    so it says so rather than relying on a second click
-                    to imply it. */}
-                {confirmDelete === photo.id && (
-                  <div style={{ fontFamily: T.body, fontSize: '0.86rem', color: T.danger, marginTop: '0.5rem' }}>
-                    This removes the file itself. If you only want it off the public site, hide it
-                    instead — that can be undone.
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
+        <GalleryRows
+          photos={photos}
+          busy={busy}
+          removing={removing}
+          onPatch={patch}
+          onMove={move}
+          onDelete={remove}
+        />
       )}
     </div>
   )
 }
 
-function Action({
-  children, onClick, tone, disabled,
-}: {
-  children: React.ReactNode
-  onClick: () => void
-  tone: string
-  disabled?: boolean
-}) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      style={{
-        background: 'transparent', border: `1px solid ${T.border}`, borderRadius: '4px',
-        color: tone, fontFamily: T.mono, fontSize: '9.5px', letterSpacing: '0.08em',
-        textTransform: 'uppercase', padding: '6px 10px',
-        cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.35 : 1,
-      }}
-    >
-      {children}
-    </button>
-  )
-}
