@@ -184,6 +184,8 @@ export default async function LodgeDashboardPage({ params }: { params: { slug: s
         tenantRole={(viewerMembership as any)?.tenant_role ?? null}
         lodgeName={tenant.name}
         lodgeNumber={tenant.number}
+        tenantId={tenant.id}
+        slug={params.slug}
         subline={tenant.city ? `${tenant.city}, ${tenant.state}` : 'Lodge Admin Dashboard'}
       />
 

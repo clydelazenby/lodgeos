@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { OfficeDutyLink } from '@/components/lodge/OfficeDutyLink'
 import { format } from 'date-fns'
 import { upcomingSince } from '@/lib/dates'
 import { degreeLabel, degreePillClass } from '@/lib/degrees'
@@ -91,7 +92,22 @@ export default async function PortalPage() {
           <h1 style={{ fontFamily: 'Cinzel, serif', fontSize: '1.6rem', color: '#F5F0E8', marginBottom: '0.25rem' }}>
             Welcome, Brother <span style={{ color: '#C9A84C' }}>{profile?.first_name}</span>
           </h1>
-          <p style={{ fontFamily: 'Crimson Pro, serif', fontStyle: 'italic', color: '#B8B0A0' }}>{tenant.name} #{tenant.number} · {(membership as any).lodge_role || degreeLabel((membership as any).degree)}</p>
+          <p style={{ fontFamily: 'Crimson Pro, serif', fontStyle: 'italic', color: '#B8B0A0' }}>
+            {tenant.name} #{tenant.number} ·{' '}
+            {/* His chair, and what it means, in the line that names it.
+                A brother with no office sees his degree instead, which
+                has no duties to open. */}
+            {(membership as any).lodge_role ? (
+              <OfficeDutyLink
+                tenantId={tenant.id}
+                office={(membership as any).lodge_role}
+                allHref="/portal/duties"
+                style={{ color: '#C9A84C', fontStyle: 'italic' }}
+              />
+            ) : (
+              degreeLabel((membership as any).degree)
+            )}
+          </p>
         </div>
       </div>
 
@@ -147,20 +163,17 @@ export default async function PortalPage() {
         <div style={{ background: '#141C2E', padding: '1.4rem' }}>
           <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.56rem', letterSpacing: '0.2em', color: '#C9A84C', textTransform: 'uppercase', marginBottom: '0.6rem' }}>Role</div>
           <div style={{ fontFamily: 'Crimson Pro, serif', fontSize: '1.1rem', color: '#F5F0E8' }}>{(membership as any).lodge_role || 'Member'}</div>
-          {/* THE CARD THAT NAMES HIS CHAIR IS WHERE HE WILL LOOK.
-              A brother wondering what he has agreed to do reads his own
-              office first — putting the link anywhere else asks him to
-              go hunting for the answer to the question he is already
-              looking at. A brother with no office gets the whole list,
-              which is what he would want before accepting one. */}
-          <Link
-            href={(membership as any).lodge_role
-              ? `/portal/duties?office=${encodeURIComponent((membership as any).lodge_role)}`
-              : '/portal/duties'}
-            style={{ display: 'inline-block', marginTop: '0.5rem', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.58rem', letterSpacing: '0.12em', color: '#C9A84C', textDecoration: 'none' }}
-          >
-            {(membership as any).lodge_role ? 'MY DUTIES →' : 'OFFICER DUTIES →'}
-          </Link>
+          {/* Only for a brother with NO office. One with a chair now
+              has it underlined in the greeting above, and two links to
+              the same thing on one screen is one too many. */}
+          {!(membership as any).lodge_role && (
+            <Link
+              href="/portal/duties"
+              style={{ display: 'inline-block', marginTop: '0.5rem', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.58rem', letterSpacing: '0.12em', color: '#C9A84C', textDecoration: 'none' }}
+            >
+              OFFICER DUTIES →
+            </Link>
+          )}
         </div>
       </div>
 
