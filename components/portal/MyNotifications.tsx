@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { callApi, errorMessage } from '@/lib/clientFetch'
 import {
@@ -22,18 +22,39 @@ import {
  * something the officers' rules do not give him.
  */
 export function MyNotifications({
-  tenantId, memberId, tenantRole, lodgeRole, prefs: initial,
+  tenantId, memberId, tenantRole, lodgeRole, prefs: initial, highlight = false,
 }: {
   tenantId: string
   memberId: string
   tenantRole: string
   lodgeRole: string | null
   prefs: Partial<Record<NotificationEvent, boolean>>
+  /** Arrived from the "switch this off" link in an email. */
+  highlight?: boolean
 }) {
   const router = useRouter()
+  const box = useRef<HTMLDivElement>(null)
   const [prefs, setPrefs] = useState(initial)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState('')
+
+  /**
+   * A brother who followed "switch this off" from an email must LAND on
+   * the switch, not on a page that happens to contain it.
+   *
+   * The card is well down the profile page, so arriving at the top and
+   * being expected to scroll and hunt is how a one-tap opt-out turns
+   * into marking the message as spam instead. Scrolled to and outlined
+   * for a moment; the outline fades so it does not become permanent
+   * furniture on every later visit.
+   */
+  const [glow, setGlow] = useState(highlight)
+  useEffect(() => {
+    if (!highlight) return
+    box.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    const t = setTimeout(() => setGlow(false), 2600)
+    return () => clearTimeout(t)
+  }, [highlight])
 
   const effective = (event: NotificationEvent) => {
     const explicit = prefs[event]
@@ -71,7 +92,17 @@ export function MyNotifications({
   if (!mine.length) return null
 
   return (
-    <div style={{ background: '#141C2E', border: '1px solid rgba(201,168,76,0.12)', borderRadius: '10px', padding: '1.25rem' }}>
+    <div
+      ref={box}
+      id="notifications"
+      style={{
+        background: '#141C2E',
+        border: `1px solid ${glow ? 'rgba(201,168,76,0.65)' : 'rgba(201,168,76,0.12)'}`,
+        boxShadow: glow ? '0 0 0 3px rgba(201,168,76,0.15)' : 'none',
+        borderRadius: '10px', padding: '1.25rem',
+        transition: 'border-color 0.6s, box-shadow 0.6s',
+      }}
+    >
       <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '10px', letterSpacing: '0.14em', color: '#C9A84C', textTransform: 'uppercase', marginBottom: '6px' }}>
         Emails from the lodge
       </div>

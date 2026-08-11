@@ -82,7 +82,22 @@ export async function POST(request: Request) {
       .slice(0, 4)
 
     const addedBy = await actorName(auth.userId)
-    const galleryUrl = `${APP_URL}/${(lodge as any).slug}#gallery`
+    // The gallery's OWN page, not the front page's anchor. A link that
+    // drops a brother halfway down a long scrolling site arrives
+    // somewhere confusing, and this is also what he will forward on.
+    const galleryUrl = `${APP_URL}/${(lodge as any).slug}/gallery`
+
+    /**
+     * One tap to the switch, signed in or not.
+     *
+     * Sent through the sign-in page carrying where he was going, so a
+     * brother who is not signed in finishes at the setting rather than
+     * at a portal home page with the thing he came for two clicks away.
+     * Middleware writes the same parameter when it turns anyone away,
+     * and the login page only honours a path on this site.
+     */
+    const settingsPath = '/portal/profile?notifications=1'
+    const settingsUrl = `${APP_URL}/auth/login?next=${encodeURIComponent(settingsPath)}`
     const lodgeName = `${(lodge as any).name} #${(lodge as any).number}`
 
     // The officer who just uploaded them is excluded — he has seen them.
@@ -94,6 +109,7 @@ export async function POST(request: Request) {
         lodgeName,
         count,
         galleryUrl,
+        settingsUrl,
         addedBy,
         captions,
         brand: toLodgeBrand(lodge),

@@ -6,7 +6,13 @@ import { MemberQrCode } from '@/components/lodge/MemberQrCode'
 import { MyNotifications } from '@/components/portal/MyNotifications'
 import type { NotificationEvent } from '@/lib/notifications'
 
-export default async function PortalProfilePage() {
+export default async function PortalProfilePage({
+  searchParams,
+}: {
+  /** ?notifications=1 arrives from the "switch this off" link in an
+   *  emailed gallery announcement. */
+  searchParams?: { notifications?: string }
+}) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
@@ -111,6 +117,7 @@ export default async function PortalProfilePage() {
           tenantRole={(membership as any).tenant_role}
           lodgeRole={(membership as any).lodge_role}
           prefs={prefs}
+          highlight={searchParams?.notifications === '1'}
         />
       </div>
     </div>

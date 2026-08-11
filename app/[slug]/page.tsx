@@ -132,6 +132,18 @@ if (!tenant) notFound()
     .order('sort_order')
     .order('created_at')
 
+  /**
+   * The front page shows a dozen; /[slug]/gallery shows them all.
+   *
+   * A lodge with two hundred photographs should not push its calendar
+   * and its contact details off the bottom of the front page — and the
+   * gallery page is what gets emailed and shared anyway, so it is the
+   * one that has to hold everything.
+   */
+  const GALLERY_PREVIEW = 12
+  const galleryPreview = (galleryPhotos ?? []).slice(0, GALLERY_PREVIEW)
+  const galleryMore = (galleryPhotos?.length ?? 0) - galleryPreview.length
+
   // The section AND the nav link hang off this one condition. A lodge
   // with no photographs previously still advertised a Gallery in its
   // menu, and it scrolled to four empty gold boxes.
@@ -1336,7 +1348,21 @@ h(Icon, {
           tenant.gallery_intro
             ? h('p', { style: { fontFamily: 'Crimson Pro, Georgia, serif', fontSize: '1.05rem', color: dim, maxWidth: '46rem', marginBottom: '2rem', lineHeight: 1.7 } }, tenant.gallery_intro)
             : null,
-          h(PublicGallery, { photos: galleryPhotos as any, lodgeName: `${tenant.name} #${tenant.number}` })
+          h(PublicGallery, { photos: galleryPreview as any, lodgeName: `${tenant.name} #${tenant.number}` }),
+          galleryMore > 0
+            ? h(
+                'div',
+                { style: { marginTop: '2rem' } },
+                h(
+                  'a',
+                  {
+                    href: `/${params.slug}/gallery`,
+                    style: { fontFamily: 'JetBrains Mono, monospace', fontSize: '0.65rem', letterSpacing: '0.2em', color: gold, textDecoration: 'none', textTransform: 'uppercase', border: `1px solid ${gold}40`, padding: '11px 20px', display: 'inline-block' },
+                  },
+                  `See all ${(galleryPhotos ?? []).length} photographs →`
+                )
+              )
+            : null
         )
       )
     : null
