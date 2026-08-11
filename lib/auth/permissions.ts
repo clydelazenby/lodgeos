@@ -141,11 +141,83 @@ export const CAPABILITY_META: Record<Capability, { label: string; blurb: string 
 }
 
 /**
- * One brother's exceptions to his tier, as stored in
- * member_capabilities. An absent key means no exception — his tier
- * decides. See the migration for why that is not the same as false.
+ * A set of answers that overrule the tier. Used for two different
+ * layers with identical shape: what an OFFICE carries
+ * (position_capabilities, migration 036) and what one BROTHER has been
+ * given or refused personally (member_capabilities, migration 035).
+ *
+ * An absent key means no opinion — the layer beneath decides. See the
+ * migrations for why that is not the same as false.
  */
 export type CapabilityOverrides = Partial<Record<Capability, boolean>>
+
+/**
+ * Where an answer came from. Shown in the interface beside every
+ * control, because "he can send notices" is a fact nobody can act on
+ * until they know whether it came from his tier, his chair, or a
+ * decision somebody made about him — and those are undone in three
+ * different places.
+ */
+export type CapabilitySource = 'platform' | 'member' | 'position' | 'tier'
+
+export type ResolvedCapability = {
+  allowed: boolean
+  source: CapabilitySource
+}
+
+/**
+ * THE ORDER OF PRECEDENCE, in one place.
+ *
+ *   platform  a super admin, above everything — he is who a lodge
+ *             locked out of its own account calls
+ *   member    what was decided about this man personally
+ *   position  what his chair carries
+ *   tier      what his tenant_role grants
+ *
+ * Most specific wins, and each layer may say yes OR no: an office can
+ * take away what a tier grants, and a personal exception can take away
+ * what the office grants.
+ */
+export function resolveCapability(
+  role: TenantRole | null | undefined,
+  capability: Capability,
+  isSuperAdmin = false,
+  position?: CapabilityOverrides | null,
+  member?: CapabilityOverrides | null
+): ResolvedCapability {
+  if (isSuperAdmin) return { allowed: true, source: 'platform' }
+
+  const personal = member?.[capability]
+  if (personal !== undefined) return { allowed: personal, source: 'member' }
+
+  const byOffice = position?.[capability]
+  if (byOffice !== undefined) return { allowed: byOffice, source: 'position' }
+
+  return { allowed: tierGrants(role, capability), source: 'tier' }
+}
+
+/**
+ * Flattens the office layer and the personal layer into the single map
+ * can() takes, personal winning where both speak.
+ *
+ * Exists so the guards keep one shape to pass around. Anything that
+ * needs to TELL the two apart calls resolveCapability instead — this
+ * deliberately throws that away, and a screen that used it to explain
+ * a permission would say "set for him" about his chair.
+ */
+export function mergeOverrides(
+  position?: CapabilityOverrides | null,
+  member?: CapabilityOverrides | null
+): CapabilityOverrides {
+  return { ...(position ?? {}), ...(member ?? {}) }
+}
+
+export const SOURCE_LABEL: Record<CapabilitySource, string> = {
+  platform: 'Platform administrator',
+  member: 'Set for him',
+  position: 'From his office',
+  tier: 'From his tier',
+}
 
 /**
  * @param role   the brother's tenant_role, or null for a super admin

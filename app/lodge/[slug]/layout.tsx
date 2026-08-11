@@ -194,6 +194,12 @@ export default async function LodgeAdminLayout({
       label: 'Lodge',
       items: [
         { label: 'Settings', href: `${base}/settings`, need: 'settings' },
+        // Readable by every officer, editable by the administrative
+        // office alone — the page enforces that itself. No `need` here
+        // because who may do what is not a secret kept from the men it
+        // governs, and a Deacon should be able to see that the document
+        // library belongs to his chair without having to ask.
+        { label: 'Permissions', href: `${base}/permissions` },
         { label: 'Transition', href: `${base}/transition`, need: 'settings' },
       ],
     },

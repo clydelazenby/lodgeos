@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { getTenantBySlug, getSessionUser, getProfile, getMembership } from '@/lib/supabase/queries'
 import { can } from '@/lib/auth/permissions'
-import { loadOverrides, viewerCapabilities } from '@/lib/auth/capabilities'
+import { loadMemberOverrides, loadPositionOverrides, viewerCapabilities } from '@/lib/auth/capabilities'
 import { notFound } from 'next/navigation'
 import { MemberProfileTabs } from '@/components/lodge/MemberProfileTabs'
 
@@ -68,8 +68,18 @@ export default async function MemberDetailPage({
   const canSetPermissions =
     viewerIsSuperAdmin || ['admin', 'secretary', 'grand_master'].includes(viewerRole ?? '')
 
-  const [targetOverrides, targetProfile] = await Promise.all([
-    loadOverrides(tenant.id, params.memberId),
+  /**
+   * The two overruling layers, kept APART on purpose.
+   *
+   * loadOverrides() merges them into the one map the guards want, which
+   * is right for deciding access and wrong for explaining it: the
+   * screen has to say whether a permission came from his chair or from
+   * a decision about him, because those are undone in two different
+   * places.
+   */
+  const [targetMemberOverrides, targetPositionOverrides, targetProfile] = await Promise.all([
+    loadMemberOverrides(tenant.id, params.memberId),
+    loadPositionOverrides(tenant.id, (membership as any).lodge_role),
     getProfile(params.memberId),
   ])
 
@@ -100,7 +110,8 @@ export default async function MemberDetailPage({
       assignments={assignments ?? []}
       signedOffStepIds={(signedOff ?? []).map((r: any) => r.step_id)}
       initialTab={searchParams?.tab}
-      capabilityOverrides={targetOverrides}
+      capabilityOverrides={targetMemberOverrides}
+      positionOverrides={targetPositionOverrides}
       canSetPermissions={canSetPermissions}
       viewerIsSelf={!!viewer && viewer.id === params.memberId}
       targetIsPlatformAdmin={targetProfile?.platform_role === 'super_admin'}
