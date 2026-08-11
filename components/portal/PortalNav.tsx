@@ -55,6 +55,9 @@ export function PortalNav({
     ['Documents', '/portal/documents'],
     ['Dues', '/portal/dues'],
     ['Profile', '/portal/profile'],
+    // Last in the list, and duplicated by the ? in the header. A
+    // brother who does not read the ? as a control will read the word.
+    ['Help', '/portal/help'],
   ]
 
   const linkStyle = {
