@@ -1,13 +1,14 @@
 'use client'
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { T } from '@/lib/designTokens'
 import { DegreeOptions } from '@/components/DegreeOptions'
 import { callApi, errorMessage } from '@/lib/clientFetch'
 import { degreeLabel } from '@/lib/degrees'
 import {
-  CAPABILITIES, CAPABILITY_META, roleLabel, tierGrants, grantedTiers,
-  type Capability, type CapabilityOverrides,
+  CAPABILITIES, CAPABILITY_META, SOURCE_LABEL, roleLabel, tierGrants, grantedTiers,
+  resolveCapability, type Capability, type CapabilityOverrides,
 } from '@/lib/auth/permissions'
 import type { TenantRole } from '@/lib/auth/requireTenantAdmin'
 
@@ -42,7 +43,13 @@ type Props = {
   memberName: string
   tenantRole: TenantRole
   degree: string | null
+  /** What was decided about HIM — the layer this screen edits. */
   overrides: CapabilityOverrides
+  /** What his chair carries. Read-only here; set on the Permissions
+   *  page, because it governs every man who ever holds that office. */
+  positionOverrides: CapabilityOverrides
+  lodgeRole: string | null
+  slug: string
   /** Admin, Secretary or Grand Master — the fixed tier that may set
    *  tiers and exceptions. Not itself delegable; see the API route. */
   canSetPermissions: boolean
@@ -73,6 +80,7 @@ const ROLE_ORDER: TenantRole[] = [
 
 export function MemberPermissions({
   tenantId, memberId, memberName, tenantRole, degree, overrides,
+  positionOverrides, lodgeRole, slug,
   canSetPermissions, canEditDegree, isSelf, isPlatformAdmin,
 }: Props) {
   const router = useRouter()
@@ -242,17 +250,29 @@ export function MemberPermissions({
       <div style={card}>
         <div style={eyebrow}>What he can reach</div>
         <p style={help}>
-          Each of these follows his tier unless you say otherwise. An exception
-          set here is real — it is what the server checks, not just what the
-          menu shows — and it moves with him if his tier changes only when you
-          leave it on <em>Follows his tier</em>.
+          Each of these follows his tier — or his chair, where the office has
+          been given something — unless you say otherwise here. What you set
+          here is real: it is what the server checks, not just what the menu
+          shows, and it overrules both.
+        </p>
+        <p style={{ ...help, marginBottom: '1rem' }}>
+          Prefer setting it on the office where you can. An office keeps its
+          access through the annual handover; a brother takes his with him when
+          he leaves the chair.{' '}
+          <Link href={`/lodge/${slug}/permissions`} style={{ color: T.gold }}>
+            Set permissions by office →
+          </Link>
         </p>
 
         <div style={{ display: 'grid', gap: '10px' }}>
           {CAPABILITIES.map((c) => {
             const byTier = tierGrants(role, c)
+            const byOffice = positionOverrides[c]
             const setting = ex[c]
-            const effective = setting === undefined ? byTier : setting
+            // All three layers, resolved in one place so this screen
+            // cannot disagree with the server about what he can reach.
+            const r = resolveCapability(role, c, isPlatformAdmin, positionOverrides, ex)
+            const effective = r.allowed
             const meta = CAPABILITY_META[c]
             return (
               <div
@@ -277,9 +297,9 @@ export function MemberPermissions({
                       }}>
                         {effective ? 'ALLOWED' : 'NOT ALLOWED'}
                       </span>
-                      {setting !== undefined && (
-                        <span style={{ fontFamily: T.mono, fontSize: '9px', letterSpacing: '0.1em', color: T.gold }}>
-                          SET FOR HIM
+                      {r.source !== 'tier' && (
+                        <span style={{ fontFamily: T.mono, fontSize: '9px', letterSpacing: '0.1em', color: r.source === 'member' ? T.gold : T.info }}>
+                          {SOURCE_LABEL[r.source].toUpperCase()}
                         </span>
                       )}
                     </div>
@@ -292,8 +312,18 @@ export function MemberPermissions({
                     <div style={{ fontFamily: T.mono, fontSize: '9.5px', letterSpacing: '0.08em', color: T.inkFainter, marginTop: '5px' }}>
                       {roleLabel(role).toUpperCase()}: {byTier ? 'ALLOWED BY TIER' : 'NOT IN THIS TIER'}
                       {' · '}
-                      {grantedTiers(c).map((r) => roleLabel(r)).join(', ')}
+                      {grantedTiers(c).map((t) => roleLabel(t)).join(', ')}
                     </div>
+                    {/* His chair, when it has an opinion. Shown but not
+                        editable here: it governs whoever holds the
+                        office, not this man, so changing it from his
+                        profile would quietly rewrite next year's. */}
+                    {byOffice !== undefined && (
+                      <div style={{ fontFamily: T.mono, fontSize: '9.5px', letterSpacing: '0.08em', color: T.info, marginTop: '3px' }}>
+                        {(lodgeRole ?? 'HIS OFFICE').toUpperCase()}: {byOffice ? 'ALLOWED' : 'DENIED'}
+                        {setting !== undefined ? ' — OVERRULED BELOW' : ''}
+                      </div>
+                    )}
                   </div>
 
                   <Segmented
@@ -322,7 +352,7 @@ function Segmented({
   label: string
 }) {
   const options: { v: 'tier' | 'yes' | 'no'; text: string; tone: string }[] = [
-    { v: 'tier', text: 'Follows his tier', tone: T.inkFaint },
+    { v: 'tier', text: 'Default', tone: T.inkFaint },
     { v: 'yes', text: 'Allow', tone: T.success },
     { v: 'no', text: 'Deny', tone: T.danger },
   ]

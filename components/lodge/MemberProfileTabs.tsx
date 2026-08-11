@@ -18,7 +18,8 @@ export function MemberProfileTabs({
   slug, tenant, membership, attendanceHistory, paymentHistory, degreeHistory,
   charges = [], canCharge = false, canEditDates = false,
   assignments = [], signedOffStepIds = [], initialTab,
-  capabilityOverrides = {}, canSetPermissions = false, viewerIsSelf = false,
+  capabilityOverrides = {}, positionOverrides = {},
+  canSetPermissions = false, viewerIsSelf = false,
   targetIsPlatformAdmin = false,
 }: {
   slug: string; tenant: any; membership: any
@@ -37,6 +38,8 @@ export function MemberProfileTabs({
   initialTab?: string
   /** His exceptions to what his tier grants — migration 035. */
   capabilityOverrides?: CapabilityOverrides
+  /** What his chair carries — migration 036. Read-only on this page. */
+  positionOverrides?: CapabilityOverrides
   /** Secretary tier. Fixed, and deliberately not itself delegable:
    *  see the note in /api/members/permissions. */
   canSetPermissions?: boolean
@@ -317,6 +320,9 @@ export function MemberProfileTabs({
           tenantRole={membership.tenant_role}
           degree={membership.degree}
           overrides={capabilityOverrides}
+          positionOverrides={positionOverrides}
+          lodgeRole={membership.lodge_role}
+          slug={slug}
           canSetPermissions={canSetPermissions}
           canEditDegree={canEditDates}
           isSelf={viewerIsSelf}

@@ -101,6 +101,7 @@ export const AUDIT_ACTIONS: Record<string, string> = {
   'member.imported': 'Roster imported',
   'member.role_changed': 'Permission tier changed',
   'member.capability_changed': 'Permission changed',
+  'office.capability_changed': 'Office permission changed',
   'member.degree_changed': 'Degree changed',
   'member.dates': 'Masonic dates recorded',
   'dues.rate_changed': 'Dues rate changed',

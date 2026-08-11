@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { AuthResult, TenantRole } from '@/lib/auth/requireTenantAdmin'
-import { can, grantedTiers, type Capability, type CapabilityOverrides } from '@/lib/auth/permissions'
+import { can, grantedTiers, mergeOverrides, type Capability, type CapabilityOverrides } from '@/lib/auth/permissions'
 
 /**
  * THE BOUNDARY.
@@ -15,9 +15,10 @@ import { can, grantedTiers, type Capability, type CapabilityOverrides } from '@/
  *
  * WHY THIS EXISTS AT ALL. Before per-brother permissions, a route guard
  * was a list of tiers and requireTenantRole() checked membership against
- * it. That is still true underneath; what changes is that a brother's
- * own exceptions (migration 035) are consulted first, so a Deacon
- * granted 'documents' is genuinely allowed to upload rather than merely
+ * it. That is still true underneath; what changes is that two layers
+ * are consulted first — what his OFFICE carries (036) and what was
+ * decided about HIM (035) — so a Junior Deacon whose chair keeps the
+ * document library is genuinely allowed to upload rather than merely
  * shown the button.
  *
  * A PERMISSION THE INTERFACE OFFERS AND THE SERVER REFUSES IS WORSE
@@ -28,28 +29,81 @@ import { can, grantedTiers, type Capability, type CapabilityOverrides } from '@/
  * than after it.
  */
 
+function toMap(rows: any[] | null | undefined): CapabilityOverrides {
+  const overrides: CapabilityOverrides = {}
+  for (const row of rows ?? []) {
+    overrides[row.capability as Capability] = row.granted
+  }
+  return overrides
+}
+
 /**
- * One brother's exceptions. Service client on purpose: this runs inside
- * guards that must not depend on the caller's own RLS visibility, and
- * the tenant/member pair is fixed by the caller, never by the request
- * body.
+ * What was decided about this man personally (migration 035).
+ *
+ * Service client on purpose, here and below: these run inside guards
+ * that must not depend on the caller's own RLS visibility, and the
+ * tenant/member pair is fixed by the caller, never by the request body.
  */
-export async function loadOverrides(
+export async function loadMemberOverrides(
   tenantId: string,
   memberId: string
 ): Promise<CapabilityOverrides> {
-  const supabase = createServiceClient()
-  const { data } = await supabase
+  const { data } = await createServiceClient()
     .from('member_capabilities')
     .select('capability, granted')
     .eq('tenant_id', tenantId)
     .eq('member_id', memberId)
+  return toMap(data)
+}
 
-  const overrides: CapabilityOverrides = {}
-  for (const row of data ?? []) {
-    overrides[(row as any).capability as Capability] = (row as any).granted
+/** What a chair carries, whoever is sitting in it (migration 036). */
+export async function loadPositionOverrides(
+  tenantId: string,
+  lodgeRole: string | null | undefined
+): Promise<CapabilityOverrides> {
+  const office = (lodgeRole ?? '').trim()
+  if (!office) return {}
+  const { data } = await createServiceClient()
+    .from('position_capabilities')
+    .select('capability, granted')
+    .eq('tenant_id', tenantId)
+    .eq('lodge_role', office)
+  return toMap(data)
+}
+
+/**
+ * Both overruling layers, flattened, personal winning over the office.
+ *
+ * This is what every guard and every page calls. It keeps returning the
+ * single map can() takes, which is why adding the office layer changed
+ * no call site — anything that needs to distinguish the two uses
+ * resolveCapability() instead.
+ *
+ * @param lodgeRole pass it when the caller has already read the
+ *        membership row, to save a lookup. Passing null means "he holds
+ *        no office"; omitting it means "go and find out".
+ */
+export async function loadOverrides(
+  tenantId: string,
+  memberId: string,
+  lodgeRole?: string | null
+): Promise<CapabilityOverrides> {
+  let office = lodgeRole
+  if (office === undefined) {
+    const { data } = await createServiceClient()
+      .from('tenant_members')
+      .select('lodge_role')
+      .eq('tenant_id', tenantId)
+      .eq('user_id', memberId)
+      .maybeSingle()
+    office = (data as any)?.lodge_role ?? null
   }
-  return overrides
+
+  const [position, member] = await Promise.all([
+    loadPositionOverrides(tenantId, office),
+    loadMemberOverrides(tenantId, memberId),
+  ])
+  return mergeOverrides(position, member)
 }
 
 /**
@@ -101,7 +155,7 @@ export async function requireCapability(
 
   const { data: membership } = await serviceClient
     .from('tenant_members')
-    .select('tenant_role, is_active')
+    .select('tenant_role, is_active, lodge_role')
     .eq('tenant_id', tenantId)
     .eq('user_id', userId)
     .maybeSingle()
@@ -116,7 +170,9 @@ export async function requireCapability(
   }
 
   const role = membership.tenant_role as TenantRole
-  const overrides = await loadOverrides(tenantId, userId)
+  // lodge_role passed through from the row just read, so the office
+  // layer costs no extra lookup.
+  const overrides = await loadOverrides(tenantId, userId, (membership as any).lodge_role ?? null)
   const exception = overrides[capability]
 
   const permitted =
