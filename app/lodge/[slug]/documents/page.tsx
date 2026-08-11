@@ -4,7 +4,7 @@ import { loadOverrides } from '@/lib/auth/capabilities'
 import { notFound } from 'next/navigation'
 import { DocumentUploadButton } from '@/components/lodge/DocumentUpload'
 import { DocumentsTabs } from '@/components/lodge/DocumentsTabs'
-import { can } from '@/lib/auth/permissions'
+import { can, canWithTiers } from '@/lib/auth/permissions'
 import { DEGREE_RANK } from '@/lib/degrees'
 
 /**
@@ -72,11 +72,14 @@ export default async function LodgeDocumentsPage({ params }: { params: { slug: s
   const canManage = can((membership as any)?.tenant_role ?? null, 'documents', isSuperAdmin, docOverrides)
 
   // Writing the curriculum is setting lodge policy, so it sits with the
-  // Secretary's office and the Master. The route enforces the same set;
-  // this only decides whether the controls render.
-  const canEditCurriculum =
-    can((membership as any)?.tenant_role ?? null, 'settings', isSuperAdmin, docOverrides) ||
-    (membership as any)?.tenant_role === 'worshipful_master'
+  // Secretary's office and the Master. Same list /api/curriculum
+  // enforces, through the same function, so a denial made on the
+  // Permissions page is honoured here too rather than only at the point
+  // of saving.
+  const canEditCurriculum = canWithTiers(
+    (membership as any)?.tenant_role ?? null, 'settings', isSuperAdmin, docOverrides,
+    ['admin', 'secretary', 'grand_master', 'worshipful_master']
+  )
 
   return (
     <div>

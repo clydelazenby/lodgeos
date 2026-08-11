@@ -2,7 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import { getSessionUser, getTenantBySlug, getMembership, getProfile } from '@/lib/supabase/queries'
 import { loadOverrides } from '@/lib/auth/capabilities'
 import { createClient } from '@/lib/supabase/server'
-import { can } from '@/lib/auth/permissions'
+import { can, canWithTiers } from '@/lib/auth/permissions'
 import { MinuteBook } from '@/components/lodge/MinuteBook'
 
 /**
@@ -40,9 +40,14 @@ export default async function LodgeMinutesPage({ params }: { params: { slug: str
   const role = (membership as any)?.tenant_role ?? null
 
   // Approval is an act of the lodge, and someone must be answerable for
-  // recording that it happened. Same tiers the route enforces.
-  const canApprove =
-    can(role, 'settings', isSuperAdmin, await loadOverrides(tenant.id, user.id)) || role === 'worshipful_master'
+  // recording that it happened. EXACTLY the tiers /api/minutes enforces,
+  // through the same function — a lodge that denies 'settings' to the
+  // Master's chair must not still be shown the Approve button.
+  const canApprove = canWithTiers(
+    role, 'settings', isSuperAdmin,
+    await loadOverrides(tenant.id, user.id),
+    ['admin', 'secretary', 'grand_master', 'worshipful_master']
+  )
 
   const supabase = await createClient()
   const today = new Date().toISOString().slice(0, 10)
