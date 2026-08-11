@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { requireTenantRole } from '@/lib/auth/requireTenantAdmin'
+import { requireCapability } from '@/lib/auth/capabilities'
 import { recordAudit, actorName } from '@/lib/audit'
 
 /**
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing tenantId, memberId or dates.' }, { status: 400 })
     }
 
-    const auth = await requireTenantRole(tenantId, ['admin', 'secretary', 'grand_master'])
+    const auth = await requireCapability(tenantId, 'roster')
     if (!auth.ok) return auth.response
 
     const patch: Record<string, string | null> = {}

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { requireTenantRole } from '@/lib/auth/requireTenantAdmin'
+import { requireCapability } from '@/lib/auth/capabilities'
 import { recordAudit, actorName } from '@/lib/audit'
 
 /**
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing tenantId or memberId.' }, { status: 400 })
     }
 
-    const auth = await requireTenantRole(tenantId, ['admin', 'secretary', 'grand_master'])
+    const auth = await requireCapability(tenantId, 'roster')
     if (!auth.ok) return auth.response
 
     const supabase = createServiceClient()

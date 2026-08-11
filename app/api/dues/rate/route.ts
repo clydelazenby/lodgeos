@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { requireTenantRole } from '@/lib/auth/requireTenantAdmin'
+import { requireCapability } from '@/lib/auth/capabilities'
 import { revalidatePath } from 'next/cache'
 import { recordAudit, actorName } from '@/lib/audit'
 
@@ -43,9 +43,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const auth = await requireTenantRole(tenantId, [
-      'admin', 'secretary', 'grand_master', 'treasurer', 'worshipful_master',
-    ])
+    const auth = await requireCapability(tenantId, 'finance')
     if (!auth.ok) return auth.response
 
     const supabase = createServiceClient()

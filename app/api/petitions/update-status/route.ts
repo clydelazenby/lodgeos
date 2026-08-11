@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { requireTenantRole } from '@/lib/auth/requireTenantAdmin'
+import { requireCapability } from '@/lib/auth/capabilities'
 import { recordAudit, actorName } from '@/lib/audit'
 
 const VALID_STATUSES = new Set(['new', 'under_review', 'approved', 'denied'])
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     // lodge leadership, not with every officer tier — a Treasurer or
     // Deacon having equal say in approving/denying a petition doesn't
     // match how lodges actually operate.
-    const auth = await requireTenantRole(tenantId, ['secretary', 'grand_master', 'worshipful_master', 'admin'])
+    const auth = await requireCapability(tenantId, 'roster', ['secretary', 'grand_master', 'worshipful_master', 'admin'])
     if (!auth.ok) return auth.response
 
     const supabase = await createClient()

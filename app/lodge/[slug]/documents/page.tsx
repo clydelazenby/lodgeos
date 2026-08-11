@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { getTenantBySlug, getSessionUser, getMembership, getProfile } from '@/lib/supabase/queries'
+import { loadOverrides } from '@/lib/auth/capabilities'
 import { notFound } from 'next/navigation'
 import { DocumentUploadButton } from '@/components/lodge/DocumentUpload'
 import { DocumentsTabs } from '@/components/lodge/DocumentsTabs'
@@ -62,16 +63,19 @@ export default async function LodgeDocumentsPage({ params }: { params: { slug: s
   const hiddenCount = (allDocs?.length ?? 0) - visible.length
 
   // Officers manage the library; everyone else only reads from it.
-  const canManage =
-    isSuperAdmin ||
-    (membership as any)?.tenant_role === 'admin' ||
-    (membership as any)?.tenant_role === 'secretary'
+  //
+  // Now through the 'documents' capability rather than two hardcoded
+  // tiers, so a Junior Deacon who actually keeps the library can be
+  // given it — which is the whole point of the exceptions, and the
+  // /api/documents routes read the same answer.
+  const docOverrides = user ? await loadOverrides(tenant.id, user.id) : {}
+  const canManage = can((membership as any)?.tenant_role ?? null, 'documents', isSuperAdmin, docOverrides)
 
   // Writing the curriculum is setting lodge policy, so it sits with the
   // Secretary's office and the Master. The route enforces the same set;
   // this only decides whether the controls render.
   const canEditCurriculum =
-    can((membership as any)?.tenant_role ?? null, 'settings', isSuperAdmin) ||
+    can((membership as any)?.tenant_role ?? null, 'settings', isSuperAdmin, docOverrides) ||
     (membership as any)?.tenant_role === 'worshipful_master'
 
   return (

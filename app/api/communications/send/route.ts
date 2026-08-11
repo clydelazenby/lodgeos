@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
-import { requireTenantRole } from '@/lib/auth/requireTenantAdmin'
+import { requireCapability } from '@/lib/auth/capabilities'
 import { collectRecipients, sendLodgeNoticeBatch } from '@/lib/email/lodgeNotice'
 import { MM_AND_ABOVE, CANDIDATE_DEGREES } from '@/lib/degrees'
 import { LODGE_BRAND_COLUMNS, toLodgeBrand } from '@/lib/email/brand'
@@ -102,9 +102,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Unknown recipient group "${group}".` }, { status: 400 })
     }
 
-    const auth = await requireTenantRole(tenantId, [
-      'admin', 'secretary', 'grand_master', 'worshipful_master',
-    ])
+    const auth = await requireCapability(tenantId, 'communications')
     if (!auth.ok) return auth.response
 
     const supabase = await createClient()

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { requireTenantAdmin } from '@/lib/auth/requireTenantAdmin'
+import { OFFICER_TIERS } from '@/lib/auth/requireTenantAdmin'
+import { requireCapability } from '@/lib/auth/capabilities'
 import { sendEventInviteEmail } from '@/lib/email'
 import { buildIcsEvent, icsUidForEvent, eventTimesFromRow } from '@/lib/ics'
 import { format } from 'date-fns'
@@ -11,7 +12,7 @@ export async function POST(request: Request) {
     const { tenantId, eventId } = await request.json()
     if (!eventId) return NextResponse.json({ error: 'Missing eventId' }, { status: 400 })
 
-    const auth = await requireTenantAdmin(tenantId)
+    const auth = await requireCapability(tenantId, 'events', OFFICER_TIERS)
     if (!auth.ok) return auth.response
 
     const supabase = createServiceClient()

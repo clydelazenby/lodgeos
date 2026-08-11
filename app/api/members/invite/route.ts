@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { sendWelcomeEmail, APP_URL } from '@/lib/email'
-import { requireTenantRole, TenantRole } from '@/lib/auth/requireTenantAdmin'
+import { TenantRole } from '@/lib/auth/requireTenantAdmin'
+import { requireCapability } from '@/lib/auth/capabilities'
 import { createInviteLink } from '@/lib/auth/inviteLink'
 import { upsertProfilePreservingIdentity } from '@/lib/auth/profile'
 import { LODGE_BRAND_COLUMNS, toLodgeBrand } from '@/lib/email/brand'
@@ -55,7 +56,7 @@ export async function POST(request: Request) {
 
     // Inviting new members/officers is a Secretary-level administrative
     // action, not something every officer tier should do.
-    const auth = await requireTenantRole(tenantId, ['secretary', 'grand_master', 'worshipful_master', 'admin'])
+    const auth = await requireCapability(tenantId, 'roster', ['secretary', 'grand_master', 'worshipful_master', 'admin'])
     if (!auth.ok) return auth.response
 
     // A Worshipful Master calling this route could otherwise assign the

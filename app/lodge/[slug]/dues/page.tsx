@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { getTenantBySlug, getSessionUser, getProfile, getMembership } from '@/lib/supabase/queries'
+import { loadOverrides } from '@/lib/auth/capabilities'
 import { can } from '@/lib/auth/permissions'
 import { notFound } from 'next/navigation'
 import { format } from 'date-fns'
@@ -53,7 +54,8 @@ export default async function LodgeDuesPage({ params }: { params: { slug: string
   const canManageFinance = can(
     (viewerMembership as any)?.tenant_role ?? null,
     'finance',
-    viewerProfile?.platform_role === 'super_admin'
+    viewerProfile?.platform_role === 'super_admin',
+    viewer ? await loadOverrides(tenant.id, viewer.id) : {}
   )
 
   const [{ data: members }, { data: payments }, { data: charges }] = await Promise.all([

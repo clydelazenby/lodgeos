@@ -1,5 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import { getSessionUser, getTenantBySlug, getMembership, getProfile } from '@/lib/supabase/queries'
+import { loadOverrides } from '@/lib/auth/capabilities'
 import { can } from '@/lib/auth/permissions'
 import { SecretaryConversation } from '@/components/lodge/ai/SecretaryConversation'
 
@@ -38,7 +39,8 @@ export default async function LodgeSecretaryPage({ params }: { params: { slug: s
   if (!membership && !isSuperAdmin) redirect('/auth/login')
   if (membership && (membership as any).tenant_role === 'member') redirect('/portal')
 
-  const canSendNotices = can((membership as any)?.tenant_role ?? null, 'communications', isSuperAdmin)
+  const overrides = await loadOverrides(tenant.id, user.id)
+  const canSendNotices = can((membership as any)?.tenant_role ?? null, 'communications', isSuperAdmin, overrides)
 
   return (
     <div>

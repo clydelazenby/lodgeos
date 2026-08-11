@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { requireTenantRole } from '@/lib/auth/requireTenantAdmin'
+import { requireCapability } from '@/lib/auth/capabilities'
 import { sendMembershipRemovedEmail } from '@/lib/email'
 import { LODGE_BRAND_COLUMNS, toLodgeBrand } from '@/lib/email/brand'
 import { REMOVAL_STATUSES, statusLabel } from '@/lib/membership'
@@ -79,7 +79,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const auth = await requireTenantRole(tenantId, ['admin', 'secretary', 'grand_master'])
+    const auth = await requireCapability(tenantId, 'roster')
     if (!auth.ok) return auth.response
 
     const supabase = createServiceClient()

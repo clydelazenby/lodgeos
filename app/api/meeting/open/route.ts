@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { requireTenantAdmin } from '@/lib/auth/requireTenantAdmin'
+import { requireCapability } from '@/lib/auth/capabilities'
 import { openMeetingForEvent } from '@/lib/meeting/openMeeting'
 
 // The open logic (one-meeting-at-a-time check, timestamps, QR token,
@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     const { tenantId, eventId } = await request.json()
     if (!eventId) return NextResponse.json({ error: 'Missing eventId' }, { status: 400 })
 
-    const auth = await requireTenantAdmin(tenantId)
+    const auth = await requireCapability(tenantId, 'meetings')
     if (!auth.ok) return auth.response
 
     const supabase = await createClient()

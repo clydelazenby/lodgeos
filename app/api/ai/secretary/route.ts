@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@/lib/supabase/server'
-import { requireTenantAdmin } from '@/lib/auth/requireTenantAdmin'
+import { requireCapability } from '@/lib/auth/capabilities'
 import { SECRETARY_TOOLS, runSecretaryTool } from '@/lib/ai/secretaryTools'
 import { toolLabel } from '@/lib/ai/toolLabels'
 
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Missing messages array' }, { status: 400 })
   }
 
-  const auth = await requireTenantAdmin(tenantId)
+  const auth = await requireCapability(tenantId, 'insight')
   if (!auth.ok) return auth.response
 
   if (!process.env.ANTHROPIC_API_KEY) {

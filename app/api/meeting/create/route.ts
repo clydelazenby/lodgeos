@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { requireTenantAdmin } from '@/lib/auth/requireTenantAdmin'
+import { requireCapability } from '@/lib/auth/capabilities'
 import { openMeetingForEvent } from '@/lib/meeting/openMeeting'
 
 /**
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Unknown meeting type "${eventType}".` }, { status: 400 })
     }
 
-    const auth = await requireTenantAdmin(tenantId)
+    const auth = await requireCapability(tenantId, 'meetings')
     if (!auth.ok) return auth.response
 
     const supabase = await createClient()

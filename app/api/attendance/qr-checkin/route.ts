@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { requireTenantAdmin } from '@/lib/auth/requireTenantAdmin'
+import { requireCapability } from '@/lib/auth/capabilities'
 
 /**
  * Flow 1: an officer scans each member's personal QR at the door.
@@ -18,7 +18,7 @@ export async function POST(request: Request) {
 
     // The scanning officer must be an authorized officer of THIS
     // tenant — same guard as every other attendance-writing route.
-    const auth = await requireTenantAdmin(tenantId)
+    const auth = await requireCapability(tenantId, 'meetings')
     if (!auth.ok) return auth.response
 
     const supabase = await createClient()

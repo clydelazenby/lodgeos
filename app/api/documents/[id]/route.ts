@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { requireTenantRole } from '@/lib/auth/requireTenantAdmin'
+import { requireCapability } from '@/lib/auth/capabilities'
 
 /**
  * Deletes a document — both the stored file and its database row.
@@ -54,7 +54,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Document not found.' }, { status: 404 })
     }
 
-    const auth = await requireTenantRole(doc.tenant_id, ['admin', 'secretary', 'grand_master'])
+    const auth = await requireCapability(doc.tenant_id, 'documents')
     if (!auth.ok) return auth.response
 
     // Documents uploaded before migration 007 have no storage_path —

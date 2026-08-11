@@ -20,6 +20,12 @@ import type { TenantRole } from '@/lib/auth/requireTenantAdmin'
  *
  * KEEP IN SYNC WITH THE ROUTES. Each capability below names the route
  * that actually enforces it, so a change in one has an obvious partner.
+ *
+ * PER-BROTHER EXCEPTIONS (migration 035) ride on top of the tier map.
+ * The tier is still the rule; an exception is an amendment to it for one
+ * man, in either direction. Pass them as the fourth argument to can().
+ * Server-side they are read and enforced in lib/auth/capabilities.ts —
+ * which is the boundary. This file is still not.
  */
 
 export type Capability =
@@ -84,21 +90,102 @@ const GRANTS: Record<Capability, TenantRole[]> = {
   assignments: ['admin', 'secretary', 'grand_master', 'worshipful_master', 'warden'],
 }
 
+/** Every capability, in the order the permissions editor lists them. */
+export const CAPABILITIES = Object.keys(GRANTS) as Capability[]
+
+/**
+ * What each one is called and what it lets a man do, in the words an
+ * officer would use standing in front of the brother concerned.
+ *
+ * These strings are the interface. A toggle labelled `finance` tells
+ * nobody what they are about to hand over; "Dues & money — set the
+ * dues rate, add charges, send dues reminders" does.
+ */
+export const CAPABILITY_META: Record<Capability, { label: string; blurb: string }> = {
+  finance: {
+    label: 'Dues & money',
+    blurb: 'Set the dues rate, add or waive charges, send dues reminders.',
+  },
+  communications: {
+    label: 'Notices',
+    blurb: 'Write and send notices to the lodge in its name.',
+  },
+  roster: {
+    label: 'The roster',
+    blurb: 'Invite brothers, take them off the roster, and keep their Masonic dates.',
+  },
+  documents: {
+    label: 'Documents',
+    blurb: 'Upload, replace and delete anything in the document library.',
+  },
+  events: {
+    label: 'Events',
+    blurb: 'Call meetings and events, and send the invitations.',
+  },
+  meetings: {
+    label: 'Running a meeting',
+    blurb: 'Open and close the lodge, record attendance, write minutes, mark degree progress.',
+  },
+  settings: {
+    label: 'Lodge settings',
+    blurb: 'Lodge details and branding, the annual officer handover, and permissions like these.',
+  },
+  insight: {
+    label: 'Reports & analytics',
+    blurb: 'Read the analytics, the reports, coverage and the care register.',
+  },
+  assignments: {
+    label: 'Giving out work',
+    blurb: 'Give a brother a task, or put a candidate on a degree plan.',
+  },
+}
+
+/**
+ * One brother's exceptions to his tier, as stored in
+ * member_capabilities. An absent key means no exception — his tier
+ * decides. See the migration for why that is not the same as false.
+ */
+export type CapabilityOverrides = Partial<Record<Capability, boolean>>
+
 /**
  * @param role   the brother's tenant_role, or null for a super admin
  *               viewing a lodge he is not a member of
  * @param isSuperAdmin platform administrators see everything, matching
  *               requireTenantRole(), which returns tenantRole:'admin'
  *               for them
+ * @param overrides his per-brother exceptions, if they have been loaded.
+ *               Omitting them falls back to the tier defaults — which is
+ *               correct for a caller that has not read them, and is why
+ *               the browser is not the boundary.
+ *
+ * PRECEDENCE: super admin, then the brother's own exception, then his
+ * tier. A platform administrator is deliberately above the exception
+ * layer — he is the man a lodge calls when it has locked itself out,
+ * and a lodge that could revoke his access could do so by accident and
+ * then have nobody to call.
  */
 export function can(
   role: TenantRole | null | undefined,
   capability: Capability,
-  isSuperAdmin = false
+  isSuperAdmin = false,
+  overrides?: CapabilityOverrides | null
 ): boolean {
   if (isSuperAdmin) return true
+  const exception = overrides?.[capability]
+  if (exception !== undefined) return exception
   if (!role) return false
   return GRANTS[capability].includes(role)
+}
+
+/** Whether a tier grants this on its own, ignoring any exception. */
+export function tierGrants(role: TenantRole | null | undefined, capability: Capability): boolean {
+  if (!role) return false
+  return GRANTS[capability].includes(role)
+}
+
+/** The tiers that hold a capability by default — shown in the editor. */
+export function grantedTiers(capability: Capability): TenantRole[] {
+  return GRANTS[capability]
 }
 
 /** Human-readable office title for a tier, for greetings and badges. */

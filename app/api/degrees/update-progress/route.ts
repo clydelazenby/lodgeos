@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { requireTenantAdmin } from '@/lib/auth/requireTenantAdmin'
+import { requireCapability } from '@/lib/auth/capabilities'
 import { recordAudit, actorName } from '@/lib/audit'
 
 export async function POST(request: Request) {
@@ -13,7 +13,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Invalid degree: ${degree}` }, { status: 400 })
     }
 
-    const auth = await requireTenantAdmin(tenantId)
+    const auth = await requireCapability(tenantId, 'meetings')
     if (!auth.ok) return auth.response
 
     const supabase = await createClient()

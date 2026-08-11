@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { requireTenantAdmin } from '@/lib/auth/requireTenantAdmin'
+import { requireCapability } from '@/lib/auth/capabilities'
 
 export async function POST(request: Request) {
   try {
     const { tenantId, itemId, completed, notes } = await request.json()
     if (!itemId) return NextResponse.json({ error: 'Missing itemId' }, { status: 400 })
 
-    const auth = await requireTenantAdmin(tenantId)
+    const auth = await requireCapability(tenantId, 'meetings')
     if (!auth.ok) return auth.response
 
     const supabase = await createClient()
