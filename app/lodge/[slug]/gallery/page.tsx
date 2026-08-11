@@ -65,6 +65,7 @@ export default async function GalleryPage({ params }: { params: { slug: string }
           gallery_enabled: (tenant as any).gallery_enabled ?? true,
           gallery_heading: (tenant as any).gallery_heading ?? null,
           gallery_intro: (tenant as any).gallery_intro ?? null,
+          gallery_thumb_label: (tenant as any).gallery_thumb_label ?? 'caption',
         }}
       />
     </div>

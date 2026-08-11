@@ -1361,7 +1361,7 @@ h(Icon, {
           tenant.gallery_intro
             ? h('p', { style: { fontFamily: 'Crimson Pro, Georgia, serif', fontSize: '1.05rem', color: dim, maxWidth: '46rem', marginBottom: '2rem', lineHeight: 1.7 } }, tenant.gallery_intro)
             : null,
-          h(PublicGallery, { photos: galleryPreview as any, lodgeName: `${tenant.name} #${tenant.number}` }),
+          h(PublicGallery, { photos: galleryPreview as any, lodgeName: `${tenant.name} #${tenant.number}`, thumbLabel: tenant.gallery_thumb_label ?? 'caption' }),
           h(
             'div',
             { style: { marginTop: '2rem' } },

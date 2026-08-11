@@ -43,8 +43,35 @@ const GOLD = '#C9A84C'
 const CREAM = '#F4EFE6'
 const DIM = '#DCCFB5'
 
-export function PublicGallery({ photos, lodgeName }: { photos: PublicPhoto[]; lodgeName: string }) {
+export type ThumbLabel = 'caption' | 'caption_date' | 'date' | 'none'
+
+export function PublicGallery({
+  photos, lodgeName, thumbLabel = 'caption',
+}: {
+  photos: PublicPhoto[]
+  lodgeName: string
+  /**
+   * What is printed OVER the picture in the grid. The lodge's choice —
+   * a band of text is right over "Installation night, 2025" and wrong
+   * over twenty portraits, where it covers the faces.
+   *
+   * Never affects the enlarged view or the alt text: this hides the
+   * words from the tile, not from the visitor.
+   */
+  thumbLabel?: ThumbLabel
+}) {
   const [open, setOpen] = useState<number | null>(null)
+
+  /** The line for one tile, or nothing at all. */
+  const tileLabel = (p: PublicPhoto): string | null => {
+    if (thumbLabel === 'none') return null
+    const month = p.taken_on ? formatTaken(p.taken_on) : ''
+    if (thumbLabel === 'date') return month || null
+    if (thumbLabel === 'caption_date') {
+      return [p.caption, month].filter(Boolean).join(' · ') || null
+    }
+    return p.caption || null
+  }
 
   const describe = (p: PublicPhoto) =>
     p.alt_text || p.caption || `A photograph from ${lodgeName}`
@@ -119,7 +146,7 @@ export function PublicGallery({ photos, lodgeName }: { photos: PublicPhoto[]; lo
               style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
             />
 
-            {photo.caption && (
+            {tileLabel(photo) && (
               <span
                 style={{
                   position: 'absolute', left: 0, right: 0, bottom: 0, textAlign: 'left',
@@ -129,7 +156,7 @@ export function PublicGallery({ photos, lodgeName }: { photos: PublicPhoto[]; lo
                   lineHeight: 1.35,
                 }}
               >
-                {photo.caption}
+                {tileLabel(photo)}
               </span>
             )}
           </button>
