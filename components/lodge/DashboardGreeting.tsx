@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { T } from '@/lib/designTokens'
+import { OfficeDutyLink } from '@/components/lodge/OfficeDutyLink'
 
 /**
  * The personalised dashboard greeting.
@@ -37,6 +38,8 @@ export function DashboardGreeting({
   lodgeName,
   lodgeNumber,
   subline,
+  tenantId,
+  slug,
 }: {
   firstName: string | null
   lastName: string | null
@@ -48,6 +51,9 @@ export function DashboardGreeting({
   lodgeName: string
   lodgeNumber: string
   subline: string
+  /** For the duties modal behind the office name. */
+  tenantId: string
+  slug: string
 }) {
   const [greeting, setGreeting] = useState('Welcome')
 
@@ -88,7 +94,23 @@ export function DashboardGreeting({
 
       <div style={{ minWidth: 0 }}>
         <h1 style={{ fontFamily: T.display, fontSize: '1.5rem', fontWeight: 600, color: T.ink, margin: 0, lineHeight: 1.25 }}>
-          {greeting}, {office ? `${office} ` : 'Bro. '}
+          {greeting},{' '}
+          {/* THE OFFICE IS THE LINK. "Good evening, Senior Warden" is
+              the app telling him what he is; the next thought is what
+              that involves, and the word itself is where to answer it.
+              Only when it is a real chair — the tier fallback below
+              ("Secretary" derived from tenant_role) is not an office
+              and has no duties written for it. */}
+          {office && lodgeRole?.trim() ? (
+            <OfficeDutyLink
+              tenantId={tenantId}
+              office={office}
+              allHref={`/lodge/${slug}/duties`}
+              style={{ color: 'inherit' }}
+            />
+          ) : (
+            office || 'Bro.'
+          )}{' '}
           <span style={{ color: T.gold }}>{name}</span>
         </h1>
         <p style={{ fontFamily: T.body, color: T.inkFaint, margin: '3px 0 0', fontSize: '0.88rem' }}>

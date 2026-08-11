@@ -19,6 +19,86 @@ import { recordAudit, actorName } from '@/lib/audit'
  * had chosen it, and the lodge would stop receiving corrections to
  * text it never wrote.
  */
+/**
+ * One office's duties, for the modal behind the office name in a
+ * greeting.
+ *
+ * READ BY ANY ACTIVE BROTHER OF THE LODGE, which is the whole point of
+ * the feature — including the plain member tier, who cannot open the
+ * lodge-side page at all. Nothing here is privileged: it is a
+ * description of a chair, and the lodge's own roll of who sits in it.
+ *
+ * Fetched on OPEN rather than shipped with every page that shows an
+ * office name. The greeting appears on two dashboards and a profile
+ * header; sending several paragraphs of prose with each of them, on
+ * the chance somebody taps it, is a cost paid by everyone for the few
+ * who do.
+ */
+export async function GET(request: Request) {
+  try {
+    const url = new URL(request.url)
+    const tenantId = url.searchParams.get('tenantId') ?? ''
+    const office = (url.searchParams.get('office') ?? '').trim()
+
+    if (!tenantId || !office) {
+      return NextResponse.json({ error: 'Missing tenantId or office.' }, { status: 400 })
+    }
+
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const service = createServiceClient()
+
+    const { data: membership } = await service
+      .from('tenant_members')
+      .select('id')
+      .eq('tenant_id', tenantId)
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+      .maybeSingle()
+
+    const { data: profile } = await service
+      .from('profiles').select('platform_role').eq('id', user.id).maybeSingle()
+
+    if (!membership && (profile as any)?.platform_role !== 'super_admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    const [{ data: written }, { data: holderRows }] = await Promise.all([
+      service
+        .from('office_duties')
+        .select('duties, updated_by_name')
+        .eq('tenant_id', tenantId)
+        .eq('lodge_role', office)
+        .maybeSingle(),
+      service
+        .from('tenant_members')
+        .select('profiles(first_name, last_name)')
+        .eq('tenant_id', tenantId)
+        .eq('lodge_role', office)
+        .eq('is_active', true),
+    ])
+
+    const custom = (written as any)?.duties ?? null
+
+    return NextResponse.json({
+      office,
+      duties: custom ?? defaultDuties(office),
+      // So the modal can say whose words these are — the lodge's, or a
+      // general description it has not approved.
+      custom: !!custom,
+      updatedByName: (written as any)?.updated_by_name ?? null,
+      holders: (holderRows ?? [])
+        .map((h: any) => `${h.profiles?.first_name ?? ''} ${h.profiles?.last_name ?? ''}`.trim())
+        .filter(Boolean),
+    })
+  } catch (error: any) {
+    console.error('Duties read error:', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+}
+
 export async function PATCH(request: Request) {
   try {
     const { tenantId, lodgeRole, duties } = await request.json()
