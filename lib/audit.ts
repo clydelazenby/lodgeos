@@ -115,6 +115,8 @@ export const AUDIT_ACTIONS: Record<string, string> = {
   'gallery.visibility': 'Photograph shown or hidden',
   'gallery.deleted': 'Photograph deleted',
   'gallery.announced': 'Lodge told about new photographs',
+  'duties.updated': 'Officer duties rewritten',
+  'duties.reset': 'Officer duties reset to standard',
   'petition.status': 'Petition status changed',
 }
 

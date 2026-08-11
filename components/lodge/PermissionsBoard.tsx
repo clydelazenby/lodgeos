@@ -164,6 +164,7 @@ export function PermissionsBoard({
           </p>
           <Legend />
           <OfficeGrid
+            slug={slug}
             officeNames={officeNames}
             grid={grid}
             holdersOf={holdersOf}
@@ -182,9 +183,10 @@ export function PermissionsBoard({
 // ---------------------------------------------------------------- grid
 
 function OfficeGrid({
-  officeNames, grid, holdersOf, onCell, busy, canEdit,
+  officeNames, grid, holdersOf, onCell, busy, canEdit, slug,
 }: {
   officeNames: string[]
+  slug: string
   grid: Record<string, CapabilityOverrides>
   holdersOf: (office: string) => MemberRow[]
   onCell: (office: string, c: Capability) => void
@@ -224,6 +226,16 @@ function OfficeGrid({
                   <div style={{ fontFamily: T.mono, fontSize: '9px', letterSpacing: '0.06em', color: who.length ? T.gold : T.inkFainter, marginTop: 2 }}>
                     {who.length ? who.map(m => m.name).join(', ').toUpperCase() : 'VACANT'}
                   </div>
+                  {/* What the chair may REACH is this grid; what it is
+                      RESPONSIBLE FOR is the other half of the same
+                      question, and an officer here is usually asking
+                      both at once. */}
+                  <Link
+                    href={`/lodge/${slug}/duties?office=${encodeURIComponent(office)}`}
+                    style={{ fontFamily: T.mono, fontSize: '9px', letterSpacing: '0.08em', color: T.info, textDecoration: 'none' }}
+                  >
+                    DUTIES →
+                  </Link>
                 </td>
                 {CAPABILITIES.map(c => {
                   const value = grid[office]?.[c]

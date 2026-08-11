@@ -213,6 +213,10 @@ export default async function LodgeAdminLayout({
         // he cannot open. Changing someone else's is checked in the page
         // and again in the route.
         { label: 'Notifications', href: `${base}/notifications` },
+        // No `need`: what each chair is responsible for is not
+        // officers' business kept from the craft, and the man who most
+        // needs it is the one just appointed, who has the least access.
+        { label: 'Officer Duties', href: `${base}/duties` },
         // Readable by every officer, editable by the administrative
         // office alone — the page enforces that itself. No `need` here
         // because who may do what is not a secret kept from the men it
