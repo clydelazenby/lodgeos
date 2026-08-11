@@ -19,8 +19,8 @@ import { ROSTER_EVENTS, notifiedByDefault, type RosterEvent } from '@/lib/notifi
  *   decides what another brother gets.
  *
  * A PREFERENCE THAT AGREES WITH THE DEFAULT IS DELETED, not stored —
- * the same rule as the permission tables. The Senior Deacon hears
- * because he is the Senior Deacon; if he moves chairs next December the
+ * the same rule as the permission tables. The Senior Warden hears
+ * because he is the Senior Warden; if he moves chairs next December the
  * notices should move with the chair, and a stored `true` that happened
  * to match today would quietly follow the man instead.
  */

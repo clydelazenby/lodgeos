@@ -79,7 +79,7 @@ export default async function NotificationsPage({ params }: { params: { slug: st
         <p style={{ fontFamily: 'Crimson Pro, serif', fontStyle: 'italic', color: '#B8B0A0', margin: 0 }}>
           Who gets an email when a brother is invited, when he first signs in, and when he
           comes off the roster. The administrative office, the Worshipful Master and the
-          Senior Deacon hear by default — and anyone can switch his own off.
+          Senior Warden hear by default — and anyone can switch his own off.
         </p>
       </div>
 

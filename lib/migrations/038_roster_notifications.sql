@@ -18,10 +18,10 @@
 --
 -- WHO HEARS, BY DEFAULT: the administrative office (admin, secretary,
 -- grand master) by TIER, plus the Worshipful Master and the Senior
--- Deacon by OFFICE.
+-- Warden by OFFICE.
 --
--- Why by office for those two: tenant_role cannot tell a Senior Deacon
--- from a Junior one — both sit on 'deacon' — and it cannot tell the
+-- Why by office for those two: tenant_role cannot tell a Senior Warden
+-- from a Junior one — both sit on 'warden' — and it cannot tell the
 -- Master from a Warden the lodge has put on his tier. lodge_role holds
 -- the exact chair. This is the same distinction migration 036 drew, and
 -- it means these notices follow the CHAIR through the annual handover
@@ -54,7 +54,7 @@ create table if not exists public.notification_preferences (
 );
 
 comment on table public.notification_preferences is
-  'Who hears about roster changes. NO ROW means the default: the administrative tier, plus the Worshipful Master and Senior Deacon by office. A row overrules that either way — anyone may switch his own off, and anyone may be added.';
+  'Who hears about roster changes. NO ROW means the default: the administrative tier, plus the Worshipful Master and Senior Warden by office. A row overrules that either way — anyone may switch his own off, and anyone may be added.';
 
 create unique index if not exists idx_notification_prefs_unique
   on public.notification_preferences (tenant_id, member_id, event_type);

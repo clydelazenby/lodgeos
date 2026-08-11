@@ -14,7 +14,7 @@ import { roleLabel } from '@/lib/auth/permissions'
  * page that answers only "am I" cannot answer it. It is also how you
  * find out that the one man who was watching has quietly turned it off.
  *
- * EVERY ROW SAYS WHY. "Administrative access" and "Senior Deacon" are
+ * EVERY ROW SAYS WHY. "Administrative access" and "Senior Warden" are
  * different reasons to be on the list and they end differently — one
  * follows the man, the other follows the chair through December. A
  * check mark alone tells you neither.

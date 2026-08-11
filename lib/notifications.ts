@@ -14,10 +14,12 @@
  *              access", which is a permission question and lives on
  *              tenant_role.
  *
- *   by OFFICE  Worshipful Master, Senior Deacon — which tenant_role
- *              genuinely cannot express. Both Deacons sit on 'deacon',
- *              and a lodge may put a Warden on the Master's tier (this
- *              one has). lodge_role holds the actual chair.
+ *   by OFFICE  Worshipful Master, Senior Warden — which tenant_role
+ *              genuinely cannot express. Both Wardens sit on 'warden',
+ *              both Deacons on 'deacon', and a lodge may put a Warden on
+ *              the Master's tier (this one has, which is exactly the
+ *              case that made a tier-only rule reach the wrong man).
+ *              lodge_role holds the actual chair.
  *
  * Doing it by office also means these notices follow the CHAIR through
  * the annual handover instead of following the man out of it — the same
@@ -57,8 +59,17 @@ export const EVENT_META: Record<RosterEvent, { label: string; blurb: string }> =
 /** Tiers that hear by default — "anyone with admin access". */
 const NOTIFIED_TIERS = new Set(['admin', 'secretary', 'grand_master'])
 
-/** Chairs that hear by default, matched against lodge_role verbatim. */
-const NOTIFIED_OFFICES = new Set(['Worshipful Master', 'Senior Deacon'])
+/**
+ * Chairs that hear by default, matched against lodge_role verbatim.
+ *
+ * SENIOR WARDEN, NOT SENIOR DEACON. The lodge asked for "the Senior
+ * Deacon" and meant the man in that seat — who is the Senior Warden.
+ * Recorded here as the CHAIR rather than as his name, so it passes to
+ * whoever holds it after the December handover instead of following him
+ * out of it; and either way any individual can be switched on or off by
+ * hand on the Notifications page.
+ */
+const NOTIFIED_OFFICES = new Set(['Worshipful Master', 'Senior Warden'])
 
 export function notifiedByDefault(
   tenantRole: string | null | undefined,
