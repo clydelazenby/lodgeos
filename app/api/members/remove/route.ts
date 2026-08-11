@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireCapability } from '@/lib/auth/capabilities'
-import { sendMembershipRemovedEmail } from '@/lib/email'
+import { sendMembershipRemovedEmail, sendBrotherRemovedAlert, APP_URL } from '@/lib/email'
+import { recipientsFor, notifyEach } from '@/lib/notifications.server'
 import { LODGE_BRAND_COLUMNS, toLodgeBrand } from '@/lib/email/brand'
 import { REMOVAL_STATUSES, statusLabel } from '@/lib/membership'
 import { recordAudit, actorName } from '@/lib/audit'
@@ -215,10 +216,43 @@ export async function POST(request: Request) {
           ? ' He has been notified by email.'
           : ` He could NOT be notified by email: ${emailError}`
 
+    const removedByName = await actorName(auth.userId)
+
+    /**
+     * Tell the officers.
+     *
+     * Read fresh rather than reusing the brand row above, which is only
+     * fetched when `notify` is on — an officer who removed a brother
+     * quietly still needs his fellow officers to know it happened.
+     *
+     * The removed brother is excluded: he receives the message written
+     * for him, not the one written about him.
+     */
+    const { data: lodge } = await supabase
+      .from('tenants').select(`slug, ${LODGE_BRAND_COLUMNS}`).eq('id', tenantId).maybeSingle()
+
+    if (lodge) {
+      const recipients = await recipientsFor(tenantId, 'member.removed', memberId)
+      await notifyEach(recipients, (officer) =>
+        sendBrotherRemovedAlert({
+          to: officer.email,
+          officerName: officer.name,
+          lodgeName: `${(lodge as any).name} #${(lodge as any).number}`,
+          brotherName: name,
+          statusLabel: statusLabel(status),
+          statusDate: effectiveDate,
+          note: typeof note === 'string' && note.trim() ? note.trim().slice(0, 500) : null,
+          removedBy: removedByName,
+          membersUrl: `${APP_URL}/lodge/${(lodge as any).slug}/members`,
+          brand: toLodgeBrand(lodge),
+        })
+      )
+    }
+
     await recordAudit({
       tenantId,
       actorId: auth.userId,
-      actorName: await actorName(auth.userId),
+      actorName: removedByName,
       action: 'member.removed',
       summary: `Took ${name} off the roster as ${statusLabel(status).toLowerCase()}, effective ${effectiveDate}`,
       entityType: 'tenant_member',

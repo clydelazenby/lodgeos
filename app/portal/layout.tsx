@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Toaster } from '@/components/ui/Toaster'
 import { PortalNav } from '@/components/portal/PortalNav'
+import { noteFirstSignIn } from '@/lib/firstSignIn'
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -17,6 +18,18 @@ export default async function PortalLayout({ children }: { children: React.React
     .single()
 
   if (!membership) redirect('/onboarding/setup')
+
+  /**
+   * "He got in" — the notice that proves the invitation worked.
+   *
+   * Guarded on the column so this costs nothing after the first visit:
+   * a brother who has signed in before never reaches the helper. An
+   * invited brother arrives on a one-time link rather than through the
+   * login route, which is why it hangs here rather than there.
+   */
+  if (!(membership as any).first_signin_at) {
+    await noteFirstSignIn((membership as any).tenant_id, user.id)
+  }
 
   const tenant = (membership as any).tenants
 

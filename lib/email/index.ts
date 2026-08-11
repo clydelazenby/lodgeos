@@ -659,6 +659,118 @@ export async function sendPortalAccessRequestAlert({
   }, 'portal access request alert')
 }
 
+// ── Roster notices to the officers ──
+//
+// THESE GO TO OFFICERS, NOT TO THE BROTHER CONCERNED. They are written
+// for someone keeping the roster, so they name the address an
+// invitation went to and say what to do when nothing happens next —
+// which the man himself neither needs nor should see.
+//
+// Recipients are resolved at send time in lib/notifications.ts; nothing
+// here decides who hears.
+
+export async function sendBrotherInvitedAlert({
+  to, officerName, lodgeName, brotherName, brotherEmail, invitedBy, membersUrl, brand,
+}: {
+  to: string; officerName: string; lodgeName: string
+  brotherName: string; brotherEmail: string; invitedBy?: string | null
+  membersUrl: string; brand?: LodgeBrand
+}) {
+  const b = resolveBrand(brand, lodgeName)
+  const body = {
+    greeting: `Dear Brother ${officerName},`,
+    paragraphs: [
+      `An invitation to ${lodgeTitle(b)} has gone out to ${brotherName}.`,
+      // The whole reason this notice exists: the next email is the one
+      // that proves it worked, and its absence is the warning.
+      'You will hear again when he signs in for the first time. If that does not follow within a few days, the invitation is worth resending — check the address below first.',
+    ],
+    details: [
+      { label: 'Brother', value: brotherName },
+      { label: 'Sent to', value: brotherEmail },
+      ...(invitedBy ? [{ label: 'Invited by', value: invitedBy }] : []),
+    ],
+    cta: { label: 'Open the Members Page', url: membersUrl },
+    signOff: { closing: 'Fraternally,', lines: [lodgeTitle(b)] },
+  }
+
+  return send({
+    from: `${lodgeTitle(b)} <${FROM}>`,
+    to,
+    subject: `Invitation sent — ${brotherName}`,
+    html: renderLodgeEmail(b, body, `${brotherName} has been invited to the lodge.`),
+    text: renderLodgeEmailText(b, body),
+  }, 'brother invited alert')
+}
+
+export async function sendFirstSignInAlert({
+  to, officerName, lodgeName, brotherName, brotherEmail, memberUrl, brand,
+}: {
+  to: string; officerName: string; lodgeName: string
+  brotherName: string; brotherEmail: string
+  memberUrl: string; brand?: LodgeBrand
+}) {
+  const b = resolveBrand(brand, lodgeName)
+  const body = {
+    greeting: `Dear Brother ${officerName},`,
+    paragraphs: [
+      `${brotherName} has signed in to ${lodgeTitle(b)} for the first time.`,
+      'His invitation worked and he is in. Nothing needs doing — this is the confirmation.',
+    ],
+    details: [
+      { label: 'Brother', value: brotherName },
+      { label: 'Account', value: brotherEmail },
+    ],
+    cta: { label: 'Open His Profile', url: memberUrl },
+    signOff: { closing: 'Fraternally,', lines: [lodgeTitle(b)] },
+  }
+
+  return send({
+    from: `${lodgeTitle(b)} <${FROM}>`,
+    to,
+    subject: `${brotherName} has signed in`,
+    html: renderLodgeEmail(b, body, `${brotherName} reached the portal for the first time.`),
+    text: renderLodgeEmailText(b, body),
+  }, 'first sign-in alert')
+}
+
+export async function sendBrotherRemovedAlert({
+  to, officerName, lodgeName, brotherName, statusLabel, statusDate, note, removedBy, membersUrl, brand,
+}: {
+  to: string; officerName: string; lodgeName: string
+  brotherName: string; statusLabel: string; statusDate?: string | null
+  note?: string | null; removedBy?: string | null
+  membersUrl: string; brand?: LodgeBrand
+}) {
+  const b = resolveBrand(brand, lodgeName)
+  const body = {
+    greeting: `Dear Brother ${officerName},`,
+    paragraphs: [
+      `${brotherName} has been taken off the roster of ${lodgeTitle(b)}.`,
+      ...(note ? [note] : []),
+      // Said plainly because the alternative is an officer assuming the
+      // record is gone and rebuilding it from memory at return time.
+      'His attendance, dues and degree history are kept. If this was not intended he can be reinstated from the Members page, and his record comes back with him.',
+    ],
+    details: [
+      { label: 'Brother', value: brotherName },
+      { label: 'Recorded as', value: statusLabel },
+      ...(statusDate ? [{ label: 'Date', value: statusDate }] : []),
+      ...(removedBy ? [{ label: 'Recorded by', value: removedBy }] : []),
+    ],
+    cta: { label: 'Open the Members Page', url: membersUrl },
+    signOff: { closing: 'Fraternally,', lines: [lodgeTitle(b)] },
+  }
+
+  return send({
+    from: `${lodgeTitle(b)} <${FROM}>`,
+    to,
+    subject: `Removed from the roster — ${brotherName}`,
+    html: renderLodgeEmail(b, body, `${brotherName} has come off the roster.`),
+    text: renderLodgeEmailText(b, body),
+  }, 'brother removed alert')
+}
+
 // ── A lodge asking to use LodgeOS ──
 //
 // The one email here that is genuinely FROM the platform rather than

@@ -1,6 +1,7 @@
 ﻿import React from 'react'
 import { createServiceClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
+import { PublicGallery } from '@/components/public/PublicGallery'
 import type { Metadata } from 'next'
 import { upcomingSince } from '@/lib/dates'
 import {
@@ -112,6 +113,31 @@ if (!tenant) notFound()
     .order('event_date')
     .limit(4)
 
+  /**
+   * The lodge's photographs.
+   *
+   * THE is_published FILTER HERE IS LOAD-BEARING. This page reads with
+   * the SERVICE client (see above — the public site is rendered for
+   * visitors with no session at all), which bypasses RLS entirely. So
+   * migration 037's "Published photos are public" policy does not
+   * protect this query; it is the backstop for every other reader.
+   * A photograph the lodge has taken down stays down because of this
+   * line, and removing it would put it straight back on the internet.
+   */
+  const { data: galleryPhotos } = await supabase
+    .from('gallery_photos')
+    .select('id, url, thumb_url, caption, alt_text, taken_on, width, height')
+    .eq('tenant_id', tenant.id)
+    .eq('is_published', true)
+    .order('sort_order')
+    .order('created_at')
+
+  // The section AND the nav link hang off this one condition. A lodge
+  // with no photographs previously still advertised a Gallery in its
+  // menu, and it scrolled to four empty gold boxes.
+  const showGallery =
+    (tenant.gallery_enabled ?? true) && !!galleryPhotos && galleryPhotos.length > 0
+
 const gold = '#C9A84C'
 const navy = '#0D1B2A'
 const cream = '#F4EFE6'
@@ -151,9 +177,9 @@ const panel = '#142234'
     ['About Us', '#about'],
     ['Freemasonry', '#freemasonry'],
     ['Events', '#events'],
-    ['Gallery', '#gallery'],
+    ...(showGallery ? [['Gallery', '#gallery']] : []),
     ['Contact', '#contact'],
-  ]
+  ] as [string, string][]
 
   const navLinkStyle = {
     color: cream,
@@ -1254,7 +1280,7 @@ h(Icon, {
           { id: 'events', className: 'public-section', style: { padding: '6rem 4rem', background: navy } },
           h(
             'div',
-            { className: 'public-events-grid', style: { maxWidth: '1180px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3rem', alignItems: 'start' } },
+            { className: 'public-events-grid', style: { maxWidth: '1180px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr', gap: '3rem', alignItems: 'start' } },
             h(
               'div',
               null,
@@ -1284,17 +1310,36 @@ h(Icon, {
                   )
                 })
               )
-            ),
-            h(
-              'div',
-              { id: 'gallery', className: 'public-gallery', style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '220px 220px', gap: '1rem' } },
-              [1, 2, 3, 4].map((n) =>
-                h('div', { key: n, style: { background: `linear-gradient(135deg, rgba(201,168,76,0.12), rgba(16,24,39,0.92))`, border: `1px solid ${gold}25` } })
-              )
             )
           )
         )
       : null
+
+  /**
+   * THE GALLERY IS ITS OWN SECTION NOW.
+   *
+   * It used to be the right-hand column of the events grid, which meant
+   * a lodge with nothing in its calendar had no gallery either — the
+   * events section returned null and took the photographs with it. Two
+   * unrelated things sharing one condition.
+   */
+  const gallerySection = showGallery
+    ? h(
+        'section',
+        { id: 'gallery', className: 'public-section fade-up', style: { padding: '6rem 4rem', background: '#0F1D2E' } },
+        h(
+          'div',
+          { style: { maxWidth: '1180px', margin: '0 auto' } },
+          h('div', { style: { fontFamily: 'JetBrains Mono, monospace', fontSize: '0.65rem', letterSpacing: '0.28em', color: gold, textTransform: 'uppercase', marginBottom: '1rem' } }, 'Photographs'),
+          h('h2', { style: { fontFamily: 'Cinzel, Georgia, serif', fontSize: '2.4rem', color: cream, marginBottom: tenant.gallery_intro ? '0.75rem' : '2rem' } },
+            tenant.gallery_heading || 'Our Lodge'),
+          tenant.gallery_intro
+            ? h('p', { style: { fontFamily: 'Crimson Pro, Georgia, serif', fontSize: '1.05rem', color: dim, maxWidth: '46rem', marginBottom: '2rem', lineHeight: 1.7 } }, tenant.gallery_intro)
+            : null,
+          h(PublicGallery, { photos: galleryPhotos as any, lodgeName: `${tenant.name} #${tenant.number}` })
+        )
+      )
+    : null
 
 const cta = h(
   'section',
@@ -1433,6 +1478,7 @@ background: `
     // pillarsSection,
     impactSection,
     eventsSection,
+    gallerySection,
     cta,
     footer
   )

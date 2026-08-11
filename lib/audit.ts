@@ -112,6 +112,8 @@ export const AUDIT_ACTIONS: Record<string, string> = {
   'minutes.approved': 'Minutes approved',
   'document.uploaded': 'Document uploaded',
   'document.deleted': 'Document deleted',
+  'gallery.visibility': 'Photograph shown or hidden',
+  'gallery.deleted': 'Photograph deleted',
   'petition.status': 'Petition status changed',
 }
 
