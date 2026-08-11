@@ -3,7 +3,7 @@ import { getSessionUser, getTenantBySlug, getMembership, getProfile } from '@/li
 import { createClient } from '@/lib/supabase/server'
 import { NotificationsBoard } from '@/components/lodge/NotificationsBoard'
 import { stationRank } from '@/lib/stations'
-import type { RosterEvent } from '@/lib/notifications'
+import type { NotificationEvent } from '@/lib/notifications'
 
 /**
  * Who hears when the roster changes.
@@ -47,7 +47,7 @@ export default async function NotificationsPage({ params }: { params: { slug: st
       .eq('tenant_id', tenant.id),
   ])
 
-  const byMember: Record<string, Partial<Record<RosterEvent, boolean>>> = {}
+  const byMember: Record<string, Partial<Record<NotificationEvent, boolean>>> = {}
   for (const row of prefRows ?? []) {
     const r = row as any
     byMember[r.member_id] = { ...(byMember[r.member_id] ?? {}), [r.event_type]: r.enabled }

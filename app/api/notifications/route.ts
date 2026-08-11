@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { requireTenantRole } from '@/lib/auth/requireTenantAdmin'
-import { ROSTER_EVENTS, notifiedByDefault, type RosterEvent } from '@/lib/notifications'
+import { NOTIFICATION_EVENTS, notifiedByDefault, type NotificationEvent } from '@/lib/notifications'
 
 /**
  * Who hears when the roster changes.
@@ -31,7 +31,7 @@ export async function PATCH(request: Request) {
     if (!tenantId || !memberId || !event) {
       return NextResponse.json({ error: 'Missing tenantId, memberId or event.' }, { status: 400 })
     }
-    if (!ROSTER_EVENTS.includes(event as RosterEvent)) {
+    if (!NOTIFICATION_EVENTS.includes(event as NotificationEvent)) {
       return NextResponse.json({ error: `'${event}' is not a notification.` }, { status: 400 })
     }
 
@@ -63,7 +63,11 @@ export async function PATCH(request: Request) {
     // A brother editing his own must still be a member of the lodge he
     // names; the check above covers that too.
     const wanted = Boolean(enabled)
-    const byDefault = notifiedByDefault((member as any).tenant_role, (member as any).lodge_role)
+    const byDefault = notifiedByDefault(
+      event as NotificationEvent,
+      (member as any).tenant_role,
+      (member as any).lodge_role
+    )
 
     if (wanted === byDefault) {
       const { error } = await service

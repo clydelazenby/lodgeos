@@ -771,6 +771,48 @@ export async function sendBrotherRemovedAlert({
   }, 'brother removed alert')
 }
 
+// ── New photographs on the public site ──
+//
+// GOES TO THE WHOLE LODGE, unlike the roster notices above, and is the
+// only one of these a brother on the plain member tier receives. So it
+// says nothing an outsider could not see: it points at the public page
+// the photographs are already on, and carries no roster detail.
+
+export async function sendGalleryPhotosEmail({
+  to, firstName, lodgeName, count, galleryUrl, addedBy, captions, brand,
+}: {
+  to: string; firstName: string; lodgeName: string
+  count: number; galleryUrl: string
+  addedBy?: string | null
+  /** A few, to show what they are of. Not all of them. */
+  captions?: string[]
+  brand?: LodgeBrand
+}) {
+  const b = resolveBrand(brand, lodgeName)
+  const many = count !== 1
+  const body = {
+    greeting: `Dear Brother ${firstName},`,
+    paragraphs: [
+      `${count} new photograph${many ? 's have' : ' has'} been added to the ${lodgeTitle(b)} website.`,
+      ...(captions?.length ? [captions.map((c) => `\u2022 ${c}`).join('\n')] : []),
+      'They are on the lodge\u2019s public page, so the link below can be shared with anyone.',
+    ],
+    ...(addedBy ? { details: [{ label: 'Added by', value: addedBy }] } : {}),
+    cta: { label: many ? 'See the Photographs' : 'See the Photograph', url: galleryUrl },
+    signOff: { closing: 'Fraternally,', lines: [lodgeTitle(b)] },
+  }
+
+  return send({
+    from: `${lodgeTitle(b)} <${FROM}>`,
+    to,
+    subject: many
+      ? `${count} new photographs on the lodge website`
+      : 'A new photograph on the lodge website',
+    html: renderLodgeEmail(b, body, `${count} new photograph${many ? 's' : ''} from ${lodgeTitle(b)}.`),
+    text: renderLodgeEmailText(b, body),
+  }, 'gallery photos email')
+}
+
 // ── A lodge asking to use LodgeOS ──
 //
 // The one email here that is genuinely FROM the platform rather than

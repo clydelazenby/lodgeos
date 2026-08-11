@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { T } from '@/lib/designTokens'
 import { callApi, errorMessage } from '@/lib/clientFetch'
-import { ROSTER_EVENTS, EVENT_META, notifiedByDefault, defaultReason, type RosterEvent } from '@/lib/notifications'
+import { NOTIFICATION_EVENTS, EVENT_META, notifiedByDefault, defaultReason, type NotificationEvent } from '@/lib/notifications'
 import { roleLabel } from '@/lib/auth/permissions'
 
 /**
@@ -26,7 +26,7 @@ type Member = {
   email: string | null
   tenantRole: string
   lodgeRole: string | null
-  prefs: Partial<Record<RosterEvent, boolean>>
+  prefs: Partial<Record<NotificationEvent, boolean>>
 }
 
 export function NotificationsBoard({
@@ -43,12 +43,12 @@ export function NotificationsBoard({
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState('')
 
-  const effective = (m: Member, event: RosterEvent) => {
+  const effective = (m: Member, event: NotificationEvent) => {
     const explicit = m.prefs[event]
-    return explicit !== undefined ? explicit : notifiedByDefault(m.tenantRole, m.lodgeRole)
+    return explicit !== undefined ? explicit : notifiedByDefault(event, m.tenantRole, m.lodgeRole)
   }
 
-  const toggle = async (m: Member, event: RosterEvent) => {
+  const toggle = async (m: Member, event: NotificationEvent) => {
     const editable = canEditOthers || m.userId === viewerId
     if (!editable) return
     if (!m.email) return
@@ -74,17 +74,15 @@ export function NotificationsBoard({
     }
   }
 
-  // Anyone the defaults cover, plus anyone switched on by hand, plus
-  // yourself — so you can always find your own row. Everyone else would
-  // be twenty rows of "no" nobody needs to scroll past.
-  const relevant = rows.filter(m =>
-    m.userId === viewerId ||
-    ROSTER_EVENTS.some(e => effective(m, e)) ||
-    Object.keys(m.prefs).length > 0
-  )
-  const others = rows.filter(m => !relevant.includes(m))
-  const [showAll, setShowAll] = useState(false)
-  const shown = showAll ? rows : relevant
+  /**
+   * EVERYONE, now that one of these reaches every brother.
+   *
+   * This used to hide the men no notice touched. With the gallery
+   * notice going to the whole lodge there is no such man, and a filter
+   * that hides nobody is a control that only raises the question of
+   * what it is hiding.
+   */
+  const shown = rows
 
   const th: React.CSSProperties = {
     fontFamily: T.mono, fontSize: '9px', letterSpacing: '0.08em', color: T.inkFainter,
@@ -109,7 +107,7 @@ export function NotificationsBoard({
 
       {/* What each notice is for, before the grid of switches. */}
       <div style={{ display: 'grid', gap: '0.6rem', marginBottom: '1.25rem' }}>
-        {ROSTER_EVENTS.map(e => (
+        {NOTIFICATION_EVENTS.map(e => (
           <div key={e} style={{ background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '0.8rem 1rem' }}>
             <div style={{ fontFamily: T.display, fontSize: '0.9rem', color: T.ink }}>{EVENT_META[e].label}</div>
             <div style={{ fontFamily: T.body, fontSize: '0.86rem', color: T.inkFaint, marginTop: 2 }}>
@@ -126,14 +124,18 @@ export function NotificationsBoard({
               <th style={{ ...th, textAlign: 'left', width: 240, position: 'sticky', left: 0, background: T.bgCard, zIndex: 1 }}>
                 Brother
               </th>
-              {ROSTER_EVENTS.map(e => (
+              {NOTIFICATION_EVENTS.map(e => (
                 <th key={e} style={th}>{EVENT_META[e].label}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {shown.map(m => {
-              const reason = defaultReason(m.tenantRole, m.lodgeRole)
+              // The ROSTER rule, for the row's label. It is not the
+              // whole story now that one event reaches every brother —
+              // so the label says why he is on the officers' list, and
+              // each cell carries its own answer.
+              const reason = defaultReason('member.invited', m.tenantRole, m.lodgeRole)
               const editable = canEditOthers || m.userId === viewerId
               return (
                 <tr key={m.userId}>
@@ -154,7 +156,7 @@ export function NotificationsBoard({
                     )}
                   </td>
 
-                  {ROSTER_EVENTS.map(e => {
+                  {NOTIFICATION_EVENTS.map(e => {
                     const on = effective(m, e)
                     const explicit = m.prefs[e] !== undefined
                     const key = `${m.userId}:${e}`
@@ -190,18 +192,6 @@ export function NotificationsBoard({
         </table>
       </div>
 
-      {others.length > 0 && (
-        <button
-          onClick={() => setShowAll(s => !s)}
-          style={{
-            marginTop: '0.9rem', background: 'transparent', border: `1px solid ${T.border}`,
-            borderRadius: '4px', color: T.inkFaint, fontFamily: T.mono, fontSize: '9.5px',
-            letterSpacing: '0.08em', textTransform: 'uppercase', padding: '7px 12px', cursor: 'pointer',
-          }}
-        >
-          {showAll ? 'Show only those on the list' : `Show the other ${others.length} brethren`}
-        </button>
-      )}
     </div>
   )
 }

@@ -64,6 +64,16 @@ export function GalleryManager({
   const [saved, setSaved] = useState<number>(0)
   const [error, setError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  /**
+   * ON BY DEFAULT, and asked before the upload rather than after.
+   *
+   * Photographs are put up to be seen, so the common case should need
+   * no thought — but the officer must be able to decide BEFORE the
+   * files go, not be asked afterwards when the honest answer to
+   * "should I have told them?" is already too late.
+   */
+  const [tellBrethren, setTellBrethren] = useState(true)
+  const [announced, setAnnounced] = useState('')
 
   const flashError = (e: unknown, fallback: string) => setError(errorMessage(e, fallback))
 
@@ -72,10 +82,12 @@ export function GalleryManager({
     if (!files?.length) return
     setError('')
     setSaved(0)
+    setAnnounced('')
     const list = Array.from(files)
     setProgress({ done: 0, total: list.length })
 
     let bytesSaved = 0
+    const uploaded: string[] = []
     for (let i = 0; i < list.length; i++) {
       const file = list[i]
       try {
@@ -93,6 +105,7 @@ export function GalleryManager({
         const data = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error(data.error || 'Upload failed.')
         setPhotos(p => [...p, data.photo])
+        if (data.photo?.id) uploaded.push(data.photo.id)
       } catch (e) {
         // NAMED, AND THE REST CONTINUE. One unreadable file out of
         // twenty must not abandon the other nineteen, and "an upload
@@ -105,6 +118,29 @@ export function GalleryManager({
     setSaved(bytesSaved)
     setProgress(null)
     if (fileInput.current) fileInput.current.value = ''
+
+    /**
+     * ONE EMAIL FOR THE WHOLE BATCH, sent after the last file lands.
+     *
+     * Announcing per upload would be twenty emails to every brother for
+     * one evening's photographs. The ids are passed so the notice
+     * counts what actually arrived, not what was selected — a file that
+     * failed above is not news.
+     */
+    if (tellBrethren && uploaded.length) {
+      try {
+        const data = await callApi('/api/gallery/announce', {
+          method: 'POST',
+          body: { tenantId, photoIds: uploaded },
+        })
+        setAnnounced(data.message || '')
+      } catch (e) {
+        // The photographs are up. Saying so must not read as a failed
+        // upload — this is the one thing that did not happen.
+        setError(`The photographs are on the site, but the lodge could not be told: ${errorMessage(e, 'unknown error')}`)
+      }
+    }
+
     router.refresh()
   }
 
@@ -273,6 +309,28 @@ export function GalleryManager({
           originals stay on your device untouched.
         </p>
 
+        {/* Decided BEFORE the files go. Asking afterwards would be
+            asking a question whose answer is already too late. */}
+        <label style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', cursor: 'pointer', marginBottom: '0.9rem' }}>
+          <input
+            type="checkbox"
+            checked={tellBrethren}
+            disabled={!!progress}
+            onChange={e => setTellBrethren(e.target.checked)}
+            style={{ accentColor: T.gold, marginTop: 3 }}
+          />
+          <span>
+            <span style={{ fontFamily: T.body, fontSize: '0.92rem', color: T.ink }}>
+              Email the brethren when these go up
+            </span>
+            <span style={{ display: 'block', fontFamily: T.body, fontSize: '0.84rem', color: T.inkFainter }}>
+              One email for the whole batch, with a link to the lodge&rsquo;s public page. Leave it
+              off for a caption fix or a quiet addition. Any brother can switch these off for
+              himself.
+            </span>
+          </span>
+        </label>
+
         <input
           ref={fileInput}
           type="file"
@@ -297,6 +355,15 @@ export function GalleryManager({
         {!progress && saved > 0 && (
           <div style={{ fontFamily: T.body, fontSize: '0.88rem', color: T.success, marginTop: '0.8rem' }}>
             Done — {formatBytes(saved)} of needless download saved for every visitor.
+          </div>
+        )}
+
+        {/* Says how many were actually told, including "nobody" — an
+            officer who thinks he announced something and did not is
+            worse off than one who was never offered the option. */}
+        {!progress && announced && (
+          <div style={{ fontFamily: T.body, fontSize: '0.88rem', color: T.gold, marginTop: '0.5rem' }}>
+            {announced}
           </div>
         )}
       </div>

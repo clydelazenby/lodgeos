@@ -38,9 +38,35 @@ export const ROSTER_EVENTS = [
   'member.removed',
 ] as const
 
-export type RosterEvent = typeof ROSTER_EVENTS[number]
+/** News for the brethren rather than housekeeping for the officers. */
+export const LODGE_EVENTS = ['gallery.photo_added'] as const
 
-export const EVENT_META: Record<RosterEvent, { label: string; blurb: string }> = {
+export const NOTIFICATION_EVENTS = [...ROSTER_EVENTS, ...LODGE_EVENTS] as const
+
+export type RosterEvent = typeof ROSTER_EVENTS[number]
+export type LodgeEvent = typeof LODGE_EVENTS[number]
+export type NotificationEvent = typeof NOTIFICATION_EVENTS[number]
+
+/**
+ * WHO AN EVENT IS FOR, which is not the same question as who has
+ * turned it on.
+ *
+ *   'officers'  the administrative tier, plus the two chairs below
+ *   'everyone'  every active brother of the lodge
+ *
+ * A photograph appearing on the lodge's public site is news, and news
+ * is for the brethren. A brother being removed from the roster is
+ * housekeeping, and mailing the whole lodge about it would be both a
+ * disclosure and a nuisance.
+ */
+export const EVENT_AUDIENCE: Record<NotificationEvent, 'officers' | 'everyone'> = {
+  'member.invited': 'officers',
+  'member.first_signin': 'officers',
+  'member.removed': 'officers',
+  'gallery.photo_added': 'everyone',
+}
+
+export const EVENT_META: Record<NotificationEvent, { label: string; blurb: string }> = {
   'member.invited': {
     label: 'A brother is invited',
     blurb: 'Sent when an invitation goes out, with the address it went to.',
@@ -53,6 +79,11 @@ export const EVENT_META: Record<RosterEvent, { label: string; blurb: string }> =
   'member.removed': {
     label: 'A brother is removed',
     blurb: 'Sent when someone comes off the roster, with the reason recorded.',
+  },
+  'gallery.photo_added': {
+    label: 'New photographs on the website',
+    blurb:
+      'Goes to the whole lodge when photographs are added to the public site, with a link to see them. The officer adding them can hold it back.',
   },
 }
 
@@ -72,18 +103,25 @@ const NOTIFIED_TIERS = new Set(['admin', 'secretary', 'grand_master'])
 const NOTIFIED_OFFICES = new Set(['Worshipful Master', 'Senior Warden'])
 
 export function notifiedByDefault(
+  event: NotificationEvent,
   tenantRole: string | null | undefined,
   lodgeRole: string | null | undefined
 ): boolean {
+  // Everyone means everyone — including the plain-member tier, who is
+  // the main audience for it and who cannot open the lodge-side
+  // Notifications page to opt in if he were left off.
+  if (EVENT_AUDIENCE[event] === 'everyone') return true
   if (tenantRole && NOTIFIED_TIERS.has(tenantRole)) return true
   return NOTIFIED_OFFICES.has((lodgeRole ?? '').trim())
 }
 
 /** Why he is on the list, for the interface to say so. */
 export function defaultReason(
+  event: NotificationEvent,
   tenantRole: string | null | undefined,
   lodgeRole: string | null | undefined
 ): string | null {
+  if (EVENT_AUDIENCE[event] === 'everyone') return 'Every brother'
   if (tenantRole && NOTIFIED_TIERS.has(tenantRole)) return 'Administrative access'
   const office = (lodgeRole ?? '').trim()
   if (NOTIFIED_OFFICES.has(office)) return office

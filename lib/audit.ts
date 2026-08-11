@@ -114,6 +114,7 @@ export const AUDIT_ACTIONS: Record<string, string> = {
   'document.deleted': 'Document deleted',
   'gallery.visibility': 'Photograph shown or hidden',
   'gallery.deleted': 'Photograph deleted',
+  'gallery.announced': 'Lodge told about new photographs',
   'petition.status': 'Petition status changed',
 }
 

@@ -1,5 +1,5 @@
 import { createServiceClient } from '@/lib/supabase/server'
-import { notifiedByDefault, type RosterEvent } from '@/lib/notifications'
+import { notifiedByDefault, type NotificationEvent } from '@/lib/notifications'
 
 /**
  * Turning the rules in lib/notifications.ts into actual addresses.
@@ -30,7 +30,7 @@ export type Recipient = {
  */
 export async function recipientsFor(
   tenantId: string,
-  event: RosterEvent,
+  event: NotificationEvent,
   excludeUserId?: string | null
 ): Promise<Recipient[]> {
   const supabase = createServiceClient()
@@ -58,7 +58,7 @@ export async function recipientsFor(
     const explicit = preference.get(m.user_id)
     const wanted = explicit !== undefined
       ? explicit
-      : notifiedByDefault(m.tenant_role, m.lodge_role)
+      : notifiedByDefault(event, m.tenant_role, m.lodge_role)
     if (!wanted) continue
 
     const email = m.profiles?.email
