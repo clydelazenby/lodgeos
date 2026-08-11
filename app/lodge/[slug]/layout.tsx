@@ -9,6 +9,7 @@ import { loadOverrides } from '@/lib/auth/capabilities'
 import { noteFirstSignIn } from '@/lib/firstSignIn'
 import { NoticeBell } from '@/components/lodge/NoticeBell'
 import { Toaster } from '@/components/ui/Toaster'
+import { HelpButton } from '@/components/help/HelpButton'
 import { createClient } from '@/lib/supabase/server'
 
 export default async function LodgeAdminLayout({
@@ -226,6 +227,10 @@ export default async function LodgeAdminLayout({
         { label: 'Transition', href: `${base}/transition`, need: 'settings' },
       ],
     },
+    // Last, and with no `need`: it is documentation, and the officer
+    // who cannot find the ? in the header will look for the word
+    // "Help" in the menu.
+    { label: 'Help', href: `${base}/help` },
   ]
 
   /**
@@ -261,6 +266,11 @@ export default async function LodgeAdminLayout({
           </span>
         </div>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexShrink: 0 }}>
+          {/* Beside the AI Secretary and the bell, and never hidden at
+              any width — the officer most likely to need it is the one
+              on a phone in a lodge room, and the header items that
+              collapse below 480px are the ones he can do without. */}
+          <HelpButton />
           <AiSecretaryLauncherButton />
           <NoticeBell href={`${base}/communications`} count={unreadCount ?? 0} />
           <Link href={`/${params.slug}`} className="lodgeos-public-site-link" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.58rem', color: '#B8B0A0', textDecoration: 'none', letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>Public Site ↗</Link>

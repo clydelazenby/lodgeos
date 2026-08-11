@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Toaster } from '@/components/ui/Toaster'
 import { PortalNav } from '@/components/portal/PortalNav'
+import { HelpButton } from '@/components/help/HelpButton'
 import { noteFirstSignIn } from '@/lib/firstSignIn'
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
@@ -54,10 +55,16 @@ export default async function PortalLayout({ children }: { children: React.React
           <div style={{ fontFamily: 'Cinzel, serif', fontSize: '0.82rem', color: '#C9A84C', letterSpacing: '0.08em' }}>{tenant?.name} #{tenant?.number}</div>
           <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.55rem', color: '#B8B0A0', letterSpacing: '0.1em' }}>BROTHER PORTAL</div>
         </div>
-        <PortalNav
-          firstName={profile?.first_name}
-          lodgeHref={showLodgeLink ? `/lodge/${tenant.slug}/dashboard` : undefined}
-        />
+        {/* The ? sits beside the menu — on a phone that means directly
+            beside the ☰, which is the one control a brother has
+            already found. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <HelpButton />
+          <PortalNav
+            firstName={profile?.first_name}
+            lodgeHref={showLodgeLink ? `/lodge/${tenant.slug}/dashboard` : undefined}
+          />
+        </div>
       </header>
       <Toaster />
       <main className="lodgeos-app-main" style={{ maxWidth: '900px', margin: '0 auto', padding: '2rem' }}>
