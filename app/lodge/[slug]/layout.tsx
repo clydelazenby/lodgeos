@@ -6,6 +6,7 @@ import { ResponsiveNavShell } from '@/components/lodge/ResponsiveNavShell'
 import { cookies } from 'next/headers'
 import { can, type Capability } from '@/lib/auth/permissions'
 import { loadOverrides } from '@/lib/auth/capabilities'
+import { noteFirstSignIn } from '@/lib/firstSignIn'
 import { NoticeBell } from '@/components/lodge/NoticeBell'
 import { createClient } from '@/lib/supabase/server'
 
@@ -72,6 +73,14 @@ export default async function LodgeAdminLayout({
    * behind those links reads through RLS, which keys off tenant_role
    * and still says 'member'.
    */
+  // An officer invited straight onto the lodge side never passes
+  // through the portal layout, so the same notice hangs here too. Both
+  // are guarded on the column and settled by the UPDATE's own filter,
+  // so passing through both sends one email, not two.
+  if (membership && !(membership as any).first_signin_at) {
+    await noteFirstSignIn(tenant.id, userId)
+  }
+
   const viewerOverrides = membership
     ? await loadOverrides(tenant.id, userId)
     : {}
@@ -198,6 +207,11 @@ export default async function LodgeAdminLayout({
         // configuration of what the world sees, not a record the lodge
         // keeps for itself.
         { label: 'Gallery', href: `${base}/gallery`, need: 'settings' },
+        // No `need`: every officer may read who is being told what, and
+        // everyone may switch his OWN off — which he cannot do on a page
+        // he cannot open. Changing someone else's is checked in the page
+        // and again in the route.
+        { label: 'Notifications', href: `${base}/notifications` },
         // Readable by every officer, editable by the administrative
         // office alone — the page enforces that itself. No `need` here
         // because who may do what is not a secret kept from the men it

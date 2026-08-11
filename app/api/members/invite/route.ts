@@ -7,6 +7,8 @@ import { createInviteLink } from '@/lib/auth/inviteLink'
 import { upsertProfilePreservingIdentity } from '@/lib/auth/profile'
 import { LODGE_BRAND_COLUMNS, toLodgeBrand } from '@/lib/email/brand'
 import { recordAudit, actorName } from '@/lib/audit'
+import { recipientsFor, notifyEach } from '@/lib/notifications.server'
+import { sendBrotherInvitedAlert } from '@/lib/email'
 
 const ADMIN_TIER_ROLES = new Set<TenantRole>(['admin', 'secretary', 'grand_master'])
 
@@ -154,12 +156,42 @@ export async function POST(request: Request) {
       }
     }
 
+    const invitedByName = await actorName(auth.userId)
+    const brotherName = `${firstName ?? ''} ${lastName ?? ''}`.trim() || cleanEmail
+
+    /**
+     * Tell the officers, and never let telling them break the
+     * invitation.
+     *
+     * Only when the welcome email actually went out: "an invitation was
+     * sent" is not a thing to announce when it was not. The officer
+     * already sees the failure in the response.
+     *
+     * The man just invited is excluded — he has his own email, and it
+     * is not written for him.
+     */
+    if (emailed && tenant) {
+      const recipients = await recipientsFor(tenantId, 'member.invited', profileId)
+      await notifyEach(recipients, (officer) =>
+        sendBrotherInvitedAlert({
+          to: officer.email,
+          officerName: officer.name,
+          lodgeName: `${tenant.name} #${tenant.number}`,
+          brotherName,
+          brotherEmail: cleanEmail,
+          invitedBy: invitedByName,
+          membersUrl: `${APP_URL}/lodge/${tenant.slug}/members`,
+          brand: toLodgeBrand(tenant),
+        })
+      )
+    }
+
     await recordAudit({
       tenantId,
       actorId: auth.userId,
-      actorName: await actorName(auth.userId),
+      actorName: invitedByName,
       action: 'member.invited',
-      summary: `Invited ${`${firstName ?? ''} ${lastName ?? ''}`.trim() || email} to the roster as ${tenantRole}`,
+      summary: `Invited ${brotherName} to the roster as ${tenantRole}`,
       entityType: 'tenant_member',
       entityId: null,
       detail: { email, degree, lodgeRole, tenantRole, emailed, method: invite.method },
