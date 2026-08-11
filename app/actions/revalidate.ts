@@ -22,6 +22,22 @@ import { revalidatePath } from 'next/cache'
 export async function revalidateLodgePage(slug: string) {
   revalidatePath(`/${slug}`)
 
+  /**
+   * THE GALLERY, and the reason this list exists at all.
+   *
+   * The front page is regenerated at most once an hour. A Secretary who
+   * posted the lodge's first photograph therefore kept being served the
+   * HTML from BEFORE it existed — in which there were no photographs,
+   * so the gallery section was omitted and, with it, the Gallery entry
+   * in both navigation menus. The photograph was posted correctly, the
+   * database was right, and the website said nothing had happened.
+   * That was reported, correctly, as "the gallery button doesn't work".
+   *
+   * Every page that renders gallery rows has to be listed here, or the
+   * same bug comes straight back on whichever one is forgotten.
+   */
+  revalidatePath(`/${slug}/gallery`)
+
   // The donate page is separately cached and separately gated: it 404s
   // until donations are enabled. Without purging it too, a secretary who
   // visited /donate before switching donations on would keep getting the

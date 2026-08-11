@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { revalidateLodgePage } from '@/app/actions/revalidate'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { requireCapability } from '@/lib/auth/capabilities'
 import { recordAudit, actorName } from '@/lib/audit'
@@ -30,6 +31,31 @@ const MAX_BYTES = 10 * 1024 * 1024
 
 function extFor(type: string): string {
   return type === 'image/png' ? 'png' : type === 'image/webp' ? 'webp' : 'jpg'
+}
+
+/**
+ * PURGE THE PUBLIC PAGES AFTER EVERY WRITE.
+ *
+ * The front page is regenerated at most once an hour (see the
+ * `revalidate` export in app/[slug]/page.tsx) and the gallery page
+ * every five minutes. Without this a posted photograph simply did not
+ * appear — and because the gallery section and BOTH navigation entries
+ * are conditional on there being photographs, the first one posted to
+ * a lodge left the site with no Gallery link at all. It looked exactly
+ * like a broken button, and was reported as one.
+ *
+ * Best-effort and after the fact, like the audit trail: a cache purge
+ * that fails must not report a photograph as unposted when it is
+ * sitting in the database.
+ */
+async function purge(service: ReturnType<typeof createServiceClient>, tenantId: string) {
+  try {
+    const { data } = await service.from('tenants').select('slug').eq('id', tenantId).maybeSingle()
+    const slug = (data as any)?.slug
+    if (slug) await revalidateLodgePage(slug)
+  } catch (error) {
+    console.error('Gallery cache purge failed (the change itself is saved):', error)
+  }
 }
 
 /** Upload one photograph. */
@@ -142,6 +168,8 @@ export async function POST(request: Request) {
       throw error
     }
 
+    await purge(service, tenantId)
+
     return NextResponse.json({ success: true, photo })
   } catch (error: any) {
     console.error('Gallery upload error:', error)
@@ -189,6 +217,7 @@ export async function PATCH(request: Request) {
           .eq('id', id)
         if (error) throw error
       }
+      await purge(service, tenantId)
       return NextResponse.json({ success: true, ordered: position })
     }
 
@@ -236,6 +265,8 @@ export async function PATCH(request: Request) {
         entityId: photoId,
       })
     }
+
+    await purge(service, tenantId)
 
     return NextResponse.json({ success: true, photo })
   } catch (error: any) {
@@ -298,6 +329,8 @@ export async function DELETE(request: Request) {
       entityType: 'gallery_photo',
       entityId: photoId,
     })
+
+    await purge(service, tenantId)
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
