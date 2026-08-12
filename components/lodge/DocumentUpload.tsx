@@ -7,11 +7,16 @@ import { createClient } from '@/lib/supabase/client'
 import { notify } from '@/lib/toast'
 import { DegreeOptions } from '@/components/DegreeOptions'
 import { isPlayable, formatDuration, formatBytes } from '@/lib/documents'
+import { UPLOAD_ACCEPT, UPLOAD_FAMILIES, contentTypeFor, formatFor, refusalMessage } from '@/lib/uploads'
 
 const CATEGORIES = ['Degree Materials', 'Minutes', 'Administration', 'Grand Lodge', 'Training', 'Other']
 
-const ACCEPT =
-  '.pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,.mp4,.webm,.mov,.mp3,.m4a,.wav'
+/* The accepted formats live in lib/uploads.ts, which the storage
+   bucket's allow-list and /api/documents/record also read. Three gates
+   agreeing is the whole point: this one is only a suggestion to the
+   file picker, and the bucket refuses an upload before any of our code
+   runs. */
+const ACCEPT = UPLOAD_ACCEPT
 
 const MAX_SIZE = 500 * 1024 * 1024
 
@@ -89,6 +94,20 @@ export function DocumentUploadButton({
       return
     }
 
+    /**
+     * WHAT THIS FILE ACTUALLY IS, decided from its extension.
+     *
+     * file.type is the operating system's guess, and for Office files
+     * it is frequently '' or 'application/octet-stream' — a .pptx on a
+     * Windows machine with no Office installed commonly arrives that
+     * way. supabase-js would then upload it under a default content
+     * type, the bucket's allow-list would refuse it, and the officer
+     * would be told his presentation could not be uploaded when
+     * nothing was wrong with it.
+     */
+    const contentType = contentTypeFor(file.name, file.type)
+    if (!contentType) { setError(refusalMessage(file.name)); return }
+
     setUploading(true)
     setError('')
     setProgress('Reading file…')
@@ -107,7 +126,7 @@ export function DocumentUploadButton({
 
       const { error: uploadError } = await supabase.storage
         .from('documents')
-        .upload(storagePath, file, { contentType: file.type, upsert: false })
+        .upload(storagePath, file, { contentType, upsert: false })
 
       if (uploadError) throw new Error(uploadError.message)
 
@@ -124,7 +143,10 @@ export function DocumentUploadButton({
           accessLevel,
           description,
           supersedesId: supersedesId || null,
-          mimeType: file.type,
+          // What was actually stored, not what the machine guessed —
+          // the row must describe the object, since it is this value
+          // the player and the download route later trust.
+          mimeType: contentType,
           fileSize: file.size,
           durationSeconds: duration,
         }),
@@ -166,19 +188,32 @@ export function DocumentUploadButton({
             </div>
 
             <div>
-              <label style={labelStyle}>File · PDF, Word, image, video or audio · max 500MB</label>
+              <label style={labelStyle}>File · max 500MB</label>
               <input
                 type="file"
                 accept={ACCEPT}
                 onChange={e => {
                   const f = e.target.files?.[0] ?? null
                   setFile(f)
-                  if (f && !name) setName(f.name.replace(/\.[^.]+$/, '')) // pre-fill a sensible name from the filename, still editable
-                  // Training material is nearly always what a video is for.
-                  if (f?.type.startsWith('video/')) setCategory('Training')
+                  setError('')
+                  if (!f) return
+                  /* Refuse it here rather than after the upload has
+                     run. "Choose a file, fill in four fields, press
+                     Upload, wait, then be told the format is wrong" is
+                     the same refusal delivered as late as possible. */
+                  if (!contentTypeFor(f.name, f.type)) { setError(refusalMessage(f.name)); return }
+                  if (!name) setName(f.name.replace(/\.[^.]+$/, '')) // a sensible name from the filename, still editable
+                  // Training material is nearly always what a recording
+                  // is for. Read from the table, not from f.type, which
+                  // is empty for a .mov on plenty of machines.
+                  const kind = formatFor(f.name)?.kind
+                  if (kind === 'video' || kind === 'audio') setCategory('Training')
                 }}
                 style={{ ...inputStyle, padding: '7px 10px' }}
               />
+              <div style={{ fontFamily: 'Crimson Pro, serif', fontSize: '0.78rem', color: '#918879', marginTop: 5, lineHeight: 1.45 }}>
+                {UPLOAD_FAMILIES.charAt(0).toUpperCase() + UPLOAD_FAMILIES.slice(1)}.
+              </div>
               {file && (
                 <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.6rem', color: '#B8B0A0', marginTop: 6 }}>
                   {formatBytes(file.size)} · {file.type || 'unknown type'}

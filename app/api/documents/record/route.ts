@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireCapability } from '@/lib/auth/capabilities'
 import { DEGREE_VALUES } from '@/lib/degrees'
+import { ALLOWED_MIME_TYPES, isAllowedUpload, refusalMessage } from '@/lib/uploads'
 
 /**
  * Records a document row AFTER the browser has uploaded the file
@@ -33,12 +34,14 @@ import { DEGREE_VALUES } from '@/lib/degrees'
 
 const MAX_SIZE = 500 * 1024 * 1024 // must not exceed migration 013's bucket limit
 
-const ALLOWED_TYPES = new Set([
-  'application/pdf', 'image/jpeg', 'image/png', 'image/webp',
-  'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'video/mp4', 'video/webm', 'video/quicktime',
-  'audio/mpeg', 'audio/mp4', 'audio/wav',
-])
+/**
+ * The same table the file picker and the storage bucket read, so the
+ * three cannot drift apart. Checked against the STORAGE PATH's
+ * extension as well as the claimed mime type: the path is what the
+ * browser actually wrote, and a caller could otherwise record
+ * 'application/pdf' against a file named anything at all.
+ */
+const ALLOWED_TYPES = new Set(ALLOWED_MIME_TYPES)
 
 const ACCESS_LEVELS = new Set(['all', ...DEGREE_VALUES])
 
@@ -68,8 +71,22 @@ export async function POST(request: Request) {
       )
     }
 
-    if (mimeType && !ALLOWED_TYPES.has(mimeType)) {
-      return NextResponse.json({ error: `File type "${mimeType}" is not allowed.` }, { status: 400 })
+    /**
+     * The file on disk decides, not the label attached to it.
+     *
+     * The stored object's own name carries the extension the browser
+     * uploaded, and that is what a brother will double-click. A row
+     * claiming a harmless mime type over a file named otherwise would
+     * make the library lie about its own contents.
+     */
+    if (!isAllowedUpload(String(storagePath), mimeType)) {
+      return NextResponse.json({ error: refusalMessage(String(storagePath)) }, { status: 400 })
+    }
+    if (mimeType && !ALLOWED_TYPES.has(String(mimeType).split(';')[0].trim().toLowerCase())) {
+      return NextResponse.json(
+        { error: `LodgeOS does not accept files of type "${mimeType}".` },
+        { status: 400 }
+      )
     }
     if (fileSize && Number(fileSize) > MAX_SIZE) {
       return NextResponse.json({ error: 'File exceeds the 500MB limit.' }, { status: 400 })

@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import { format } from 'date-fns'
 import { DocumentDownloadLink, DocumentDeleteButton, DocumentPlayer } from '@/components/lodge/DocumentUpload'
 import { isPlayable, formatDuration } from '@/lib/documents'
+import { formatLabel } from '@/lib/uploads'
 import { degreeShortLabel } from '@/lib/degrees'
 
 /**
@@ -200,6 +201,15 @@ export function DocumentLibrary({
                       )}
                     </div>
                     <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.58rem', color: '#918879', marginTop: 4 }}>
+                      {/* Which of them this is. A library holding PDFs,
+                          slide decks, spreadsheets and recordings side
+                          by side is unreadable without it — a brother
+                          on a phone needs to know before he taps
+                          whether it will open in a viewer or land in
+                          his downloads. */}
+                      {formatLabel(d.storage_path, d.mime_type) && (
+                        <>{formatLabel(d.storage_path, d.mime_type)}{' · '}</>
+                      )}
                       {d.category}
                       {' · '}
                       {format(new Date(d.created_at), 'MMM d, yyyy')}

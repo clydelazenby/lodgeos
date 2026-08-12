@@ -854,6 +854,24 @@ const WORD: HelpTopic[] = [
         ],
       },
       {
+        kind: 'table',
+        head: ['What you can upload', 'Examples'],
+        rows: [
+          ['Documents', 'PDF, Word, Pages, OpenDocument, RTF, plain text'],
+          ['Presentations', 'PowerPoint (.ppt, .pptx, .ppsx), Keynote, Impress'],
+          ['Spreadsheets', 'Excel (.xls, .xlsx), Numbers, Calc, CSV'],
+          ['Pictures and scans', 'JPEG, PNG, HEIC from an iPhone, TIFF, GIF, WebP'],
+          ['Recordings', 'MP4, MOV, WebM, AVI, MP3, M4A, WAV'],
+          ['A bundle', 'A .zip — degree material often arrives as one'],
+        ],
+      },
+      {
+        kind: 'note',
+        title: 'Up to 500MB, and recordings play in the page',
+        text:
+          'MP4, MOV, WebM and the common audio formats get a player in the library. Everything else downloads and opens in whatever the brother has installed — a slide deck opens in PowerPoint, not in LodgeOS.',
+      },
+      {
         kind: 'note',
         title: 'The degree setting is a floor, not a ceiling',
         text:
