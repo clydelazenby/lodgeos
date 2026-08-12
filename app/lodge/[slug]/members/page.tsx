@@ -294,7 +294,7 @@ export default function LodgeMembersPage() {
   // The roster is the men currently on it. Everyone else is history the
   // lodge now keeps rather than deletes, and history belongs in its own
   // section — not mixed into the working list an officer scans weekly.
-  const roster = members.filter(m => m.is_active)
+  const onRoll = members.filter(m => m.is_active)
 
   /**
    * On the roster, but never once through the door.
@@ -305,16 +305,33 @@ export default function LodgeMembersPage() {
    * because the man waiting longest is the one whose address is
    * probably wrong.
    */
-  const pending = roster
+  const pending = onRoll
     .filter(m => !m.first_signin_at)
     .map(m => ({
       id: m.id,
+      userId: m.user_id,
       name: `${m.profiles?.first_name ?? ''} ${m.profiles?.last_name ?? ''}`.trim() || (m.profiles?.email ?? 'Unnamed brother'),
       email: m.profiles?.email ?? null,
       invitedAt: m.created_at ?? null,
       lastSentAt: m.invite_last_sent_at ?? null,
     }))
     .sort((a, b) => String(a.lastSentAt ?? a.invitedAt ?? '').localeCompare(String(b.lastSentAt ?? b.invitedAt ?? '')))
+
+  /**
+   * EACH BROTHER APPEARS ONCE, and this table is not where a pending
+   * one appears.
+   *
+   * He was listed twice: in the section above, and again here among
+   * men who use the app weekly. Two lists of the same names is two
+   * places to keep in your head, and the count at the top agreed with
+   * neither of them.
+   *
+   * He is still on the roll — the lodge admitted him, and the header
+   * count below says so. He is simply not in the table of brothers the
+   * app can reach, because he is not one of them yet. His record, and
+   * the power to take him off, are both on his row above.
+   */
+  const roster = onRoll.filter(m => m.first_signin_at)
 
   const former = members
     .filter(m => !m.is_active)
@@ -325,7 +342,16 @@ export default function LodgeMembersPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 style={{ fontFamily: 'Cinzel, serif', fontSize: '1.4rem', color: '#F5F0E8', marginBottom: '0.25rem' }}>Members</h1>
-          <p style={{ fontFamily: 'Crimson Pro, serif', fontStyle: 'italic', color: '#B8B0A0' }}>{members.filter(m => m.is_active).length} active brothers</p>
+          <p style={{ fontFamily: 'Crimson Pro, serif', fontStyle: 'italic', color: '#B8B0A0' }}>
+            {onRoll.length} active {onRoll.length === 1 ? 'brother' : 'brothers'}
+            {pending.length > 0 && (
+              // The roll and the table now differ, so the difference is
+              // stated rather than left to be discovered by counting.
+              <span style={{ color: '#918879' }}>
+                {' · '}{pending.length} not yet signed in
+              </span>
+            )}
+          </p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           {dueCount > 0 && (
@@ -453,7 +479,12 @@ export default function LodgeMembersPage() {
       {!loading && (
         <PendingBrothers
           tenantId={tenant.id}
+          slug={slug}
           pending={pending}
+          onRemove={(memberId) => {
+            setRemoveError('')
+            setRemoving(members.find(m => m.id === memberId) ?? null)
+          }}
           onSent={(memberId, sentAt) =>
             setMembers(prev => prev.map(m => m.id === memberId ? { ...m, invite_last_sent_at: sentAt } : m))
           }
@@ -492,17 +523,6 @@ export default function LodgeMembersPage() {
                           <Link href={`/lodge/${slug}/members/${m.user_id}`} style={{ fontFamily: 'Cinzel, serif', fontSize: '0.85rem', color: '#C9A84C', textDecoration: 'none' }}>
                             Bro. {p?.first_name ?? '—'} {p?.last_name ?? ''}
                           </Link>
-                          {/* Marked in the roster too, not only in the
-                              section above. A man who has never signed
-                              in sat here looking exactly like a brother
-                              who uses the app weekly, and an officer
-                              reading a row has no reason to scroll back
-                              up to find out otherwise. */}
-                          {!m.first_signin_at && (
-                            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.5rem', letterSpacing: '0.12em', color: '#918879', marginTop: 2 }}>
-                              NOT SIGNED IN
-                            </div>
-                          )}
                         </div>
                       </div>
                     </td>
