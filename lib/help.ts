@@ -866,6 +866,11 @@ const WORD: HelpTopic[] = [
         ],
       },
       {
+        kind: 'p',
+        text:
+          'Two rows of filters sit above the list. The first is what a document is about — its category. The second is what it is: Presentations, Video, Audio, Documents, Spreadsheets, Pictures, Bundles. They work together, so “the degree slide decks” is two taps. Typing “powerpoint” or “video” into the search box does the same thing without touching them.',
+      },
+      {
         kind: 'note',
         title: 'Up to 500MB, and recordings play in the page',
         text:
