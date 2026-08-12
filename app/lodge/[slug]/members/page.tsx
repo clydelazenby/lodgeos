@@ -11,6 +11,7 @@ import { DegreeOptions } from '@/components/DegreeOptions'
 import { OfficeSelect } from '@/components/lodge/OfficeSelect'
 import { roleLabel } from '@/lib/auth/permissions'
 import { REMOVAL_STATUSES, statusDefinition, statusLabel, statusPillClass } from '@/lib/membership'
+import { PendingBrothers } from '@/components/lodge/PendingBrothers'
 
 export default function LodgeMembersPage() {
   const params = useParams()
@@ -294,6 +295,27 @@ export default function LodgeMembersPage() {
   // lodge now keeps rather than deletes, and history belongs in its own
   // section — not mixed into the working list an officer scans weekly.
   const roster = members.filter(m => m.is_active)
+
+  /**
+   * On the roster, but never once through the door.
+   *
+   * first_signin_at is set the first time a brother reaches either
+   * dashboard, so a null means the invitation produced nothing —
+   * either it never arrived, or he never opened it. Oldest first,
+   * because the man waiting longest is the one whose address is
+   * probably wrong.
+   */
+  const pending = roster
+    .filter(m => !m.first_signin_at)
+    .map(m => ({
+      id: m.id,
+      name: `${m.profiles?.first_name ?? ''} ${m.profiles?.last_name ?? ''}`.trim() || (m.profiles?.email ?? 'Unnamed brother'),
+      email: m.profiles?.email ?? null,
+      invitedAt: m.created_at ?? null,
+      lastSentAt: m.invite_last_sent_at ?? null,
+    }))
+    .sort((a, b) => String(a.lastSentAt ?? a.invitedAt ?? '').localeCompare(String(b.lastSentAt ?? b.invitedAt ?? '')))
+
   const former = members
     .filter(m => !m.is_active)
     .sort((a, b) => String(b.status_date ?? '').localeCompare(String(a.status_date ?? '')))
@@ -425,6 +447,19 @@ export default function LodgeMembersPage() {
         </div>
       )}
 
+      {/* Before the roster, not after it. A brother who cannot get in
+          is the only thing on this page that needs doing today; the
+          roster itself is a reference. */}
+      {!loading && (
+        <PendingBrothers
+          tenantId={tenant.id}
+          pending={pending}
+          onSent={(memberId, sentAt) =>
+            setMembers(prev => prev.map(m => m.id === memberId ? { ...m, invite_last_sent_at: sentAt } : m))
+          }
+        />
+      )}
+
       {/* Members table */}
       <div className="data-box">
         {loading ? <div style={{ padding: '2rem', textAlign: 'center', color: '#B8B0A0' }}>Loading...</div> : (
@@ -453,9 +488,22 @@ export default function LodgeMembersPage() {
                             </span>
                           )}
                         </div>
-                        <Link href={`/lodge/${slug}/members/${m.user_id}`} style={{ fontFamily: 'Cinzel, serif', fontSize: '0.85rem', color: '#C9A84C', textDecoration: 'none' }}>
-                          Bro. {p?.first_name ?? '—'} {p?.last_name ?? ''}
-                        </Link>
+                        <div style={{ minWidth: 0 }}>
+                          <Link href={`/lodge/${slug}/members/${m.user_id}`} style={{ fontFamily: 'Cinzel, serif', fontSize: '0.85rem', color: '#C9A84C', textDecoration: 'none' }}>
+                            Bro. {p?.first_name ?? '—'} {p?.last_name ?? ''}
+                          </Link>
+                          {/* Marked in the roster too, not only in the
+                              section above. A man who has never signed
+                              in sat here looking exactly like a brother
+                              who uses the app weekly, and an officer
+                              reading a row has no reason to scroll back
+                              up to find out otherwise. */}
+                          {!m.first_signin_at && (
+                            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.5rem', letterSpacing: '0.12em', color: '#918879', marginTop: 2 }}>
+                              NOT SIGNED IN
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td className="dash-td" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.65rem', color: '#B8B0A0' }}>

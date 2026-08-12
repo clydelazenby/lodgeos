@@ -156,6 +156,22 @@ export async function POST(request: Request) {
       }
     }
 
+    /**
+     * When the invitation went out, for the pending list.
+     *
+     * Written only when the welcome email actually sent — the whole
+     * value of the column is that it says when a brother was last
+     * genuinely written to, and a failed send is precisely the case an
+     * officer needs to see as "never".
+     */
+    if (emailed) {
+      await serviceClient
+        .from('tenant_members')
+        .update({ invite_last_sent_at: new Date().toISOString() })
+        .eq('tenant_id', tenantId)
+        .eq('user_id', profileId)
+    }
+
     const invitedByName = await actorName(auth.userId)
     const brotherName = `${firstName ?? ''} ${lastName ?? ''}`.trim() || cleanEmail
 

@@ -23,8 +23,14 @@ import { escapeHtml, APP_URL } from './shared'
  * Gmail and Outlook re-inverting it into something muddy.
  *
  * EMAIL HTML, NOT WEB HTML. Tables and inline styles throughout, no
- * flexbox, no grid, no <style> block: Outlook renders none of those
- * reliably. Keep it that way when editing.
+ * flexbox and no grid: Outlook renders neither reliably. Keep it that
+ * way when editing.
+ *
+ * There is now one <style> block, and it is PURELY ADDITIVE. Every
+ * rule in it sits inside a max-width media query and only tightens
+ * padding on a phone; the desktop layout is entirely inline, so a
+ * client that throws the block away — Outlook does — loses nothing it
+ * needed. Never move a load-bearing style into it.
  *
  * On icons: the design they came from uses small glyphs beside each
  * detail row. Those are deliberately NOT reproduced as images — remote
@@ -97,8 +103,13 @@ function detailBlock(rows: DetailRow[]): string {
   if (rows.length === 0) return ''
   const cells = rows.map(row => `
     <tr>
-      <td style="padding:7px 18px 7px 0;vertical-align:top;white-space:nowrap;font-family:Georgia,'Times New Roman',serif;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:${NAVY};font-weight:bold;">${escapeHtml(row.label)}</td>
-      <td style="padding:7px 0;vertical-align:top;font-family:Georgia,'Times New Roman',serif;font-size:16px;line-height:1.5;color:${INK};">${escapeHtml(row.value).replace(/\n/g, '<br>')}</td>
+      <td class="lo-detail-label" style="padding:7px 18px 7px 0;vertical-align:top;white-space:nowrap;font-family:Georgia,'Times New Roman',serif;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:${NAVY};font-weight:bold;">${escapeHtml(row.label)}</td>
+      <!-- word-break, because half of what goes in here is an email
+           address. A table cell will not break one on its own, so
+           "drunkenmaster1762@gmail.com" sets a minimum width the card
+           cannot go below, and on a small phone that alone is enough to
+           push the whole email wider than the screen. -->
+      <td class="lo-detail-value" style="padding:7px 0;vertical-align:top;font-family:Georgia,'Times New Roman',serif;font-size:16px;line-height:1.5;color:${INK};word-break:break-word;overflow-wrap:anywhere;">${escapeHtml(row.value).replace(/\n/g, '<br>')}</td>
     </tr>`).join('')
 
   // The left gold rule is a bordered cell, not a CSS border on a div —
@@ -134,7 +145,9 @@ function footer(brand: LodgeBrand): string {
   ].filter(Boolean) as string[]
 
   const contactRow = contacts.length
-    ? `<p style="margin:0 0 12px;font-family:Georgia,'Times New Roman',serif;font-size:13px;color:${INK_SOFT};line-height:1.8;">${contacts.join(`<span style="color:${RULE};"> &nbsp;|&nbsp; </span>`)}</p>`
+    ? `<p style="margin:0 0 12px;font-family:Georgia,'Times New Roman',serif;font-size:13px;color:${INK_SOFT};line-height:1.8;">${contacts
+        .map(c => `<span class="lo-contact">${c}</span>`)
+        .join(`<span class="lo-sep" style="color:${RULE};"> &nbsp;|&nbsp; </span>`)}</p>`
     : ''
 
   const motto = brand.motto || 'Making good men better'
@@ -142,7 +155,7 @@ function footer(brand: LodgeBrand): string {
   return `
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#141C2E;border-top:1px solid ${RULE};">
     <tr>
-      <td style="padding:26px 32px;text-align:center;">
+      <td class="lo-pad-foot" style="padding:26px 32px;text-align:center;">
         ${contactRow}
         <p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:${NAVY};">${escapeHtml(motto)}</p>
       </td>
@@ -163,7 +176,7 @@ export function renderLodgeEmail(brand: LodgeBrand, body: EmailBody, preheader?:
   const tagline = brand.tagline || 'Faith · Brotherhood · Service'
 
   const crest = brand.logoUrl
-    ? `<img src="${escapeHtml(brand.logoUrl)}" width="120" alt="${escapeHtml(title)}" style="display:block;margin:0 auto 18px;width:120px;max-width:120px;height:auto;border:0;">`
+    ? `<img src="${escapeHtml(brand.logoUrl)}" width="120" alt="${escapeHtml(title)}" class="lo-crest" style="display:block;margin:0 auto 18px;width:120px;max-width:120px;height:auto;border:0;">`
     : ''
 
   const greeting = body.greeting
@@ -174,7 +187,7 @@ export function renderLodgeEmail(brand: LodgeBrand, body: EmailBody, preheader?:
 
   const cta = body.cta
     ? `
-      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px auto 6px;">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="lo-cta" style="margin:8px auto 6px;">
         <tr>
           <td style="background:${BUTTON_BG};border-radius:2px;">
             <a href="${body.cta.url}" style="display:inline-block;padding:14px 34px;font-family:Georgia,'Times New Roman',serif;font-size:13px;font-weight:bold;letter-spacing:0.14em;text-transform:uppercase;color:${BUTTON_INK};text-decoration:none;">${escapeHtml(body.cta.label)}</a>
@@ -203,23 +216,75 @@ export function renderLodgeEmail(brand: LodgeBrand, body: EmailBody, preheader?:
 <meta name="color-scheme" content="dark">
 <meta name="supported-color-schemes" content="dark">
 <title>${escapeHtml(title)}</title>
+<style>
+  /* Gmail, Apple Mail and the rest honour a style block in the head.
+     Outlook's Word engine ignores media queries entirely, which is
+     what the mso ghost table below is for — it never gets narrow.
+
+     32px of side padding is a third of a 320px screen once you count
+     both sides. It becomes 18px on a phone, which is the difference
+     between a comfortable measure and a column of two-word lines. */
+  @media only screen and (max-width: 480px) {
+    .lo-pad-top { padding: 26px 18px 0 !important; }
+    .lo-pad-body { padding: 0 18px 26px !important; }
+    .lo-pad-foot { padding: 22px 18px !important; }
+    .lo-crest { width: 92px !important; max-width: 92px !important; }
+    .lo-title { font-size: 20px !important; }
+    /* Label ABOVE value, not beside it. Beside it, the label column
+       eats 130px of a 375px screen and an email address is forced to
+       break mid-word — "drunkenmaster1762@gmail.co / m", which reads
+       like a fault. Stacked, the value gets the full measure and
+       breaks nowhere. */
+    .lo-detail-label,
+    .lo-detail-value { display: block !important; width: 100% !important; }
+    .lo-detail-label { font-size: 11px !important; padding: 7px 0 0 !important; }
+    .lo-detail-value { padding: 1px 0 7px !important; }
+    /* The separator would otherwise be left hanging at the end of a
+       line once the contacts wrap. */
+    .lo-sep { display: none !important; }
+    .lo-contact { display: block !important; }
+    .lo-cta a { display: block !important; padding: 14px 18px !important; }
+  }
+</style>
 </head>
 <body style="margin:0;padding:0;background:${PAPER_EDGE};">
 ${preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(preheader)}</div>` : ''}
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${PAPER_EDGE};">
   <tr>
     <td align="center" style="padding:28px 12px;">
-      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="width:600px;max-width:100%;background:${PAPER};border:1px solid ${RULE};">
+      <!--[if mso]>
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600"><tr><td>
+      <![endif]-->
+      <!--
+        WIDTH="100%" WITH A MAX-WIDTH, NOT WIDTH="600".
+
+        This was width="600" style="width:600px;max-width:100%". A
+        table cannot be squeezed below the width its own layout asks
+        for, and a fixed width attribute is exactly such an ask: the
+        card stayed 600px on a 414px phone, so the whole email was 624px
+        of content on a 414px screen. The text blocks have 32px of
+        padding and looked survivable; the footer band runs the full
+        width of the card, so the footer was the part that visibly ran
+        off the edge — which is how it gets reported, and it is not a
+        footer problem.
+
+        Fluid with a ceiling is the fix: the card fills a phone and
+        stops at 600px on a desktop. Outlook's Word engine ignores
+        max-width, so it gets a 600px ghost table above instead — the
+        long-standing hybrid pattern, and the reason for the mso
+        conditional rather than a media query.
+      -->
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;max-width:600px;background:${PAPER};border:1px solid ${RULE};">
         <tr>
-          <td style="padding:36px 32px 0;text-align:center;">
+          <td class="lo-pad-top" style="padding:36px 32px 0;text-align:center;">
             ${crest}
-            <h1 style="margin:0 0 6px;font-family:Georgia,'Times New Roman',serif;font-size:24px;line-height:1.25;letter-spacing:0.04em;text-transform:uppercase;color:${NAVY};font-weight:normal;">${escapeHtml(title)}</h1>
+            <h1 class="lo-title" style="margin:0 0 6px;font-family:Georgia,'Times New Roman',serif;font-size:24px;line-height:1.25;letter-spacing:0.04em;text-transform:uppercase;color:${NAVY};font-weight:normal;">${escapeHtml(title)}</h1>
             <p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:11px;letter-spacing:0.24em;text-transform:uppercase;color:${GOLD};">${escapeHtml(tagline)}</p>
             ${divider()}
           </td>
         </tr>
         <tr>
-          <td style="padding:0 32px 32px;">
+          <td class="lo-pad-body" style="padding:0 32px 32px;">
             ${greeting}
             ${paragraphs}
             ${detailBlock(body.details ?? [])}
@@ -231,6 +296,9 @@ ${preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;"
         </tr>
         <tr><td>${footer(brand)}</td></tr>
       </table>
+      <!--[if mso]>
+      </td></tr></table>
+      <![endif]-->
       <p style="margin:14px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:11px;color:rgba(184,176,160,0.45);">
         Sent by ${escapeHtml(title)} · <a href="${APP_URL}" style="color:rgba(201,168,76,0.6);">member portal</a>
       </p>
