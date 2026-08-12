@@ -218,6 +218,25 @@ export function formatLabel(filename?: string | null, mime?: string | null): str
 }
 
 /**
+ * The three or four characters in the square at the head of a row.
+ *
+ * The EXTENSION rather than the family name, because that is the token
+ * a reader already scans for — "PPTX" is picked out of a column of
+ * badges far faster than the word PowerPoint read out of a sentence of
+ * metadata. Falls back to the family for a row with no usable path,
+ * and to nothing at all rather than showing a lie.
+ */
+export function badgeFor(filename?: string | null, mime?: string | null): string {
+  const ext = filename ? extensionOf(filename) : ''
+  if (ext && BY_EXT.has(ext)) return ext.slice(1).toUpperCase()
+  const label = formatLabel(filename, mime)
+  if (label) return label.slice(0, 4).toUpperCase()
+  // A pre-storage row from before uploads existed. A blank square is
+  // honest; "FILE" would suggest there is one.
+  return '—'
+}
+
+/**
  * The sentence under the file picker, and the one in the error.
  *
  * Written as families rather than a list of forty extensions: "PDF,

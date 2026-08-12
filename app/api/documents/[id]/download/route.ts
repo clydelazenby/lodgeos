@@ -60,14 +60,46 @@ export async function GET(request: Request, { params }: { params: { id: string }
     // own session and real data. Signed for 5 minutes: long enough for
     // a real download to start, short enough that a leaked/logged URL
     // doesn't stay valid indefinitely.
+    /**
+     * DOWNLOAD MEANS DOWNLOAD.
+     *
+     * Signing the URL plainly left the browser to decide, and the
+     * browser decides by content type: a PDF opened in a tab, a
+     * PowerPoint landed in the downloads folder, and the same button
+     * did two different things depending on the file. Worse, what it
+     * saved was the storage object's name — a uuid and a mangled
+     * filename — rather than what the lodge calls the document.
+     *
+     * `download` sets Content-Disposition: attachment with a filename,
+     * so the button behaves the same way for every format and the file
+     * arrives called what it is called on the shelf.
+     *
+     * The player asks for `?inline=1` instead: a video cannot be
+     * streamed from an attachment.
+     */
+    const inline = new URL(request.url).searchParams.get('inline') === '1'
+
+    // The extension has to survive — Windows opens by extension, and
+    // "Bylaws" without ".pdf" opens in nothing at all.
+    const ext = doc.storage_path.includes('.')
+      ? doc.storage_path.slice(doc.storage_path.lastIndexOf('.'))
+      : ''
+    const base = String(doc.name || 'document').replace(/[\\/:*?"<>|]/g, '-').trim() || 'document'
+    const filename = base.toLowerCase().endsWith(ext.toLowerCase()) ? base : `${base}${ext}`
+
     const serviceClient = await createServiceClient()
     const { data: signedUrlData, error: signError } = await serviceClient.storage
       .from('documents')
-      .createSignedUrl(doc.storage_path, 300)
+      .createSignedUrl(doc.storage_path, 300, inline ? undefined : { download: filename })
 
     if (signError) throw signError
 
-    return NextResponse.json({ url: signedUrlData.signedUrl, name: doc.name, mimeType: doc.mime_type })
+    return NextResponse.json({
+      url: signedUrlData.signedUrl,
+      name: doc.name,
+      filename,
+      mimeType: doc.mime_type,
+    })
   } catch (error: any) {
     console.error('Document download error:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })

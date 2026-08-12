@@ -2,8 +2,9 @@
 import { useMemo, useState } from 'react'
 import { format } from 'date-fns'
 import { DocumentDownloadLink, DocumentDeleteButton, DocumentPlayer } from '@/components/lodge/DocumentUpload'
+import { DocumentEditButton } from '@/components/lodge/DocumentEdit'
 import { isPlayable, formatDuration } from '@/lib/documents'
-import { formatLabel, kindFor, KIND_LABEL, KIND_ORDER, type UploadKind } from '@/lib/uploads'
+import { badgeFor, formatLabel, kindFor, KIND_LABEL, KIND_ORDER, type UploadKind } from '@/lib/uploads'
 import { degreeShortLabel } from '@/lib/degrees'
 
 /**
@@ -273,54 +274,91 @@ export function DocumentLibrary({
             const open = !!showHistory[d.id]
             return (
               <div key={d.id} style={{ borderBottom: '1px solid rgba(201,168,76,0.05)' }}>
-                <div style={{ padding: '0.9rem 1.4rem', display: 'flex', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                  <div style={{ flex: 1, minWidth: 200 }}>
+                {/*
+                  * THE ROW, REBUILT.
+                  *
+                  * What it was: name, description and a run-on meta
+                  * line all in one column, with a degree pill and a
+                  * cluster of buttons flex-wrapped beside it. On a
+                  * phone the buttons dropped onto their own line at a
+                  * different place in every row, depending on how long
+                  * the name was, so nothing lined up with anything and
+                  * the eye had to re-find the controls each time.
+                  *
+                  * What it is: a fixed 40px badge, one flexible
+                  * column, and an action strip that is ALWAYS on its
+                  * own line below. Every row is now the same shape
+                  * whatever its name, which is the whole of what makes
+                  * a list scannable.
+                  */}
+                <div style={{ padding: '0.85rem 1.1rem', display: 'flex', gap: '0.85rem', alignItems: 'flex-start' }}>
+                  {/* The extension, in a square. A reader picks out
+                      "PPTX" in a column of badges far faster than the
+                      word PowerPoint inside a sentence of metadata. */}
+                  <div
+                    aria-hidden="true"
+                    style={{
+                      width: 40, height: 40, flexShrink: 0, borderRadius: 4,
+                      background: 'rgba(201,168,76,0.08)',
+                      border: '1px solid rgba(201,168,76,0.18)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontFamily: 'JetBrains Mono, monospace', fontSize: '0.5rem',
+                      letterSpacing: '0.04em', color: '#C9A84C', textAlign: 'center',
+                      lineHeight: 1.1, padding: 2, overflow: 'hidden',
+                    }}
+                  >
+                    {badgeFor(d.storage_path, d.mime_type)}
+                  </div>
+
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontFamily: 'Cinzel, serif', fontSize: '0.88rem', color: '#F5F0E8', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                      {isPlayable(d.mime_type) && (
-                        <span title="Recording" style={{ color: '#C9A84C', fontSize: '0.7rem' }}>
-                          {d.mime_type?.startsWith('video/') ? '▶' : '♪'}
-                        </span>
-                      )}
                       {d.name}
                       {priors.length > 0 && (
                         <span className="pill pill-fc" title="Earlier versions exist">CURRENT</span>
                       )}
+                      <span className={`pill ${ACCESS_PILL[d.access_level] ?? 'pill-new'}`}>
+                        {d.access_level === 'all' ? 'All Brothers' : `${degreeShortLabel(d.access_level)}+`}
+                      </span>
                     </div>
-                    <div style={{ fontSize: '0.85rem', color: '#B8B0A0', marginTop: 2, fontFamily: 'Crimson Pro, serif' }}>
-                      {d.description || ''}
-                      {formatDuration(d.duration_seconds) && (
-                        <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.62rem', marginLeft: d.description ? 8 : 0 }}>
-                          {formatDuration(d.duration_seconds)}
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.58rem', color: '#918879', marginTop: 4 }}>
-                      {/* Which of them this is. A library holding PDFs,
-                          slide decks, spreadsheets and recordings side
-                          by side is unreadable without it — a brother
-                          on a phone needs to know before he taps
-                          whether it will open in a viewer or land in
-                          his downloads. */}
-                      {formatLabel(d.storage_path, d.mime_type) && (
-                        <>{formatLabel(d.storage_path, d.mime_type)}{' · '}</>
-                      )}
-                      {d.category}
-                      {' · '}
-                      {format(new Date(d.created_at), 'MMM d, yyyy')}
-                      {d.profiles ? ` · ${d.profiles.first_name} ${d.profiles.last_name}` : ''}
+
+                    {d.description && (
+                      /* One line. A paragraph pasted into the
+                         description used to push every following row
+                         off the screen; it is still all there on the
+                         edit form and in the title. */
+                      <div
+                        title={d.description}
+                        style={{
+                          fontSize: '0.85rem', color: '#B8B0A0', marginTop: 2,
+                          fontFamily: 'Crimson Pro, serif',
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {d.description}
+                      </div>
+                    )}
+
+                    <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.55rem', color: '#918879', marginTop: 4, letterSpacing: '0.04em' }}>
+                      {[
+                        d.category,
+                        format(new Date(d.created_at), 'MMM d, yyyy'),
+                        formatDuration(d.duration_seconds),
+                        d.profiles ? `${d.profiles.first_name} ${d.profiles.last_name}` : null,
+                      ].filter(Boolean).join('  \u00b7  ')}
                     </div>
                   </div>
+                </div>
 
-                  <span className={`pill ${ACCESS_PILL[d.access_level] ?? 'pill-new'}`}>
-                    {d.access_level === 'all' ? 'All Brothers' : `${degreeShortLabel(d.access_level)}+`}
-                  </span>
-
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                    {isPlayable(d.mime_type)
-                      ? <DocumentPlayer documentId={d.id} mimeType={d.mime_type} name={d.name} />
-                      : <DocumentDownloadLink documentId={d.id} />}
-                    {canManage && <DocumentDeleteButton documentId={d.id} documentName={d.name} />}
-                  </div>
+                {/* The actions, on their own line and in the same
+                    place in every row. Download first because it is
+                    what nearly every visit is for. */}
+                <div className="lodgeos-doc-actions" style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                  {isPlayable(d.mime_type) && (
+                    <DocumentPlayer documentId={d.id} mimeType={d.mime_type} name={d.name} />
+                  )}
+                  <DocumentDownloadLink documentId={d.id} />
+                  {canManage && <DocumentEditButton document={d} />}
+                  {canManage && <DocumentDeleteButton documentId={d.id} documentName={d.name} />}
                 </div>
 
                 {/* Superseded copies. Kept, because a lodge is sometimes
@@ -344,7 +382,14 @@ export function DocumentLibrary({
                             {format(new Date(p.created_at), 'MMM d, yyyy')}
                           </span>
                         </span>
-                        <DocumentDownloadLink documentId={p.id} label="View" />
+                        {/* An earlier version downloads like anything
+                            else — the point of keeping it is that "what
+                            did the bylaws say in 2023" stays
+                            answerable, and an answer you cannot open is
+                            not one. No Edit: rewriting the details of a
+                            superseded copy edits the lodge's history of
+                            itself. */}
+                        <DocumentDownloadLink documentId={p.id} />
                       </div>
                     ))}
                   </div>

@@ -888,6 +888,22 @@ const WORD: HelpTopic[] = [
           'Upload a new version as a replacement rather than a fresh document. The old one is kept in its history, so “which bylaws were in force in 2023” stays answerable.',
       },
       {
+        kind: 'table',
+        head: ['On each row', 'What it does'],
+        rows: [
+          ['Play', 'Only on recordings. Plays it here rather than saving it'],
+          ['Download', 'Saves the file, named what the lodge calls it'],
+          ['Edit', 'The name, description, category and who may open it — not the file'],
+          ['Delete', 'Destroys the file. Cannot be undone'],
+        ],
+      },
+      {
+        kind: 'note',
+        title: 'Edit corrects the record, not the document',
+        text:
+          'A file uploaded as “scan_0042” with the wrong degree floor can be put right without deleting it — which would throw away its version history and its place in a curriculum. To replace the file itself, upload the new version and name the old one as what it supersedes: that keeps both.',
+      },
+      {
         kind: 'steps',
         items: [
           'To delete: press Delete beside the document.',
