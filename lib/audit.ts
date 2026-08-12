@@ -113,6 +113,7 @@ export const AUDIT_ACTIONS: Record<string, string> = {
   'document.uploaded': 'Document uploaded',
   'document.deleted': 'Document deleted',
   'document.updated': 'Document details changed',
+  'member.invite_resent': 'Invitation sent again',
   'gallery.visibility': 'Photograph shown or hidden',
   'gallery.deleted': 'Photograph deleted',
   'gallery.announced': 'Lodge told about new photographs',

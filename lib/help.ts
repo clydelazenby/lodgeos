@@ -548,7 +548,18 @@ const BRETHREN: HelpTopic[] = [
         kind: 'warn',
         title: 'Then wait for the second email',
         text:
-          'You will be emailed again when he signs in for the first time. That is the only proof the whole chain worked. If it does not come within a few days, check the address on his profile and invite him again.',
+          'You will be emailed again when he signs in for the first time. That is the only proof the whole chain worked.',
+      },
+      {
+        kind: 'p',
+        text:
+          'Anyone who has not signed in yet sits at the top of this page under “Invited, not yet signed in”, with the address he was written to and how long he has been waiting. Press Resend to send him a fresh sign-in link — the first one may simply have expired. Past a fortnight the wait is shown in red, because by then the address is the likely fault.',
+      },
+      {
+        kind: 'note',
+        title: 'Resending will not fix a wrong address',
+        text:
+          'His email address is his sign-in and cannot be edited. If it is wrong, take him off the roster and invite him again at the right one.',
       },
       {
         kind: 'p',
