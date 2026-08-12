@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import Link from 'next/link'
 import { T } from '@/lib/designTokens'
 import { notify } from '@/lib/toast'
 import { callApi, errorMessage } from '@/lib/clientFetch'
@@ -28,6 +29,8 @@ import { callApi, errorMessage } from '@/lib/clientFetch'
 
 type Pending = {
   id: string
+  /** For the link to his record — the profile route keys off user_id. */
+  userId: string
   name: string
   email: string | null
   invitedAt: string | null
@@ -62,15 +65,30 @@ export function overdue(iso: string | null): boolean {
 
 export function PendingBrothers({
   tenantId,
+  slug,
   pending,
   onSent,
+  onRemove,
 }: {
   tenantId: string
+  slug: string
   pending: Pending[]
   /** Records the new send time on the row without a full reload. */
   onSent: (memberId: string, sentAt: string) => void
+  /**
+   * Opens the roster's own removal dialog. These men are no longer
+   * listed in the table below, so without this the section's own
+   * advice — "take him off the roster and invite him again at the
+   * right address" — would have nowhere to be acted on.
+   */
+  onRemove: (memberId: string) => void
 }) {
   const [busy, setBusy] = useState<string | null>(null)
+  /**
+   * Open by default, and this now matters more than it did. These men
+   * appear nowhere else on the page — collapsing the section is the
+   * difference between a tidy view and eight brothers vanishing.
+   */
   const [open, setOpen] = useState(true)
 
   if (pending.length === 0) return null
@@ -129,7 +147,9 @@ export function PendingBrothers({
             }}
           >
             These brothers are on the roster and have been emailed a sign-in link, but none of them
-            has used it. Resending mints a fresh link — the old one may simply have expired.
+            has used it. They are listed here rather than in the table below, so the roster shows
+            the men who can actually be reached through the app. Resending mints a fresh link — the
+            old one may simply have expired.
           </p>
 
           {pending.map(p => {
@@ -144,7 +164,17 @@ export function PendingBrothers({
                 }}
               >
                 <div style={{ flex: 1, minWidth: 180 }}>
-                  <div style={{ fontFamily: T.display, fontSize: '0.88rem', color: T.ink }}>{p.name}</div>
+                  {/* His record, where his degree, office and Masonic
+                      dates are set. He is not in the table below any
+                      more, so this is the only way to reach it — and
+                      the Secretary often fills those in while waiting
+                      for a man to arrive. */}
+                  <Link
+                    href={`/lodge/${slug}/members/${p.userId}`}
+                    style={{ fontFamily: T.display, fontSize: '0.88rem', color: T.gold, textDecoration: 'none' }}
+                  >
+                    {p.name}
+                  </Link>
                   {/* The address is the thing to check when nothing
                       arrives, so it is shown rather than hidden behind
                       his profile — that is the entire diagnosis, and it
@@ -186,6 +216,19 @@ export function PendingBrothers({
                   }}
                 >
                   {busy === p.id ? 'Sending…' : 'Resend'}
+                </button>
+
+                <button
+                  onClick={() => onRemove(p.id)}
+                  aria-label={`Remove ${p.name} from the roster`}
+                  title={`Remove ${p.name} from the roster`}
+                  style={{
+                    background: 'transparent', border: `1px solid rgba(231,76,60,0.25)`, borderRadius: 3,
+                    color: T.danger, fontFamily: T.mono, fontSize: '0.58rem', letterSpacing: '0.1em',
+                    textTransform: 'uppercase', padding: '7px 12px', cursor: 'pointer', whiteSpace: 'nowrap',
+                  }}
+                >
+                  Remove
                 </button>
               </div>
             )

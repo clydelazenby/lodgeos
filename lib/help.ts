@@ -553,7 +553,7 @@ const BRETHREN: HelpTopic[] = [
       {
         kind: 'p',
         text:
-          'Anyone who has not signed in yet sits at the top of this page under “Invited, not yet signed in”, with the address he was written to and how long he has been waiting. Press Resend to send him a fresh sign-in link — the first one may simply have expired. Past a fortnight the wait is shown in red, because by then the address is the likely fault.',
+          'Anyone who has not signed in yet sits at the top of this page under “Invited, not yet signed in”, and not in the table below — so the roster shows the brothers the app can actually reach, and nobody is listed twice. His row carries the address he was written to, how long he has been waiting, his record, and a Resend. Past a fortnight the wait is shown in red, because by then the address is the likely fault.',
       },
       {
         kind: 'note',
