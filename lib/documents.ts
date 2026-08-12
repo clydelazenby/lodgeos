@@ -27,9 +27,29 @@
  * genuinely shared — the same code, callable from either side.
  */
 
-/** Whether this document can be played in the browser rather than downloaded. */
+/**
+ * Whether this document can be played in the browser rather than
+ * downloaded.
+ *
+ * A LIST, NOT A PREFIX. This read `mime.startsWith('video/')`, which
+ * was true while the only video formats accepted were ones a browser
+ * can decode. Widening the library to .avi and .mpeg broke that
+ * assumption: both are video/*, neither plays in any current browser,
+ * and the officer would have been handed a black rectangle with a
+ * broken control bar instead of a download link.
+ *
+ * Anything not on this list still downloads and still opens in
+ * whatever the brother has installed — it simply is not promised a
+ * player it would not get.
+ */
+const PLAYABLE = new Set([
+  'video/mp4', 'video/webm', 'video/quicktime', 'video/x-m4v',
+  'audio/mpeg', 'audio/mp4', 'audio/x-m4a', 'audio/aac', 'audio/ogg',
+  'audio/wav', 'audio/x-wav', 'audio/wave',
+])
+
 export const isPlayable = (mime?: string | null) =>
-  !!mime && (mime.startsWith('video/') || mime.startsWith('audio/'))
+  !!mime && PLAYABLE.has(mime.split(';')[0].trim().toLowerCase())
 
 /** "1:04:22" or "4:07". Null when there is no meaningful duration. */
 export const formatDuration = (s?: number | null) => {
