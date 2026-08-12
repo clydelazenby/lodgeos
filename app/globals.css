@@ -437,6 +437,24 @@ button:disabled {
 }
 
 /* ============================================================
+   DOCUMENT LIBRARY — the action strip under each row
+   ============================================================
+   Download, Edit and Delete sit on their own line, indented so they
+   line up under the document's name rather than under its type badge.
+   That indent is 63px, which is tidy on any real screen and a third of
+   a 320px phone. Below 420px it goes away and the buttons run flush,
+   because at that width alignment is worth less than the room. */
+.lodgeos-doc-actions {
+  padding: 0 1.1rem 0.85rem 3.95rem;
+}
+
+@media (max-width: 420px) {
+  .lodgeos-doc-actions {
+    padding-left: 1.1rem;
+  }
+}
+
+/* ============================================================
    LODGE ROOM — floor plan mobile handling
    ============================================================
    The Lodge Room's 12 officer-station "chairs" are absolute-positioned

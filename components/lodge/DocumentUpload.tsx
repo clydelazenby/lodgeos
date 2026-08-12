@@ -325,7 +325,9 @@ export function DocumentPlayer({
     setLoading(true)
     setError('')
     try {
-      const res = await fetch(`/api/documents/${documentId}/download`)
+      // ?inline=1 — a video cannot be streamed from a URL signed
+      // as an attachment, which is what the plain call now returns.
+      const res = await fetch(`/api/documents/${documentId}/download?inline=1`)
       const result = await res.json()
       if (!res.ok) throw new Error(result.error || 'Could not open this recording')
       setUrl(result.url)
@@ -358,7 +360,13 @@ export function DocumentPlayer({
   }
 
   return (
-    <div style={{ minWidth: 260, maxWidth: 420 }}>
+    /* width:100% with minWidth:0, NOT minWidth:260. The player sits in
+       the row's action strip, which is indented to line up under the
+       text column — 63px of indent plus a 260px floor is 323px, and a
+       small phone is 320px wide. It overflowed by exactly 3px plus the
+       padding, which is the sort of bug that only ever appears on the
+       one device nobody tests on. */
+    <div style={{ width: '100%', minWidth: 0, maxWidth: 420 }}>
       {isVideo ? (
         <video
           src={url}
@@ -383,7 +391,21 @@ export function DocumentPlayer({
   )
 }
 
-export function DocumentDownloadLink({ documentId, label = 'View' }: { documentId: string; label?: string }) {
+/**
+ * Download — and it now genuinely downloads.
+ *
+ * THIS BUTTON SAID "VIEW" AND DID TWO DIFFERENT THINGS. The signed URL
+ * was left plain, so the browser decided by content type: a PDF opened
+ * in a tab, a PowerPoint dropped into the downloads folder. One label,
+ * two behaviours, depending on a file property nobody can see from the
+ * shelf. And what it saved was the storage object's name — a uuid and
+ * a mangled filename — not what the lodge calls the document.
+ *
+ * The route now signs with Content-Disposition: attachment and the
+ * document's own name, so every format behaves the same way and the
+ * file arrives called what it is called here.
+ */
+export function DocumentDownloadLink({ documentId, label = 'Download' }: { documentId: string; label?: string }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -394,10 +416,23 @@ export function DocumentDownloadLink({ documentId, label = 'View' }: { documentI
       const res = await fetch(`/api/documents/${documentId}/download`)
       const result = await res.json()
       if (!res.ok) throw new Error(result.error || 'Could not open document')
-      // Signed URL is short-lived (5 min, set server-side) — open
-      // immediately rather than storing it anywhere, since by design
-      // it's meant to be used once and expire quickly.
-      window.open(result.url, '_blank', 'noopener,noreferrer')
+      /**
+       * An anchor rather than window.open. An attachment URL opened in
+       * a new tab downloads and then leaves an empty tab sitting there
+       * — on a phone that is a whole blank screen the brother has to
+       * dismiss. A clicked anchor starts the same download and the page
+       * he was reading never moves.
+       *
+       * Signed URL is short-lived (5 min, server-side), so it is used
+       * immediately and stored nowhere.
+       */
+      const a = document.createElement('a')
+      a.href = result.url
+      a.rel = 'noopener'
+      if (result.filename) a.download = result.filename
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
     } catch (err: any) {
       setError(err.message)
     } finally {

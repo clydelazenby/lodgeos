@@ -112,6 +112,7 @@ export const AUDIT_ACTIONS: Record<string, string> = {
   'minutes.approved': 'Minutes approved',
   'document.uploaded': 'Document uploaded',
   'document.deleted': 'Document deleted',
+  'document.updated': 'Document details changed',
   'gallery.visibility': 'Photograph shown or hidden',
   'gallery.deleted': 'Photograph deleted',
   'gallery.announced': 'Lodge told about new photographs',

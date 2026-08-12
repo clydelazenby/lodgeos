@@ -1,6 +1,129 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireCapability } from '@/lib/auth/capabilities'
+import { DEGREE_VALUES } from '@/lib/degrees'
+import { recordAudit, actorName } from '@/lib/audit'
+
+const ACCESS_LEVELS = new Set(['all', ...DEGREE_VALUES])
+
+/**
+ * Corrects what a document SAYS about itself — never the file.
+ *
+ * The library was write-once: a document uploaded as "scan_0042" with
+ * the wrong degree floor could only be deleted and uploaded again,
+ * which throws away its version history and its place in the
+ * curriculum. Four things are worth changing after the fact, and none
+ * of them touches storage:
+ *
+ *   name          what a brother reads on the shelf
+ *   description   what it is for
+ *   category      which shelf it is on
+ *   access_level  who may open it — the important one
+ *
+ * NOT THE FILE ITSELF. Replacing the contents of a document under a
+ * name the lodge already trusts is how "the bylaws" quietly become
+ * something else. The library already has the honest way to do that:
+ * upload the new version and name what it supersedes, which keeps both
+ * and records the succession.
+ *
+ * ONLY WHAT WAS SENT IS WRITTEN, so the audit trail names the field
+ * that changed rather than claiming the whole record was rewritten.
+ */
+export async function PATCH(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const supabase = createServiceClient()
+
+    // Read first: the tenant this document belongs to is what
+    // authorization is scoped against, and the client does not get to
+    // assert it.
+    const { data: doc, error: docError } = await supabase
+      .from('documents')
+      .select('id, tenant_id, name, description, category, access_level')
+      .eq('id', params.id)
+      .maybeSingle()
+
+    if (docError) throw docError
+    if (!doc) return NextResponse.json({ error: 'Document not found.' }, { status: 404 })
+
+    const auth = await requireCapability(doc.tenant_id, 'documents')
+    if (!auth.ok) return auth.response
+
+    const body = await request.json()
+    const patch: Record<string, any> = {}
+    const changed: string[] = []
+
+    if (typeof body.name === 'string') {
+      const name = body.name.trim()
+      if (!name) {
+        return NextResponse.json({ error: 'A document needs a name.' }, { status: 400 })
+      }
+      if (name !== doc.name) { patch.name = name.slice(0, 200); changed.push('name') }
+    }
+
+    if (typeof body.description === 'string') {
+      const description = body.description.trim().slice(0, 2000) || null
+      if (description !== (doc.description ?? null)) {
+        patch.description = description
+        changed.push('description')
+      }
+    }
+
+    if (typeof body.category === 'string' && body.category.trim()) {
+      const category = body.category.trim()
+      if (category !== doc.category) { patch.category = category; changed.push('category') }
+    }
+
+    if (typeof body.accessLevel === 'string') {
+      if (!ACCESS_LEVELS.has(body.accessLevel)) {
+        return NextResponse.json({ error: 'That is not a degree this app knows.' }, { status: 400 })
+      }
+      if (body.accessLevel !== doc.access_level) {
+        patch.access_level = body.accessLevel
+        changed.push('degree')
+      }
+    }
+
+    if (changed.length === 0) {
+      return NextResponse.json({ success: true, changed: [] })
+    }
+
+    const { error: updateError } = await supabase
+      .from('documents')
+      .update(patch)
+      .eq('id', params.id)
+
+    if (updateError) throw updateError
+
+    /**
+     * The degree floor is named in the summary when it moves, because
+     * it is the only one of the four that changes who may read the
+     * document — "renamed a file" and "opened the lodge's ritual
+     * material to every Entered Apprentice" should not read alike in
+     * the trail.
+     */
+    const movedFloor = changed.includes('degree')
+    await recordAudit({
+      tenantId: doc.tenant_id,
+      actorId: auth.userId,
+      actorName: await actorName(auth.userId),
+      action: 'document.updated',
+      summary: movedFloor
+        ? `Changed who may read "${patch.name ?? doc.name}" — now ${patch.access_level === 'all' ? 'every brother' : patch.access_level + ' and above'}`
+        : `Edited the details of "${patch.name ?? doc.name}" (${changed.join(', ')})`,
+      entityType: 'document',
+      entityId: doc.id,
+      detail: { changed, from: { name: doc.name, category: doc.category, access_level: doc.access_level } },
+    })
+
+    return NextResponse.json({ success: true, changed })
+  } catch (error: any) {
+    console.error('Document update error:', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+}
 
 /**
  * Deletes a document — both the stored file and its database row.
