@@ -170,6 +170,43 @@ export function isAllowedUpload(filename: string, browserType?: string | null): 
   return contentTypeFor(filename, browserType) !== null
 }
 
+/**
+ * WHAT KIND OF THING THIS IS, for filtering a mixed library.
+ *
+ * Coarser than the label on purpose. An officer looking for the degree
+ * lecture wants "the slide decks" — he does not care whether it was
+ * made in PowerPoint, Keynote or Impress, and three separate filters
+ * for the same idea is how a filter row stops being read.
+ */
+export const KIND_LABEL: Record<UploadKind, string> = {
+  presentation: 'Presentations',
+  video: 'Video',
+  audio: 'Audio',
+  document: 'Documents',
+  spreadsheet: 'Spreadsheets',
+  image: 'Pictures',
+  archive: 'Bundles',
+}
+
+/**
+ * The order the filters appear in — what a lodge reaches for most,
+ * first. Presentations and video lead because those are the two a man
+ * goes looking for by format; nobody hunts a library for "a
+ * spreadsheet", they hunt for the budget by name.
+ */
+export const KIND_ORDER: UploadKind[] = [
+  'presentation', 'video', 'audio', 'document', 'spreadsheet', 'image', 'archive',
+]
+
+export function kindFor(filename?: string | null, mime?: string | null): UploadKind | null {
+  const byExt = filename ? formatFor(filename) : null
+  if (byExt) return byExt.kind
+  if (!mime) return null
+  const m = mime.split(';')[0].trim().toLowerCase()
+  const byMime = UPLOAD_FORMATS.find(f => f.mime === m || (f.also ?? []).includes(m))
+  return byMime?.kind ?? null
+}
+
 /** The badge in the library: 'PowerPoint', 'Excel', 'PDF'. */
 export function formatLabel(filename?: string | null, mime?: string | null): string | null {
   const byExt = filename ? formatFor(filename) : null

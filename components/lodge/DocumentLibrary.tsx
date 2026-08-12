@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react'
 import { format } from 'date-fns'
 import { DocumentDownloadLink, DocumentDeleteButton, DocumentPlayer } from '@/components/lodge/DocumentUpload'
 import { isPlayable, formatDuration } from '@/lib/documents'
-import { formatLabel } from '@/lib/uploads'
+import { formatLabel, kindFor, KIND_LABEL, KIND_ORDER, type UploadKind } from '@/lib/uploads'
 import { degreeShortLabel } from '@/lib/degrees'
 
 /**
@@ -44,6 +44,16 @@ export function DocumentLibrary({
   hiddenCount: number
 }) {
   const [category, setCategory] = useState<string>('')
+  /**
+   * The other axis: what a file IS, not what it is about.
+   *
+   * Asked for as "a PowerPoint tab, a video tab", and it is a second
+   * filter rather than a tab because it is genuinely independent of
+   * the category. A degree lecture is Degree Materials AND a slide
+   * deck; making format a tab would have forced a choice between two
+   * questions an officer asks together — "the training video" is both.
+   */
+  const [kind, setKind] = useState<UploadKind | ''>('')
   const [query, setQuery] = useState('')
   const [showHistory, setShowHistory] = useState<Record<string, boolean>>({})
 
@@ -89,25 +99,66 @@ export function DocumentLibrary({
     return { current, priorsFor }
   }, [documents])
 
-  const results = useMemo(() => {
-    const needle = query.trim().toLowerCase()
-    return current.filter((d) => {
-      if (category && d.category !== category) return false
-      if (!needle) return true
-      return (
-        (d.name ?? '').toLowerCase().includes(needle) ||
-        (d.description ?? '').toLowerCase().includes(needle) ||
-        (d.category ?? '').toLowerCase().includes(needle)
-      )
-    })
-  }, [current, category, query])
+  /**
+   * Searching also matches the format, so typing "powerpoint" or
+   * "video" finds them without anyone noticing the filter row exists.
+   * The word a man types is the word he was going to look for.
+   */
+  const matchesQuery = (d: any, needle: string) => {
+    if (!needle) return true
+    return (
+      (d.name ?? '').toLowerCase().includes(needle) ||
+      (d.description ?? '').toLowerCase().includes(needle) ||
+      (d.category ?? '').toLowerCase().includes(needle) ||
+      (formatLabel(d.storage_path, d.mime_type) ?? '').toLowerCase().includes(needle) ||
+      (kindFor(d.storage_path, d.mime_type)
+        ? KIND_LABEL[kindFor(d.storage_path, d.mime_type)!].toLowerCase().includes(needle)
+        : false)
+    )
+  }
 
-  const chip = (label: string, value: string, count: number) => {
-    const active = category === value
+  /**
+   * Each chip's number is what you will actually see if you press it —
+   * so the two rows cross-filter each other. A "Video 4" chip that
+   * yields nothing because a category is also selected is worse than
+   * no number at all: it reads as the app losing files.
+   */
+  const { results, byCategory, byKind, kinds, categoryAllCount, kindAllCount } = useMemo(() => {
+    const needle = query.trim().toLowerCase()
+    const searched = current.filter((d) => matchesQuery(d, needle))
+
+    const inKind = kind ? searched.filter((d) => kindFor(d.storage_path, d.mime_type) === kind) : searched
+    const inCategory = category ? searched.filter((d) => d.category === category) : searched
+
+    const byCategory = new Map<string, number>()
+    for (const d of inKind) byCategory.set(d.category ?? '', (byCategory.get(d.category ?? '') ?? 0) + 1)
+
+    const byKind = new Map<string, number>()
+    for (const d of inCategory) {
+      const k = kindFor(d.storage_path, d.mime_type)
+      if (k) byKind.set(k, (byKind.get(k) ?? 0) + 1)
+    }
+
+    return {
+      results: inKind.filter((d) => !category || d.category === category),
+      byCategory,
+      byKind,
+      // Only the kinds this lodge actually holds. A row of seven
+      // filters where five find nothing is noise a reader learns to
+      // skip past.
+      kinds: KIND_ORDER.filter((k) => current.some((d) => kindFor(d.storage_path, d.mime_type) === k)),
+      // What "All" and "Any" would give: everything the OTHER filter
+      // and the search still allow.
+      categoryAllCount: inKind.length,
+      kindAllCount: inCategory.length,
+    }
+  }, [current, category, kind, query])
+
+  const chip = (label: string, count: number, active: boolean, onClick: () => void, key: string) => {
     return (
       <button
-        key={value || 'all'}
-        onClick={() => setCategory(active ? '' : value)}
+        key={key}
+        onClick={onClick}
         aria-pressed={active}
         style={{
           background: active ? 'rgba(201,168,76,0.15)' : 'transparent',
@@ -120,6 +171,9 @@ export function DocumentLibrary({
           borderRadius: 3,
           cursor: 'pointer',
           whiteSpace: 'nowrap',
+          // A chip that would show nothing says so by looking spent,
+          // rather than by being pressed and emptying the page.
+          opacity: count === 0 && !active ? 0.45 : 1,
         }}
       >
         {label.toUpperCase()} <span style={{ color: '#C9A84C' }}>{count}</span>
@@ -133,7 +187,7 @@ export function DocumentLibrary({
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search the library — a name, a subject…"
+          placeholder="Search the library — a name, a subject, “powerpoint”…"
           style={{
             width: '100%',
             background: '#0A0E1A',
@@ -148,18 +202,42 @@ export function DocumentLibrary({
           }}
         />
 
-        {/* These were counters. Now they filter, which is what a
-            category is for. All of them are listed, not the four that
-            happened to be hard-coded. */}
+        {/* WHAT IT IS ABOUT. These were counters. Now they filter,
+            which is what a category is for. All of them are listed,
+            not the four that happened to be hard-coded. */}
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {chip('All', '', current.length)}
-          {categories.map((c) => chip(c, c, current.filter((d) => d.category === c).length))}
+          {chip('All', categoryAllCount, !category, () => setCategory(''), 'cat-all')}
+          {categories.map((c) =>
+            chip(c, byCategory.get(c) ?? 0, category === c, () => setCategory(category === c ? '' : c), `cat-${c}`)
+          )}
         </div>
+
+        {/* WHAT IT IS. Only shown once the library actually holds more
+            than one kind — a lodge with nothing but PDFs does not need
+            to be told they are all PDFs. */}
+        {kinds.length > 1 && (
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8, alignItems: 'center' }}>
+            <span
+              style={{
+                fontFamily: 'JetBrains Mono, monospace', fontSize: '0.52rem',
+                letterSpacing: '0.18em', color: '#918879', marginRight: 2,
+              }}
+            >
+              FORMAT
+            </span>
+            {chip('Any', kindAllCount, !kind, () => setKind(''), 'kind-any')}
+            {kinds.map((k) =>
+              chip(KIND_LABEL[k], byKind.get(k) ?? 0, kind === k, () => setKind(kind === k ? '' : k), `kind-${k}`)
+            )}
+          </div>
+        )}
       </div>
 
       <div className="data-box">
         <div className="data-box-head">
-          <span>{category || 'Available To You'}</span>
+          <span>
+            {[category, kind ? KIND_LABEL[kind] : ''].filter(Boolean).join(' · ') || 'Available To You'}
+          </span>
           <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.58rem', color: '#B8B0A0' }}>
             {results.length}
           </span>
@@ -169,9 +247,25 @@ export function DocumentLibrary({
           <div style={{ padding: '2.5rem', textAlign: 'center', color: '#B8B0A0', fontStyle: 'italic', fontFamily: 'Crimson Pro, serif' }}>
             {documents.length === 0
               ? 'No documents uploaded yet. Upload degree materials, bylaws and Grand Lodge forms here.'
-              : query.trim() || category
+              : query.trim() || category || kind
                 ? 'Nothing here matches that.'
                 : 'No documents are available at your degree yet.'}
+            {/* A dead end with two filters on is usually one filter too
+                many, and the way out should not be to work out which. */}
+            {(category || kind || query.trim()) && documents.length > 0 && (
+              <div style={{ marginTop: '0.9rem' }}>
+                <button
+                  onClick={() => { setCategory(''); setKind(''); setQuery('') }}
+                  style={{
+                    background: 'transparent', border: '1px solid rgba(201,168,76,0.25)',
+                    color: '#C9A84C', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.55rem',
+                    letterSpacing: '0.1em', padding: '7px 11px', borderRadius: 3, cursor: 'pointer',
+                  }}
+                >
+                  SHOW EVERYTHING
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           results.map((d) => {
