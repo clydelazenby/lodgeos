@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { type TenantRole } from '@/lib/auth/requireTenantAdmin'
 import { requireCapability } from '@/lib/auth/capabilities'
+import { roomForMembers } from '@/lib/plans'
 import { sendWelcomeEmail, APP_URL } from '@/lib/email'
 import { createInviteLink } from '@/lib/auth/inviteLink'
 import { upsertProfilePreservingIdentity } from '@/lib/auth/profile'
@@ -79,6 +80,30 @@ export async function POST(request: Request) {
     if (!auth.ok) return auth.response
 
     const supabase = createServiceClient()
+
+    /**
+     * ROOM ON THE PLAN, for the whole file at once.
+     *
+     * Checked against the number of rows rather than one at a time: an
+     * import that adds twenty of thirty brothers and then stops halfway
+     * leaves a Secretary with a roster he now has to reconcile by hand,
+     * which is worse than being told up front that the file does not
+     * fit. Dry runs are checked too — the point of a dry run is to find
+     * out what will happen.
+     */
+    const [{ data: planRow }, { count: activeCount }] = await Promise.all([
+      supabase.from('tenants').select('plan').eq('id', tenantId).maybeSingle(),
+      supabase
+        .from('tenant_members')
+        .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId)
+        .eq('is_active', true),
+    ])
+
+    const room = roomForMembers((planRow as any)?.plan, activeCount ?? 0, rows.length)
+    if (!room.ok) {
+      return NextResponse.json({ error: room.message }, { status: 402 })
+    }
 
     // ---- Validate ----------------------------------------------
 

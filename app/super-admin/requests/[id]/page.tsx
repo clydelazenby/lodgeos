@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { RequestReview } from '@/components/super-admin/RequestReview'
+import { isSameLodge, normaliseLodgeNumber } from '@/lib/lodgeMatch'
 
 /**
  * One request, and the decision.
@@ -27,17 +28,17 @@ export default async function AccessRequestPage({
   const r = request as any
 
   /**
-   * Is a lodge of this name already here? The same check the alert
-   * email makes, repeated on the page — the email may have been sent
-   * before a lodge was created, and this is where the decision is
-   * actually taken.
+   * Is this lodge already here? The same question the alert email
+   * asked, re-asked on the page where the decision is actually taken —
+   * a lodge may have been created in between — and answered by the same
+   * matcher, so the email and the page cannot disagree.
    */
-  const needle = String(r.lodge_name ?? '').replace(/\blodge\b/gi, '').trim()
   let duplicateOf: { name: string; number: string | null; slug: string } | null = null
-  if (needle.length >= 3) {
-    const { data: existing } = await supabase
-      .from('tenants').select('name, number, slug').ilike('name', `%${needle}%`).limit(1)
-    const hit = (existing ?? [])[0] as any
+  if (normaliseLodgeNumber(r.lodge_number)) {
+    const { data: candidates } = await supabase
+      .from('tenants').select('name, number, jurisdiction, slug').not('number', 'is', null).limit(200)
+    const hit = (candidates ?? []).find((t: any) => isSameLodge(
+      { name: r.lodge_name, number: r.lodge_number, jurisdiction: r.jurisdiction }, t)) as any
     if (hit) duplicateOf = { name: hit.name, number: hit.number, slug: hit.slug }
   }
 

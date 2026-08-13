@@ -13,7 +13,46 @@ function getResend() {
   return new Resend(process.env.RESEND_API_KEY)
 }
 
+/**
+ * THE ADDRESS EVERY LODGE'S MAIL COMES FROM.
+ *
+ * Today this is one lodge's own domain, because that is the only one
+ * verified with the mail provider — so a second lodge's brethren would
+ * receive their lodge's mail from psalmslodge1827.com. Wrong on the
+ * face of it, and worse underneath: one shared sending domain means one
+ * shared reputation, and a lodge that gets itself marked as spam would
+ * take every other lodge down with it.
+ *
+ * THIS CANNOT BE FIXED IN CODE ALONE. It needs a neutral sending domain
+ * for the platform — mail.lodgeos.com or similar — verified with SPF
+ * and DKIM, with EMAIL_FROM pointed at it. What code CAN do is stop
+ * assuming there is only ever one:
+ *
+ *   - a lodge that has verified its own domain sends from it
+ *   - every other lodge sends from the platform's neutral address
+ *   - the FROM display name is always the lodge, so a brother sees his
+ *     own lodge's name whichever address carried it
+ *   - replies already go to the lodge's own inbox, not the platform's
+ *
+ * The per-lodge column is read below; until a lodge has one, nothing
+ * changes for it.
+ */
 const FROM = process.env.EMAIL_FROM || 'onboarding@resend.dev'
+
+/**
+ * The address this lodge's mail should come from.
+ *
+ * `sendingAddress` on the tenants row when the lodge has verified its
+ * own domain with the provider; the platform's address otherwise. A
+ * lodge cannot simply type an address here and have mail appear to come
+ * from it — an unverified domain is refused by the provider, which is
+ * the correct outcome and the reason this is set by an administrator
+ * rather than in lodge settings.
+ */
+export function fromAddressFor(brand?: { name?: string; sendingAddress?: string | null }): string {
+  const address = (brand?.sendingAddress ?? '').trim() || FROM
+  return address
+}
 
 /**
  * LODGE MAIL LOOKS LIKE THE LODGE, NOT LIKE LODGEOS.
