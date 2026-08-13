@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { AccessChooser } from '@/components/public/AccessChooser'
 import Link from 'next/link'
 
 /**
@@ -78,6 +79,11 @@ export default function RequestAccessPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#0A0E1A', padding: '6rem 2rem 4rem' }}>
+      {/* Asked before he types anything. See the component: this page
+          is where a brother who could not sign in ended up, because
+          "Request Access" was the only other link on the sign-in page
+          and it leads to a form headed FOR LODGES. */}
+      <AccessChooser />
       <div style={{ maxWidth: '660px', margin: '0 auto' }}>
         <Link href="/start" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.6rem', color: '#B8B0A0', textDecoration: 'none', letterSpacing: '0.15em', display: 'block', marginBottom: '2rem' }}>← BACK TO LODGEOS</Link>
         <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.62rem', letterSpacing: '0.3em', color: '#C9A84C', marginBottom: '0.75rem' }}>FOR LODGES</div>

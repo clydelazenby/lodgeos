@@ -623,12 +623,12 @@ export async function sendNewPetitionAlert({
  */
 export async function sendPortalAccessRequestAlert({
   to, secretaryName, lodgeName, requesterName, requesterEmail, requesterPhone,
-  yearsAMember, lodgeRole, message, membersUrl, brand,
+  yearsAMember, lodgeRole, message, membersUrl, requestId, brand,
 }: {
   to: string; secretaryName: string; lodgeName: string
   requesterName: string; requesterEmail: string; requesterPhone?: string | null
   yearsAMember?: string | null; lodgeRole?: string | null; message?: string | null
-  membersUrl: string; brand?: LodgeBrand
+  membersUrl: string; requestId: string; brand?: LodgeBrand
 }) {
   const b = resolveBrand(brand, lodgeName)
   const body = {
@@ -645,7 +645,19 @@ export async function sendPortalAccessRequestAlert({
       ...(yearsAMember ? [{ label: 'Member Since', value: yearsAMember }] : []),
       ...(lodgeRole ? [{ label: 'Office', value: lodgeRole }] : []),
     ],
-    cta: { label: 'Open the Members Page', url: membersUrl },
+    /**
+     * The same three choices the platform alert offers, pointed at the
+     * Members page with the request already open. Nothing is decided by
+     * the click — an email gets forwarded, and inviting a man onto a
+     * lodge roster is not something a forwarded link should be able to
+     * do. The page checks his authority before anything happens.
+     */
+    actions: [
+      { label: 'Invite him', url: `${membersUrl}?request=${requestId}&action=invite`, tone: 'primary' as const },
+      { label: 'Ask him first', url: `${membersUrl}?request=${requestId}&action=question`, tone: 'ghost' as const },
+      { label: 'Dismiss', url: `${membersUrl}?request=${requestId}&action=dismiss`, tone: 'danger' as const },
+    ],
+    ctaNote: 'Or simply reply to this email — it reaches him directly.',
     signOff: { closing: 'Fraternally,', lines: [lodgeTitle(b)] },
   }
 
@@ -835,6 +847,94 @@ export async function sendGalleryPhotosEmail({
   }, 'gallery photos email')
 }
 
+// ── Answering a lodge that asked ──
+//
+// From the platform, so LodgeOS's own header rather than a lodge crest
+// — the lodge these are about does not exist on the system yet, and
+// dressing the mail in its colours would imply it does.
+
+const PLATFORM_BRAND: LodgeBrand = {
+  name: 'LodgeOS',
+  tagline: 'Lodge Management Platform',
+  motto: 'Making good men better',
+}
+
+export async function sendLodgeRequestApproved({
+  to, contactName, lodgeName, setupUrl, note,
+}: {
+  to: string; contactName: string; lodgeName: string; setupUrl: string; note?: string | null
+}) {
+  const body = {
+    greeting: `Dear ${contactName},`,
+    paragraphs: [
+      `${lodgeName} has been approved for LodgeOS.`,
+      ...(note ? [note] : []),
+      // He creates the account and names the lodge himself. Nothing was
+      // created on his behalf from a form nobody verified.
+      'Create your account with the button below and you will be walked through setting the lodge up — its name and number, where it meets, its crest, and then inviting the brethren.',
+      'Use this same email address when you sign up, so the lodge comes back to you.',
+    ],
+    cta: { label: 'Set Up Your Lodge', url: setupUrl },
+    signOff: { closing: 'Fraternally,', lines: ['LodgeOS'] },
+  }
+  return send({
+    from: `LodgeOS <${FROM}>`,
+    to,
+    subject: `${lodgeName} — approved for LodgeOS`,
+    html: renderLodgeEmail(PLATFORM_BRAND, body, `${lodgeName} has been approved.`),
+    text: renderLodgeEmailText(PLATFORM_BRAND, body),
+  }, 'lodge request approved')
+}
+
+export async function sendLodgeRequestDeclined({
+  to, contactName, lodgeName, note,
+}: {
+  to: string; contactName: string; lodgeName: string; note?: string | null
+}) {
+  const body = {
+    greeting: `Dear ${contactName},`,
+    paragraphs: [
+      `Thank you for asking about LodgeOS for ${lodgeName}.`,
+      // A decline with a reason can be answered; one without it cannot,
+      // and a man left guessing simply asks again through another
+      // address.
+      ...(note ? [note] : ['We are not able to take the lodge on at present.']),
+      'If circumstances change, or if you think this was decided in error, replying to this email reaches us directly.',
+    ],
+    signOff: { closing: 'Fraternally,', lines: ['LodgeOS'] },
+  }
+  return send({
+    from: `LodgeOS <${FROM}>`,
+    to,
+    subject: `${lodgeName} — about your LodgeOS request`,
+    html: renderLodgeEmail(PLATFORM_BRAND, body, `About your request for ${lodgeName}.`),
+    text: renderLodgeEmailText(PLATFORM_BRAND, body),
+  }, 'lodge request declined')
+}
+
+export async function sendLodgeRequestQuestion({
+  to, contactName, lodgeName, question,
+}: {
+  to: string; contactName: string; lodgeName: string; question: string
+}) {
+  const body = {
+    greeting: `Dear ${contactName},`,
+    paragraphs: [
+      `Thank you for asking about LodgeOS for ${lodgeName}. Before we go further, one thing:`,
+      question,
+      'Replying to this email reaches us directly.',
+    ],
+    signOff: { closing: 'Fraternally,', lines: ['LodgeOS'] },
+  }
+  return send({
+    from: `LodgeOS <${FROM}>`,
+    to,
+    subject: `${lodgeName} — one question about your LodgeOS request`,
+    html: renderLodgeEmail(PLATFORM_BRAND, body, question.slice(0, 120)),
+    text: renderLodgeEmailText(PLATFORM_BRAND, body),
+  }, 'lodge request question')
+}
+
 // ── A lodge asking to use LodgeOS ──
 //
 // The one email here that is genuinely FROM the platform rather than
@@ -842,11 +942,15 @@ export async function sendGalleryPhotosEmail({
 // lodge's crest.
 export async function sendPlatformAccessRequestAlert({
   to, lodgeName, lodgeNumber, jurisdiction, contactName, contactEmail, contactPhone,
-  contactRole, memberCount, message,
+  contactRole, memberCount, message, reviewUrl, alreadyOnLodgeOS,
 }: {
   to: string; lodgeName: string; lodgeNumber?: string | null; jurisdiction?: string | null
   contactName: string; contactEmail: string; contactPhone?: string | null
   contactRole?: string | null; memberCount?: number | null; message?: string | null
+  /** The review page. Every button below is this URL with an intent. */
+  reviewUrl?: string | null
+  /** A lodge of this name and number is already on the platform. */
+  alreadyOnLodgeOS?: string | null
 }) {
   const platform: LodgeBrand = {
     name: 'LodgeOS',
@@ -854,12 +958,40 @@ export async function sendPlatformAccessRequestAlert({
     motto: 'Access request',
   }
 
+  /**
+   * THE BUTTONS CARRY AN INTENT, NOT AN ACTION.
+   *
+   * Each one opens the review page with the decision pre-selected and
+   * asks you to confirm it there. It is one extra tap, and the reason
+   * is that an email gets forwarded: a link that approved a lodge onto
+   * the platform on its own would hand that power to anybody the
+   * message was passed to, or to anyone who reads it over a shoulder.
+   * The page checks that you are a super admin against the database
+   * before it will do anything.
+   */
+  const act = (intent: string) =>
+    reviewUrl ? `${reviewUrl}${reviewUrl.includes('?') ? '&' : '?'}action=${intent}` : ''
+
+  const actions = reviewUrl
+    ? [
+        { label: 'Approve', url: act('approve'), tone: 'primary' as const },
+        { label: 'Ask a question', url: act('question'), tone: 'ghost' as const },
+        { label: 'Decline', url: act('decline'), tone: 'danger' as const },
+      ]
+    : undefined
+
   const body = {
     greeting: 'A lodge has asked for access.',
     paragraphs: [
       ...(message ? [message] : []),
+      // The thing worth knowing before deciding anything, said before
+      // the buttons rather than after them.
+      ...(alreadyOnLodgeOS
+        ? [`Note: ${alreadyOnLodgeOS} is already on LodgeOS. This may be a brother of that lodge who could not sign in and filled in the wrong form — check the roster before creating anything.`]
+        : []),
       `Replying to this email reaches ${contactName} directly.`,
     ],
+    actions,
     details: [
       { label: 'Lodge', value: lodgeNumber ? `${lodgeName} #${lodgeNumber}` : lodgeName },
       ...(jurisdiction ? [{ label: 'Jurisdiction', value: jurisdiction }] : []),

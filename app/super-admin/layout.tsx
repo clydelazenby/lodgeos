@@ -34,6 +34,9 @@ export default async function SuperAdminLayout({
   const navItems = [
     { label: 'Overview', href: '/super-admin' },
     { label: 'Lodges', href: '/super-admin/lodges' },
+    // Lodges asking to join. They were saved and emailed and listed
+    // nowhere, so a deleted email lost the request entirely.
+    { label: 'Requests', href: '/super-admin/requests' },
     { label: 'Billing', href: '/super-admin/billing' },
     { label: 'Announcements', href: '/super-admin/announcements' },
   ]

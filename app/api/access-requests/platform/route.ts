@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { sendPlatformAccessRequestAlert } from '@/lib/email'
+import { sendPlatformAccessRequestAlert, APP_URL } from '@/lib/email'
 
 /**
  * A lodge asking to use LodgeOS. Public and unauthenticated by
@@ -78,7 +78,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, duplicate: true })
     }
 
-    const { error: insertError } = await supabase.from('platform_access_requests').insert({
+    const { data: inserted, error: insertError } = await supabase.from('platform_access_requests').insert({
       lodge_name: lodgeName.slice(0, MAX_FIELD),
       lodge_number: trim(body.lodgeNumber, 40),
       jurisdiction: trim(body.jurisdiction),
@@ -88,9 +88,34 @@ export async function POST(request: Request) {
       contact_role: trim(body.contactRole),
       member_count: memberCount,
       message: trim(body.message, MAX_MESSAGE),
-    })
+    }).select('id').single()
 
     if (insertError) throw insertError
+
+    /**
+     * IS THIS LODGE ALREADY HERE?
+     *
+     * The Senior Warden of a lodge that is already on LodgeOS filled in
+     * this form because his invitation email never reached him and
+     * "Request Access" was the only door he could find. Approving that
+     * would have created a second lodge of the same name with him as its
+     * owner — a split roster and two sets of records.
+     *
+     * Matched on name alone, loosely, and on number where one is given.
+     * A false positive costs one sentence of caution in an email; a
+     * false negative costs a duplicate lodge.
+     */
+    const nameNeedle = lodgeName.replace(/\blodge\b/gi, '').trim()
+    let alreadyOnLodgeOS: string | null = null
+    if (nameNeedle.length >= 3) {
+      const { data: existing } = await supabase
+        .from('tenants')
+        .select('name, number')
+        .ilike('name', `%${nameNeedle}%`)
+        .limit(1)
+      const hit = (existing ?? [])[0] as any
+      if (hit) alreadyOnLodgeOS = hit.number ? `${hit.name} #${hit.number}` : hit.name
+    }
 
     // Who to tell. The env var wins so this can be pointed at a shared
     // inbox; otherwise fall back to the platform owner's own account,
@@ -122,6 +147,8 @@ export async function POST(request: Request) {
           contactRole: trim(body.contactRole),
           memberCount,
           message: trim(body.message, MAX_MESSAGE),
+          reviewUrl: `${APP_URL}/super-admin/requests/${(inserted as any).id}`,
+          alreadyOnLodgeOS,
         })
         notified = true
       } catch (mailErr: any) {
