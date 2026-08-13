@@ -8,6 +8,7 @@ import { upsertProfilePreservingIdentity } from '@/lib/auth/profile'
 import { LODGE_BRAND_COLUMNS, toLodgeBrand } from '@/lib/email/brand'
 import { recordAudit, actorName } from '@/lib/audit'
 import { recipientsFor, notifyEach } from '@/lib/notifications.server'
+import { roomForMembers } from '@/lib/plans'
 import { sendBrotherInvitedAlert } from '@/lib/email'
 
 const ADMIN_TIER_ROLES = new Set<TenantRole>(['admin', 'secretary', 'grand_master'])
@@ -71,6 +72,29 @@ export async function POST(request: Request) {
     }
 
     const serviceClient = createServiceClient()
+
+    /**
+     * IS THERE ROOM ON THE PLAN? Checked HERE, before createInviteLink
+     * below — that call creates a real auth user, and refusing after it
+     * would leave an account behind for a man who was never added to
+     * anything. A refusal has to happen before the first side effect.
+     *
+     * Counted from the roster rather than from tenants.member_count, so
+     * a stale counter cannot let a lodge past its own ceiling.
+     */
+    const [{ data: planRow }, { count: activeCount }] = await Promise.all([
+      serviceClient.from('tenants').select('plan').eq('id', tenantId).maybeSingle(),
+      serviceClient
+        .from('tenant_members')
+        .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId)
+        .eq('is_active', true),
+    ])
+
+    const room = roomForMembers((planRow as any)?.plan, activeCount ?? 0, 1)
+    if (!room.ok) {
+      return NextResponse.json({ error: room.message }, { status: 402 })
+    }
 
     // Creates the auth user and mints a sign-in link. Sends nothing —
     // the lodge's own welcome email below is the only message this

@@ -195,6 +195,17 @@ export default function LodgeSettingsPage() {
       {/* Website Content */}
       <div style={sectionStyle}>
         <div style={sectionTitle}>Public Website Content</div>
+        {/* First, because it is the first thing a visitor reads. Left
+            blank, the site writes a welcome naming this lodge — never
+            another one, which is what it used to do. */}
+        <div style={{ marginBottom: '1rem' }}>
+          <label style={labelStyle}>Welcome to Visitors</label>
+          <textarea value={form.welcome_message || ''} onChange={e => setForm((p: any) => ({ ...p, welcome_message: e.target.value }))} rows={3} style={{ ...inputStyle, resize: 'vertical' }} placeholder="On behalf of our lodge, we extend a heartfelt welcome to all who visit…" />
+          <p style={{ fontSize: '0.78rem', color: '#918879', fontStyle: 'italic', marginTop: 4 }}>
+            Shown near the top of your public website. Leave it blank and we will write one in your
+            lodge&apos;s name.
+          </p>
+        </div>
         <div style={{ marginBottom: '1rem' }}>
           <label style={labelStyle}>About Your Lodge</label>
           <textarea value={form.about_text || ''} onChange={e => setForm((p: any) => ({ ...p, about_text: e.target.value }))} rows={4} style={{ ...inputStyle, resize: 'vertical' }} placeholder="Tell visitors about your lodge..." />

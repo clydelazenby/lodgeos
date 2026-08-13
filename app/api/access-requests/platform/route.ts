@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { sendPlatformAccessRequestAlert, APP_URL } from '@/lib/email'
+import { isSameLodge, normaliseLodgeNumber } from '@/lib/lodgeMatch'
 
 /**
  * A lodge asking to use LodgeOS. Public and unauthenticated by
@@ -95,25 +96,38 @@ export async function POST(request: Request) {
     /**
      * IS THIS LODGE ALREADY HERE?
      *
-     * The Senior Warden of a lodge that is already on LodgeOS filled in
-     * this form because his invitation email never reached him and
-     * "Request Access" was the only door he could find. Approving that
-     * would have created a second lodge of the same name with him as its
+     * The Senior Warden of a lodge already on LodgeOS filled in this
+     * form because his invitation email never reached him and "Request
+     * Access" was the only door he could find. Approving that would
+     * have created a second lodge of the same name with him as its
      * owner — a split roster and two sets of records.
      *
-     * Matched on name alone, loosely, and on number where one is given.
-     * A false positive costs one sentence of caution in an email; a
-     * false negative costs a duplicate lodge.
+     * MATCHED ON THE NUMBER, not the name. This first shipped as a
+     * loose name match, which was right for a platform with one lodge
+     * on it and wrong for any other: St John's, Solomon's and Hiram
+     * exist in every jurisdiction, so a name match would warn on almost
+     * every genuine signup — and a warning that is usually wrong is one
+     * nobody reads on the day it is right. See lib/lodgeMatch.ts.
+     *
+     * Candidates are narrowed by number in the query and judged in
+     * full afterwards, so this stays one indexed lookup however many
+     * lodges are on the platform.
      */
-    const nameNeedle = lodgeName.replace(/\blodge\b/gi, '').trim()
+    const askedNumber = normaliseLodgeNumber(trim(body.lodgeNumber, 40))
     let alreadyOnLodgeOS: string | null = null
-    if (nameNeedle.length >= 3) {
-      const { data: existing } = await supabase
+    if (askedNumber) {
+      const { data: candidates } = await supabase
         .from('tenants')
-        .select('name, number')
-        .ilike('name', `%${nameNeedle}%`)
-        .limit(1)
-      const hit = (existing ?? [])[0] as any
+        .select('name, number, jurisdiction')
+        .not('number', 'is', null)
+        .limit(200)
+
+      const asked = {
+        name: lodgeName,
+        number: trim(body.lodgeNumber, 40),
+        jurisdiction: trim(body.jurisdiction),
+      }
+      const hit = (candidates ?? []).find((t: any) => isSameLodge(asked, t)) as any
       if (hit) alreadyOnLodgeOS = hit.number ? `${hit.name} #${hit.number}` : hit.name
     }
 

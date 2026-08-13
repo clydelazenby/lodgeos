@@ -102,6 +102,18 @@ const tenant = result.data
 
 if (!tenant) notFound()
 
+  /**
+   * How this lodge names itself in prose — "Psalms of Job Lodge No.
+   * 1827". Used wherever the page speaks ABOUT the lodge rather than
+   * simply labelling it, so a lodge that has not written its own
+   * welcome still reads as being about itself. `name` frequently
+   * already ends in "Lodge", so it is not added twice.
+   */
+  const lodgeFullName = [
+    /lodge\s*$/i.test(tenant.name) ? tenant.name.trim() : `${tenant.name} Lodge`,
+    tenant.number ? `No. ${tenant.number}` : '',
+  ].filter(Boolean).join(' ')
+
   const today = upcomingSince()
 
   const { data: events } = await supabase
@@ -984,7 +996,13 @@ h(
         marginBottom: '1.5rem',
       },
     },
-    'On behalf of Psalms of Job Lodge No. 1827, we extend a heartfelt welcome to all who visit our website. May Brotherly Love, Relief, and Truth always be with you on your journey.'
+    // THE LODGE'S OWN WELCOME. This was Psalms of Job's, hardcoded —
+    // not as that lodge's content but as the default for whichever
+    // lodge was being rendered, which at lodge number two is one
+    // lodge publishing another's name as its own. The fallback names
+    // the lodge in front of the visitor and nobody else.
+    tenant.welcome_message ||
+      `On behalf of ${lodgeFullName}, we extend a heartfelt welcome to all who visit our website. May Brotherly Love, Relief, and Truth always be with you on your journey.`
   ),
 
   h(
@@ -997,7 +1015,11 @@ h(
         marginBottom: '1.5rem',
       },
     },
-    'Psalms of Job Lodge No. 1827 is a collective group of men from the North, East, South, and West who have come together as Brethren. Our purpose is to teach, learn, build fellowship, and serve our communities while preserving the traditions and teachings of Freemasonry.'
+    // Same again: about_text has always been editable in settings, so
+    // a lodge that has written its own is quoted, and one that has not
+    // gets wording about itself.
+    tenant.about_text ||
+      `${lodgeFullName} is a collective group of men from the North, East, South, and West who have come together as Brethren. Our purpose is to teach, learn, build fellowship, and serve our communities while preserving the traditions and teachings of Freemasonry.`
   ),
 
   h(
