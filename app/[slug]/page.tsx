@@ -401,6 +401,26 @@ const impact = [
   font-weight: 700 !important;
 }
 
+/* THREE WEIGHTS, NOT TWO.
+   "Brother Login" and "Request Access" carried the same class, so they
+   were the same button twice — and a brother who could not get in had
+   no way to tell which of two identical controls was for him. Solid
+   gold belongs to "Become a Mason" (the public site's one job), the
+   outline to Brother Login, and this to the fallback beneath it: a
+   quiet line for the man whose login never arrived. */
+.mobile-menu-quiet {
+  color: #918879 !important;
+  background: transparent !important;
+  border: none !important;
+  text-align: center !important;
+  margin-top: 0.15rem !important;
+  font-family: Georgia, serif !important;
+  font-size: 0.72rem !important;
+  font-style: italic !important;
+  letter-spacing: 0.02em !important;
+  text-transform: none !important;
+}
+
 .mobile-menu-primary {
   background: #C9A84C !important;
   color: #0A0E1A !important;
@@ -692,9 +712,13 @@ h('img', {
               'a',
               {
                 href: `/${params.slug}/request-access`,
-                className: 'mobile-menu-login',
+                className: 'mobile-menu-quiet',
               },
-              'Request Access'
+              // "Request Access" sat under "Brother Login" in identical
+              // styling, and a visitor who is not a Mason could read it
+              // as how one joins the lodge — which is what Become a
+              // Mason below is for. This names the one thing it does.
+              'Need a login?'
             ),
             h(
               'a',
@@ -1491,9 +1515,12 @@ background: `
             'a',
             {
               href: `/${params.slug}/request-access`,
-              style: { color: gold, textDecoration: 'none', display: 'block', marginTop: 6 },
+              // Dimmer than the login above it, for the same reason as
+              // the mobile menu: it is the fallback, not a second front
+              // door of equal standing.
+              style: { color: dim, textDecoration: 'none', display: 'block', marginTop: 6, fontStyle: 'italic', fontSize: '0.9em' },
             },
-            'Request Access'
+            'Need a login?'
           )
         )
       )
