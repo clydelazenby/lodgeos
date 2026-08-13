@@ -70,7 +70,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, duplicate: true })
     }
 
-    const { error: insertError } = await supabase.from('portal_access_requests').insert({
+    // The id is needed by the alert below, so the row is read back —
+    // the email's buttons point at this specific request.
+    const { data: inserted, error: insertError } = await supabase.from('portal_access_requests').insert({
       tenant_id: tenant.id,
       first_name: firstName.slice(0, MAX_FIELD),
       last_name: lastName.slice(0, MAX_FIELD),
@@ -79,7 +81,7 @@ export async function POST(request: Request) {
       years_a_member: trim(body.yearsAMember, 40),
       lodge_role: trim(body.lodgeRole),
       message: trim(body.message, MAX_MESSAGE),
-    })
+    }).select('id').single()
 
     if (insertError) throw insertError
 
@@ -112,6 +114,7 @@ export async function POST(request: Request) {
           lodgeRole: trim(body.lodgeRole),
           message: trim(body.message, MAX_MESSAGE),
           membersUrl: `${APP_URL}/lodge/${tenant.slug}/members`,
+          requestId: (inserted as any).id,
         })
         notified = true
       } catch (mailErr: any) {

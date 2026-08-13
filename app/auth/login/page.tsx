@@ -358,6 +358,22 @@ style: {
               },
             },
             'Request Access'
+          ),
+          // What the link actually leads to, in the six words that
+          // would have stopped a Senior Warden signing his own lodge
+          // up for a second time. The chooser behind it is the real
+          // fix; this is the label that should always have been here.
+          React.createElement(
+            'div',
+            {
+              style: {
+                fontSize: '0.78rem',
+                color: '#918879',
+                marginTop: '0.4rem',
+                fontStyle: 'italic',
+              },
+            },
+            'A brother gets his login from his own Secretary — start here and we will point you at him.'
           )
         )
       )

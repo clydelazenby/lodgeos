@@ -1,7 +1,7 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { ConfirmDialog } from '@/components/lodge/ConfirmDialog'
 import { MemberImport } from '@/components/lodge/MemberImport'
@@ -16,6 +16,7 @@ import { PendingBrothers } from '@/components/lodge/PendingBrothers'
 export default function LodgeMembersPage() {
   const params = useParams()
   const slug = params.slug as string
+  const searchParams = useSearchParams()
   const [members, setMembers] = useState<any[]>([])
   const [tenant, setTenant] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -108,6 +109,43 @@ export default function LodgeMembersPage() {
   useEffect(() => {
     load()
   }, [])
+
+  /**
+   * ARRIVING FROM THE SECRETARY'S EMAIL.
+   *
+   * Its buttons carry ?request=<id>&action=invite|question|dismiss.
+   * They decide nothing on their own — an email gets forwarded, and
+   * putting a man on a lodge roster is not something a forwarded link
+   * should be able to do. What they do is bring the right request to
+   * the top of the page with the intended action already taken as far
+   * as it safely can be: the invite form filled in from his own words,
+   * or the dismissal one press away.
+   *
+   * Guarded on a ref so a later render cannot re-fire it and re-open a
+   * form the Secretary has just closed.
+   */
+  const followedEmail = useRef(false)
+  useEffect(() => {
+    if (followedEmail.current || accessRequests.length === 0) return
+    const id = searchParams?.get('request')
+    const action = searchParams?.get('action')
+    if (!id) return
+    const req = accessRequests.find(r => r.id === id)
+    if (!req) {
+      // Already dealt with, by him or by another officer. Saying so
+      // beats a page that looks as though the link did nothing.
+      followedEmail.current = true
+      setNotice('That request has already been dealt with.')
+      return
+    }
+    followedEmail.current = true
+    if (action === 'invite') useRequest(req)
+    else if (action === 'dismiss') resolveRequest(req, 'dismissed')
+    // 'question' has no button of its own: the alert email is sent with
+    // reply-to set to the man himself, so the answer is to reply to it.
+    // Bringing him to the request is all this can usefully do.
+    else window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [accessRequests, searchParams])
 
   /**
    * WHY THE try/finally MATTERS — this is the bug that made the button

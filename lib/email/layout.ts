@@ -89,6 +89,18 @@ export type EmailBody = {
   /** Rendered after the details. Must already be safe HTML. */
   extraHtml?: string
   cta?: { label: string; url: string }
+  /**
+   * A row of choices rather than one call to action — "Approve",
+   * "Decline", "Ask for more information".
+   *
+   * SEPARATE CELLS IN A TABLE, not inline-blocks. Buttons side by side
+   * in an email are laid out by the table engine or they are not laid
+   * out at all; Outlook ignores inline-block spacing entirely and
+   * would run them together into one wide smear. They stack on a
+   * phone, where three buttons in a row leaves each of them too narrow
+   * to read and too narrow to hit.
+   */
+  actions?: { label: string; url: string; tone?: 'primary' | 'ghost' | 'danger' }[]
   /** Small print under the button. */
   ctaNote?: string
   /** Defaults to "Fraternally," + the lodge's officers. */
@@ -122,6 +134,33 @@ function detailBlock(rows: DetailRow[]): string {
         <table role="presentation" cellpadding="0" cellspacing="0" border="0">${cells}</table>
       </td>
     </tr>
+  </table>`
+}
+
+function actionRow(actions: NonNullable<EmailBody['actions']>): string {
+  if (actions.length === 0) return ''
+
+  const cell = (a: { label: string; url: string; tone?: string }) => {
+    const ghost = a.tone === 'ghost'
+    const danger = a.tone === 'danger'
+    const bg = ghost || danger ? 'transparent' : BUTTON_BG
+    const fg = danger ? '#EC5B4B' : ghost ? GOLD : BUTTON_INK
+    const border = danger
+      ? '1px solid rgba(231,76,60,0.5)'
+      : ghost ? `1px solid ${RULE}` : `1px solid ${BUTTON_BG}`
+    return `
+      <td class="lo-action" style="padding:0 6px 8px 0;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;">
+          <tr><td align="center" style="background:${bg};border:${border};border-radius:2px;">
+            <a href="${a.url}" style="display:block;padding:13px 20px;font-family:Georgia,'Times New Roman',serif;font-size:12px;font-weight:bold;letter-spacing:0.12em;text-transform:uppercase;color:${fg};text-decoration:none;">${escapeHtml(a.label)}</a>
+          </td></tr>
+        </table>
+      </td>`
+  }
+
+  return `
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:14px 0 4px;">
+    <tr class="lo-action-row">${actions.map(cell).join('')}</tr>
   </table>`
 }
 
@@ -244,6 +283,9 @@ export function renderLodgeEmail(brand: LodgeBrand, body: EmailBody, preheader?:
     .lo-sep { display: none !important; }
     .lo-contact { display: block !important; }
     .lo-cta a { display: block !important; padding: 14px 18px !important; }
+    /* Three buttons across a 375px screen is three unreadable slivers,
+       each too narrow to hit with a thumb. */
+    .lo-action { display: block !important; width: 100% !important; padding-right: 0 !important; }
   }
 </style>
 </head>
@@ -290,6 +332,7 @@ ${preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;"
             ${detailBlock(body.details ?? [])}
             ${body.extraHtml ?? ''}
             ${cta}
+            ${actionRow(body.actions ?? [])}
             ${ctaNote}
             ${signOff}
           </td>
@@ -322,6 +365,8 @@ export function renderLodgeEmailText(brand: LodgeBrand, body: EmailBody): string
   for (const row of body.details ?? []) lines.push(`${row.label.toUpperCase()}: ${row.value}`)
   if (body.details?.length) lines.push('')
   if (body.cta) lines.push(`${body.cta.label}: ${body.cta.url}`, '')
+  for (const a of body.actions ?? []) lines.push(`${a.label}: ${a.url}`)
+  if (body.actions?.length) lines.push('')
   if (body.ctaNote) lines.push(body.ctaNote, '')
   lines.push(body.signOff?.closing ?? 'Fraternally,')
   lines.push(...(body.signOff?.lines ?? ['Worshipful Master & Officers', lodgeTitle(brand)]))
