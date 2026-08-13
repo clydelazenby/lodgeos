@@ -26,6 +26,20 @@ import { icsUidForEvent } from '@/lib/ics'
  * attendee list, the description of any private business, or anything
  * not already in the email the brother is holding.
  *
+ * THAT LAST SENTENCE WAS NOT TRUE UNTIL NOW. The query selected
+ * `description` and the file emitted it, for every event, public or
+ * not — so anyone holding the link to a private stated communication
+ * got whatever business had been written into it, with no session and
+ * no membership. An event id is not guessable, but it is not a secret
+ * either: it sits in the URL of the event page an officer might paste
+ * to a brother, and this very link travels inside emails that get
+ * forwarded.
+ *
+ * A private event now describes itself as the lodge's own name, which
+ * is what a calendar entry needs and all an outsider should get. The
+ * brother reading it already has the description in the email the link
+ * came in.
+ *
  * METHOD:PUBLISH, not REQUEST — this is "add this to your calendar",
  * not a per-attendee invitation with RSVP tracking. RSVP lives on the
  * event invite emails, which are addressed individually and carry the
@@ -39,7 +53,7 @@ export async function GET(
 
   const { data: event } = await supabase
     .from('lodge_events')
-    .select('id, title, event_date, event_time, location, description, tenant_id, tenants(name, number)')
+    .select('id, title, event_date, event_time, location, description, is_public, tenant_id, tenants(name, number)')
     .eq('id', params.eventId)
     .maybeSingle()
 
@@ -81,7 +95,9 @@ export async function GET(
     // schema records no end time.
     `DTEND:${stamp(h + 2, m)}`,
     `SUMMARY:${esc(event.title)}`,
-    `DESCRIPTION:${esc(event.description || lodgeName)}`,
+    // Public events may describe themselves; a private one gets the
+    // lodge's name and nothing more. See the note at the top.
+    `DESCRIPTION:${esc(((event as any).is_public ? event.description : null) || lodgeName)}`,
     event.location ? `LOCATION:${esc(event.location)}` : '',
     'END:VEVENT',
     'END:VCALENDAR',
