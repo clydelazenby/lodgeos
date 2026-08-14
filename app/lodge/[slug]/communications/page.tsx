@@ -1,5 +1,6 @@
 'use client'
 import { Fragment, useState, useEffect, useMemo } from 'react'
+import { Mail } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useParams } from 'next/navigation'
 import { format } from 'date-fns'
@@ -388,7 +389,7 @@ export default function LodgeCommunicationsPage() {
 
       <div className="data-box" style={{ padding: '2rem' }}>
         <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1.1rem', color: T.gold, marginBottom: '1.5rem' }}>
-          ✉ Compose Notice {draftId && <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.6rem', color: T.inkFaint }}>· editing draft</span>}
+          <Mail size={14} strokeWidth={1.7} style={{ verticalAlign: -2, marginRight: 7 }} />Compose Notice {draftId && <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.6rem', color: T.inkFaint }}>· editing draft</span>}
         </div>
 
         {notice && (

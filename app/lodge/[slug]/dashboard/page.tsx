@@ -162,7 +162,7 @@ export default async function LodgeDashboardPage({ params }: { params: { slug: s
       text: `New member petition from ${p.first_name} ${p.last_name}`,
     })),
     ...(recentComms ?? []).map((c: any): ActivityItem => ({
-      id: `com-${c.id}`, at: c.created_at, icon: '✉', tone: 'info',
+      id: `com-${c.id}`, at: c.created_at, icon: '›', tone: 'info',
       text: `Notice sent: "${c.subject}"`,
     })),
   ].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()).slice(0, 6)
@@ -170,8 +170,8 @@ export default async function LodgeDashboardPage({ params }: { params: { slug: s
   const kpis = [
     { icon: '◈', label: 'Total Members', value: memberCount ?? 0, sub: 'Active Members', tone: 'gold' as const },
     { icon: '$', label: 'Dues Collection', value: `${duesCollectedPct}%`, sub: 'Collected this year', tone: 'gold' as const, bar: duesCollectedPct },
-    { icon: '⚑', label: 'New Petitions', value: petitionCount ?? 0, sub: 'Awaiting review', tone: 'gold' as const, href: `/lodge/${params.slug}/petitions` },
-    { icon: '⚠', label: 'Dues Outstanding', value: dueCount ?? 0, sub: 'Brothers with balance', tone: 'danger' as const, href: `/lodge/${params.slug}/dues` },
+    { icon: '◇', label: 'New Petitions', value: petitionCount ?? 0, sub: 'Awaiting review', tone: 'gold' as const, href: `/lodge/${params.slug}/petitions` },
+    { icon: '▲', label: 'Dues Outstanding', value: dueCount ?? 0, sub: 'Brothers with balance', tone: 'danger' as const, href: `/lodge/${params.slug}/dues` },
   ]
 
   return (

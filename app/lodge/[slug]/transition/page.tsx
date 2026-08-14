@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { CalendarDays, Wallet } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useParams } from 'next/navigation'
 import { format } from 'date-fns'
@@ -127,7 +128,7 @@ export default function TransitionDigestPage() {
       </div>
 
       <div style={cardStyle}>
-        <div style={cardTitleStyle}>📅 Upcoming Meetings</div>
+        <div style={cardTitleStyle}><CalendarDays size={15} strokeWidth={1.6} style={{ verticalAlign: -2, marginRight: 7 }} />Upcoming Meetings</div>
         {events.length === 0 && <div style={emptyStyle}>Nothing scheduled.</div>}
         {events.map(e => (
           <div key={e.id} style={itemStyle}>
@@ -138,7 +139,7 @@ export default function TransitionDigestPage() {
       </div>
 
       <div style={cardStyle}>
-        <div style={cardTitleStyle}>💰 Dues Outstanding</div>
+        <div style={cardTitleStyle}><Wallet size={15} strokeWidth={1.6} style={{ verticalAlign: -2, marginRight: 7 }} />Dues Outstanding</div>
         {duesOutstanding.length === 0 && <div style={emptyStyle}>Everyone's current.</div>}
         {duesOutstanding.map((m: any, i) => (
           <div key={i} style={itemStyle}><span>{m.profiles?.first_name} {m.profiles?.last_name}</span></div>

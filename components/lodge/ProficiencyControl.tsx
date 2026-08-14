@@ -62,7 +62,7 @@ export function ProficiencyControl({
       </button>
       {isStalled && (
         <span style={{ color: '#EC5B4B', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.56rem', letterSpacing: '0.04em' }}>
-          ⚠ {stallDays}d no progress
+          ▲ {stallDays}d no progress
         </span>
       )}
       {error && <span style={{ color: '#EC5B4B', fontSize: '0.56rem' }}>{error}</span>}

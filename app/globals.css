@@ -192,16 +192,96 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* ============================================================
+   SUBTLE MOTION — the shared set
+   ============================================================
+   Three rules held to throughout:
+
+   1. MOTION ANSWERS A QUESTION. Every one of these tells the reader
+      something he could not otherwise see: this is new, this is
+      pressable, this is what you just did. Movement for its own sake
+      is what makes an app feel cheap rather than expensive, and on a
+      long roster it is what makes it feel slow.
+
+   2. NOTHING MOVES MORE THAN A FEW PIXELS OR LASTS LONGER THAN A
+      THIRD OF A SECOND. An officer standing in a lodge room taps
+      through this quickly; an animation he has to wait out is a
+      hindrance dressed as polish.
+
+   3. NOTHING MOVES THAT AFFECTS LAYOUT. Transform and opacity only —
+      both are handled by the compositor, so they cannot cause the
+      page to reflow and cannot make a list stutter as it renders.
+
+   All of it is off under prefers-reduced-motion, at the bottom. */
+
+/* A card or row that lifts under the pointer, so it reads as a thing
+   you can press. Touch devices get nothing — there is no hover on a
+   phone, and a stuck hover state after a tap looks like a bug. */
+@media (hover: hover) and (pointer: fine) {
+  .lodgeos-lift {
+    transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.3, 1),
+                box-shadow 0.18s cubic-bezier(0.2, 0.8, 0.3, 1),
+                border-color 0.18s ease;
+  }
+  .lodgeos-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28);
+  }
+}
+
+/* Links and quiet controls: the colour arrives rather than snapping. */
+.lodgeos-tint,
+a, button {
+  transition: color 0.16s ease, background-color 0.16s ease,
+              border-color 0.16s ease, opacity 0.16s ease;
+}
+
+/* Something appearing in place — a filter result, a newly revealed
+   panel. Shorter than the dialog, because it is a smaller claim. */
+@keyframes lodgeosFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.lodgeos-fade-in { animation: lodgeosFadeIn 0.2s ease both; }
+
+/* A list that arrives in order rather than all at once. Capped at six
+   — beyond that the last row waits noticeably, and a roster of forty
+   would take three seconds to finish appearing. */
+.lodgeos-stagger > * { animation: lodgeosFadeIn 0.24s ease both; }
+.lodgeos-stagger > *:nth-child(1) { animation-delay: 0.02s; }
+.lodgeos-stagger > *:nth-child(2) { animation-delay: 0.05s; }
+.lodgeos-stagger > *:nth-child(3) { animation-delay: 0.08s; }
+.lodgeos-stagger > *:nth-child(4) { animation-delay: 0.11s; }
+.lodgeos-stagger > *:nth-child(5) { animation-delay: 0.14s; }
+.lodgeos-stagger > *:nth-child(n+6) { animation-delay: 0.16s; }
+
+/* Focus that is visible without being loud — and never removed, since
+   it is the only way some people can tell where they are. */
+:where(a, button, input, select, textarea):focus-visible {
+  outline: 2px solid rgba(201, 168, 76, 0.65);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lodgeos-stage-in,
   .lodgeos-dialog-in,
   .lodgeos-pulse,
   .lodgeos-saved,
-  .lodgeos-removing {
+  .lodgeos-removing,
+  .lodgeos-fade-in,
+  .lodgeos-stagger > * {
     animation: none !important;
   }
   .lodgeos-removing { display: none; }
   button:not(:disabled):active { transform: none; }
+  /* The transitions too. "Reduce motion" is not "reduce it a bit". */
+  .lodgeos-lift,
+  .lodgeos-tint,
+  a, button {
+    transition: none !important;
+  }
+  .lodgeos-lift:hover { transform: none; box-shadow: none; }
 }
 
 @keyframes lodgeosToastIn {
@@ -211,9 +291,13 @@ button:disabled {
 @media (prefers-reduced-motion: reduce) {
   [style*="lodgeosToastIn"] { animation: none !important; }
 }
-@keyframes fadeUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+/* 30px was a lurch, not a fade, and 0.8s made the reader wait it out.
+   10px over a quarter of a second reads as "this arrived" without
+   announcing itself. NOTE: fadeUp is declared twice in this file — see
+   the second one below, which must stay in step. */
+@keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-.animate-fade-up { animation: fadeUp 0.8s ease both; }
+.animate-fade-up { animation: fadeUp 0.28s cubic-bezier(0.2, 0.8, 0.3, 1) both; }
 .animate-fade-in { animation: fadeIn 0.5s ease both; }
 
 /* Loading skeletons (components/ui/RouteFallbacks.tsx). A slow gold
@@ -640,7 +724,9 @@ button:disabled {
   width: 100%;
 }
 .wm-card {
-  animation: photoReveal 1s ease;
+  /* A full second to reveal a photograph is a photograph you are made
+     to wait for. */
+  animation: photoReveal 0.3s cubic-bezier(0.2, 0.8, 0.3, 1);
 }
 
 @keyframes photoReveal {
@@ -654,10 +740,12 @@ button:disabled {
     transform: scale(1);
   }
 }
+/* The second declaration of fadeUp. Kept in step with the one above
+   deliberately: whichever wins, the movement is the same. */
 @keyframes fadeUp {
   from {
     opacity: 0;
-    transform: translateY(25px);
+    transform: translateY(10px);
   }
 
   to {

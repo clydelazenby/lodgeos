@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Users, CreditCard, Mail, Globe, CalendarDays, ClipboardList, FolderOpen, Settings } from 'lucide-react'
 import { PLANS } from '@/types'
 
 export default function HomePage() {
@@ -61,18 +62,24 @@ export default function HomePage() {
           <p style={{ fontSize: '1.1rem', color: 'var(--cream-dim)', fontStyle: 'italic', maxWidth: '500px', margin: '0 auto' }}>Everything you need to run a modern lodge — no coding required.</p>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1px', maxWidth: '1100px', margin: '0 auto' }}>
+          {/* LINE ICONS, NOT EMOJI. A full-colour emoji renders in the
+              operating system's own palette — cartoon blue, cartoon
+              red — beside a navy-and-gold page, and it renders
+              DIFFERENTLY on every device, so the one thing a marketing
+              page must control is the one thing emoji will not let you
+              control. These are stroked in the lodge's own gold. */}
           {[
-            { icon: '👥', title: 'Member Management', desc: 'Full roster with roles, degrees, contact info. Brothers update their own profiles. You stay organized effortlessly.' },
-            { icon: '💳', title: 'Online Dues Collection', desc: 'Brothers pay directly from their portal. Stripe processes payment. Status updates automatically. No more chasing checks.' },
-            { icon: '📧', title: 'Automated Emails', desc: 'Dues reminders, event notifications, payment receipts, and welcome emails — all sent automatically without you lifting a finger.' },
-            { icon: '🌐', title: 'Public Lodge Website', desc: 'A beautiful, mobile-responsive public site with your lodge info, events calendar, history, and petition form.' },
-            { icon: '📅', title: 'Event Management', desc: 'Create events, set dress codes, toggle public/private. Brothers get automatic 48-hour reminders before every event.' },
-            { icon: '📋', title: 'Petition Management', desc: 'Petitions submitted online. You get notified immediately. Review, approve, or deny from your dashboard.' },
-            { icon: '📁', title: 'Document Library', desc: 'Degree study materials, meeting minutes, bylaws — all stored securely with degree-based access control.' },
-            { icon: '⚙️', title: 'No-Code Admin', desc: 'Change your lodge name, colors, content, dues amount, and settings from a simple dashboard. No code ever.' },
-          ].map(({ icon, title, desc }) => (
-            <div key={title} style={{ background: 'var(--navy-mid)', padding: '2.5rem 2rem' }}>
-              <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>{icon}</div>
+            { Icon: Users, title: 'Member Management', desc: 'Full roster with roles, degrees, contact info. Brothers update their own profiles. You stay organized effortlessly.' },
+            { Icon: CreditCard, title: 'Online Dues Collection', desc: 'Brothers pay directly from their portal. Stripe processes payment. Status updates automatically. No more chasing checks.' },
+            { Icon: Mail, title: 'Automated Emails', desc: 'Dues reminders, event notifications, payment receipts, and welcome emails — all sent automatically without you lifting a finger.' },
+            { Icon: Globe, title: 'Public Lodge Website', desc: 'A beautiful, mobile-responsive public site with your lodge info, events calendar, history, and petition form.' },
+            { Icon: CalendarDays, title: 'Event Management', desc: 'Create events, set dress codes, toggle public/private. Brothers get automatic 48-hour reminders before every event.' },
+            { Icon: ClipboardList, title: 'Petition Management', desc: 'Petitions submitted online. You get notified immediately. Review, approve, or deny from your dashboard.' },
+            { Icon: FolderOpen, title: 'Document Library', desc: 'Degree study materials, meeting minutes, bylaws — all stored securely with degree-based access control.' },
+            { Icon: Settings, title: 'No-Code Admin', desc: 'Change your lodge name, colors, content, dues amount, and settings from a simple dashboard. No code ever.' },
+          ].map(({ Icon, title, desc }) => (
+            <div key={title} className="lodgeos-lift" style={{ background: 'var(--navy-mid)', padding: '2.5rem 2rem' }}>
+              <div style={{ marginBottom: '1rem', color: 'var(--gold)' }}><Icon size={26} strokeWidth={1.5} /></div>
               <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1.1rem', color: 'var(--gold)', marginBottom: '0.75rem' }}>{title}</div>
               <p style={{ fontSize: '0.95rem', color: 'var(--cream-dim)', lineHeight: 1.7 }}>{desc}</p>
             </div>
