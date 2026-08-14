@@ -302,28 +302,33 @@ const impact = [
         .public-mobile-menu { display: none; position: relative; }
         .mobile-menu-summary { list-style: none; }
         .mobile-menu-summary::-webkit-details-marker { display: none; }
+      /* SUBTLE, NOT SLOW. This was a 30px lurch over 0.8s, and with the
+         third delay stacked on top a section took 1.25 seconds to
+         finish arriving — long enough that a visitor scrolling on a
+         phone reaches it before it has settled, which reads as the page
+         struggling rather than as polish. 10px over 0.3s does the same
+         job and is over before the eye asks about it. */
       .fade-up {
   opacity: 0;
-  transform: translateY(30px);
-  animation: fadeUp 0.8s ease forwards;
+  transform: translateY(10px);
+  animation: fadeUp 0.3s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
 }
 
-.fade-up-delay-1 {
-  animation-delay: .15s;
-}
+.fade-up-delay-1 { animation-delay: .06s; }
+.fade-up-delay-2 { animation-delay: .12s; }
+.fade-up-delay-3 { animation-delay: .18s; }
 
-.fade-up-delay-2 {
-  animation-delay: .3s;
-}
-
-.fade-up-delay-3 {
-  animation-delay: .45s;
+/* A section that never animates is better than one stuck invisible.
+   .fade-up sets opacity 0 up front, so if the animation is suppressed
+   the content would vanish — this puts it back. */
+@media (prefers-reduced-motion: reduce) {
+  .fade-up { opacity: 1 !important; transform: none !important; animation: none !important; }
 }
 
 @keyframes fadeUp {
   from {
     opacity: 0;
-    transform: translateY(30px);
+    transform: translateY(10px);
   }
 
   to {
@@ -477,13 +482,28 @@ const impact = [
           .public-hero-buttons { flex-direction: column !important; align-items: stretch !important; }
           .public-hero-card { width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; }
           .public-two-col, .public-events-grid, .public-footer-grid { grid-template-columns: 1fr !important; }
-          // .public-pillars-grid { grid-template-columns: 1fr !important; }
+          /* .public-pillars-grid { grid-template-columns: 1fr !important; }
+             — the pillars section is commented out below. "//" is NOT a
+             CSS comment; it survived only because the parser threw the
+             whole rule away. */
 .public-impact-grid {
   grid-template-columns: 1fr !important;
   gap: 1rem !important;
 }
 
-          .public-section { padding-left: 1.25rem !important; padding-right: 1.25rem !important;   padding-top: 2.5rem !important;3  padding-bottom: 2.5rem !important; }
+          /* The stray "3" that used to sit here after padding-top made
+             the NEXT declaration invalid, and CSS recovers from an
+             invalid declaration by skipping to the following
+             semicolon — so padding-bottom was silently dropped and
+             every section on a phone had space above it and none
+             below. A typo you cannot see, in a language that fails
+             quietly. */
+          .public-section {
+            padding-left: 1.25rem !important;
+            padding-right: 1.25rem !important;
+            padding-top: 2.5rem !important;
+            padding-bottom: 2.5rem !important;
+          }
           .public-gallery { grid-template-columns: 1fr !important; grid-template-rows: repeat(4, 180px) !important; }
         }
 
@@ -1289,7 +1309,7 @@ h('div', {
   h(
     'div',
     {
-      className: 'public-impact-grid',
+      className: 'public-impact-grid lodgeos-stagger',
       style: {
         maxWidth: '1180px',
         margin: '0 auto',
@@ -1372,7 +1392,7 @@ h(Icon, {
           { id: 'events', className: 'public-section', style: { padding: '6rem 4rem', background: navy } },
           h(
             'div',
-            { className: 'public-events-grid', style: { maxWidth: '1180px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr', gap: '3rem', alignItems: 'start' } },
+            { className: 'public-events-grid lodgeos-stagger', style: { maxWidth: '1180px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr', gap: '3rem', alignItems: 'start' } },
             h(
               'div',
               null,
