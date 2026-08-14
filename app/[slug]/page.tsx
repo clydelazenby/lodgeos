@@ -2,6 +2,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { PublicGallery } from '@/components/public/PublicGallery'
+import { NeedLoginDialog } from '@/components/public/NeedLoginDialog'
 import type { Metadata } from 'next'
 import { upcomingSince } from '@/lib/dates'
 import {
@@ -720,16 +721,19 @@ h('img', {
               },
               'Brother Login'
             ),
+            // A POPUP, not a page. It went to the full form, which was
+            // correct and kept being reported as broken — the chooser
+            // on the platform form set the expectation that this pops
+            // up too. Twice reported is the interface disagreeing with
+            // the person using it, not a misunderstanding to explain.
             h(
-              'a',
+              NeedLoginDialog,
               {
-                href: `/${params.slug}/request-access`,
+                key: 'need-login',
+                slug: params.slug,
+                lodgeName: lodgeFullName,
                 className: 'mobile-menu-quiet',
               },
-              // "Request Access" sat under "Brother Login" in identical
-              // styling, and a visitor who is not a Mason could read it
-              // as how one joins the lodge — which is what Become a
-              // Mason below is for. This names the one thing it does.
               'Need a login?'
             ),
             h(
@@ -1534,13 +1538,14 @@ background: `
             : null,
           h('a', { href: '/auth/login', style: { color: gold, textDecoration: 'none' } }, 'Brother Login'),
           h(
-            'a',
+            NeedLoginDialog,
             {
-              href: `/${params.slug}/request-access`,
+              slug: params.slug,
+              lodgeName: lodgeFullName,
               // Dimmer than the login above it, for the same reason as
               // the mobile menu: it is the fallback, not a second front
               // door of equal standing.
-              style: { color: dim, textDecoration: 'none', display: 'block', marginTop: 6, fontStyle: 'italic', fontSize: '0.9em' },
+              style: { color: dim, display: 'block', marginTop: 6, fontStyle: 'italic', fontSize: '0.9em' },
             },
             'Need a login?'
           )
