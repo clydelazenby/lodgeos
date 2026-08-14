@@ -6,15 +6,46 @@ export default function HomePage() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--navy)' }}>
 
-      {/* NAV */}
-      <nav style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, background: 'rgba(10,14,26,0.95)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(201,168,76,0.15)', height: '64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 2rem' }}>
-        <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1.2rem', fontWeight: 700, color: 'var(--gold)', letterSpacing: '0.15em' }}>LODGEOS</div>
-        <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
-          {[['Features', '#features'], ['Pricing', '#pricing'], ['About', '#about']].map(([l, h]) => (
-            <a key={l} href={h} style={{ fontFamily: 'Cinzel, serif', fontSize: '0.7rem', letterSpacing: '0.15em', color: 'var(--cream-dim)', textDecoration: 'none', textTransform: 'uppercase' }}>{l}</a>
-          ))}
-          <Link href="/auth/login" style={{ fontFamily: 'Cinzel, serif', fontSize: '0.7rem', color: 'var(--cream-dim)', textDecoration: 'none', letterSpacing: '0.1em' }}>Sign In</Link>
-          <Link href="/request-access" className="btn-gold" style={{ padding: '10px 24px', fontSize: '0.68rem' }}>Request Access</Link>
+      {/*
+        NAV — it ran off the side of the phone.
+
+        Six items in a nowrap flex row with a 2rem gap, on a bar with
+        no mobile rule at all: on a 390px screen the wordmark collided
+        with FEATURES and "Sign In" was sliced in half by the right
+        edge. A fixed bar cannot wrap out of trouble either — it has a
+        fixed height, so anything that does not fit is simply gone.
+
+        Below 860px the section links go and the wordmark shrinks. They
+        are anchors to sections further down the SAME page, which a
+        visitor on a phone reaches by scrolling — which is what he is
+        already doing. What survives is the wordmark and the two things
+        that leave the page: Sign In, and the one button this page
+        exists to have pressed.
+      */}
+      <style>{`
+        @media (max-width: 860px) {
+          .lodgeos-marketing-nav { padding: 0 1rem !important; }
+          .lodgeos-marketing-nav .nav-sections { display: none !important; }
+          .lodgeos-marketing-nav .nav-wordmark { font-size: 0.95rem !important; letter-spacing: 0.1em !important; }
+          .lodgeos-marketing-nav .nav-actions { gap: 0.85rem !important; }
+          .lodgeos-marketing-nav .btn-gold { padding: 9px 14px !important; font-size: 0.6rem !important; }
+        }
+        @media (max-width: 380px) {
+          /* At this width even "Sign In" and the button together are a
+             squeeze; the button is what the page is for. */
+          .lodgeos-marketing-nav .nav-signin { display: none !important; }
+        }
+      `}</style>
+      <nav className="lodgeos-marketing-nav" style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, background: 'rgba(10,14,26,0.95)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(201,168,76,0.15)', height: '64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', padding: '0 2rem' }}>
+        <Link href="/start" className="nav-wordmark" style={{ fontFamily: 'Cinzel, serif', fontSize: '1.2rem', fontWeight: 700, color: 'var(--gold)', letterSpacing: '0.15em', textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}>LODGEOS</Link>
+        <div className="nav-actions" style={{ display: 'flex', gap: '2rem', alignItems: 'center', minWidth: 0 }}>
+          <div className="nav-sections" style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
+            {[['Features', '#features'], ['Pricing', '#pricing'], ['About', '#about']].map(([l, h]) => (
+              <a key={l} href={h} style={{ fontFamily: 'Cinzel, serif', fontSize: '0.7rem', letterSpacing: '0.15em', color: 'var(--cream-dim)', textDecoration: 'none', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{l}</a>
+            ))}
+          </div>
+          <Link href="/auth/login" className="nav-signin" style={{ fontFamily: 'Cinzel, serif', fontSize: '0.7rem', color: 'var(--cream-dim)', textDecoration: 'none', letterSpacing: '0.1em', whiteSpace: 'nowrap' }}>Sign In</Link>
+          <Link href="/request-access" className="btn-gold" style={{ padding: '10px 24px', fontSize: '0.68rem', whiteSpace: 'nowrap' }}>Request Access</Link>
         </div>
       </nav>
 
