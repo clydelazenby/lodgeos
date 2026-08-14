@@ -482,10 +482,8 @@ const impact = [
           .public-hero-buttons { flex-direction: column !important; align-items: stretch !important; }
           .public-hero-card { width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; }
           .public-two-col, .public-events-grid, .public-footer-grid { grid-template-columns: 1fr !important; }
-          /* .public-pillars-grid { grid-template-columns: 1fr !important; }
-             — the pillars section is commented out below. "//" is NOT a
-             CSS comment; it survived only because the parser threw the
-             whole rule away. */
+          .public-pillars-grid { grid-template-columns: 1fr !important; }
+          .public-pillars-title { font-size: 1.75rem !important; }
 .public-impact-grid {
   grid-template-columns: 1fr !important;
   gap: 1rem !important;
@@ -1192,33 +1190,76 @@ h(
     )
   )
 )
-  // const pillarsSection = h(
-  //   'section',
-  //   { id: 'freemasonry', className: 'public-section', style: { padding: '5.5rem 4rem', background: navy, borderTop: `1px solid ${gold}18` } },
-  //   h(
-  //     'div',
-  //     { style: { maxWidth: '1180px', margin: '0 auto' } },
-  //     h(
-  //       'div',
-  //       { style: { textAlign: 'center', marginBottom: '3rem' } },
-  //       h('div', { style: { fontFamily: 'JetBrains Mono, monospace', fontSize: '0.65rem', letterSpacing: '0.28em', color: gold, textTransform: 'uppercase', marginBottom: '1rem' } }, 'Our Foundation'),
-  //       h('h2', { style: { fontFamily: 'Cinzel, Georgia, serif', fontSize: '2.4rem', color: cream } }, 'The Work of a Mason')
-  //     ),
-  //     h(
-  //       'div',
-  //       { className: 'public-pillars-grid', style: { display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '1rem' } },
-  //       pillars.map(({ title, text, Icon }) =>
-  //         h(
-  //           'div',
-  //           { key: title, style: { background: panel, border: `1px solid ${gold}24`, padding: '1.5rem', minHeight: '220px' } },
-  //           h(Icon, { size: 38, color: gold, strokeWidth: 1.45 }),
-  //           h('h3', { style: { fontFamily: 'Cinzel, Georgia, serif', color: cream, fontSize: '1.05rem', marginTop: '1.1rem', marginBottom: '0.75rem' } }, title),
-  //           h('p', { style: { color: dim, fontSize: '0.95rem', lineHeight: 1.75 } }, text)
-  //         )
-  //       )
-  //     )
-  //   )
-  // )
+  /**
+   * THE FREEMASONRY SECTION, PUT BACK.
+   *
+   * It was commented out, and both navs — desktop and mobile — still
+   * pointed at #freemasonry. So tapping it scrolled to nothing and did
+   * nothing, which is exactly how it was reported. A link to an anchor
+   * that does not exist is silent: no error, no 404, just a tap that
+   * appears to fail.
+   *
+   * THE THREE TENETS, not a lodge's own wording. This page is rendered
+   * for every lodge on the platform, and Brotherly Love, Relief and
+   * Truth are the three every regular jurisdiction teaches — where a
+   * lodge's particular motto or tagline is its own and belongs in its
+   * own settings, which is where the header already reads it from.
+   */
+  const tenets = [
+    {
+      Icon: HeartHandshake,
+      title: 'Brotherly Love',
+      text: 'We meet upon the level and part upon the square. A lodge is men of every station regarding one another as brethren, and holding that regard beyond the door of the lodge room.',
+    },
+    {
+      Icon: Droplet,
+      title: 'Relief',
+      text: 'To care for a brother in distress, for his widow and his orphans, and for the community around us. Charity given quietly, and given because it is owed rather than because it is noticed.',
+    },
+    {
+      Icon: BookOpen,
+      title: 'Truth',
+      text: 'The pursuit of knowledge and of an honest life. A Mason is asked to keep learning, to say what he means, and to be the same man in the lodge as he is outside it.',
+    },
+  ]
+
+  const pillarsSection = h(
+    'section',
+    {
+      id: 'freemasonry',
+      className: 'public-section fade-up',
+      style: { padding: '5.5rem 2rem', background: navy, borderTop: `1px solid ${gold}18` },
+    },
+    h(
+      'div',
+      { style: { maxWidth: '1180px', margin: '0 auto' } },
+      h(
+        'div',
+        { style: { textAlign: 'center', marginBottom: '3rem' } },
+        h('div', { style: { fontFamily: 'JetBrains Mono, monospace', fontSize: '0.65rem', letterSpacing: '0.28em', color: gold, textTransform: 'uppercase', marginBottom: '1rem' } }, 'Our Foundation'),
+        h('h2', { className: 'public-pillars-title', style: { fontFamily: 'Cinzel, Georgia, serif', fontSize: '2.4rem', color: cream, margin: 0 } }, 'The Work of a Mason'),
+        h('p', { style: { color: dim, fontSize: '1.05rem', fontStyle: 'italic', lineHeight: 1.8, maxWidth: '640px', margin: '1rem auto 0' } },
+          'Freemasonry is the world\u2019s oldest and largest fraternity, teaching a system of morality through allegory and symbol. It rests on three tenets.')
+      ),
+      h(
+        'div',
+        { className: 'public-pillars-grid lodgeos-stagger', style: { display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '1rem' } },
+        tenets.map(({ title, text, Icon }) =>
+          h(
+            'div',
+            {
+              key: title,
+              className: 'lodgeos-lift',
+              style: { background: panel, border: `1px solid ${gold}24`, padding: '1.75rem 1.5rem' },
+            },
+            h(Icon, { size: 34, color: gold, strokeWidth: 1.45 }),
+            h('h3', { style: { fontFamily: 'Cinzel, Georgia, serif', color: cream, fontSize: '1.05rem', marginTop: '1.1rem', marginBottom: '0.75rem' } }, title),
+            h('p', { style: { color: dim, fontSize: '0.95rem', lineHeight: 1.75, margin: 0 } }, text)
+          )
+        )
+      )
+    )
+  )
 
 const impactSection = h(
   'section',
@@ -1605,7 +1646,7 @@ background: `
     nav,
     hero,
     about,
-    // pillarsSection,
+    pillarsSection,
     impactSection,
     eventsSection,
     gallerySection,
