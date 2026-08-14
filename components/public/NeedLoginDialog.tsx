@@ -11,10 +11,12 @@ import { createPortal } from 'react-dom'
  * reported is not a misunderstanding to explain away; it is the
  * interface disagreeing with the person using it.
  *
- * IT DOES NOT ASK WHICH KIND OF PERSON YOU ARE. That question only
- * exists on the platform's own form, where a brother and a whole lodge
- * both arrive. Here we are already standing on one lodge's website, so
- * the lodge is known — asking again would be a tap that buys nothing.
+ * IT ASKS WHICH KIND OF PERSON YOU ARE FIRST. I argued twice that it
+ * should not — we are standing on one lodge's website, so the lodge is
+ * known and the question looked like a wasted tap. That reasoning
+ * ignored who else reads a lodge's public site: a Mason from another
+ * lodge entirely, who is exactly the man worth catching, and who has
+ * nowhere else on this page to say so.
  *
  * The full page stays where it is. Anyone arriving from a link, a
  * bookmark or a search still gets it; this is the same request in a
@@ -37,6 +39,8 @@ export function NeedLoginDialog({
   children: React.ReactNode
 }) {
   const [open, setOpen] = useState(false)
+  /** 'asking' until he says which of the two he is. */
+  const [who, setWho] = useState<'asking' | 'brother'>('asking')
   const [mounted, setMounted] = useState(false)
   const [busy, setBusy] = useState(false)
   const [sent, setSent] = useState(false)
@@ -73,6 +77,7 @@ export function NeedLoginDialog({
    * not the state of the next one.
    */
   const start = () => {
+    setWho('asking')
     setSent(false)
     setError('')
     setForm({ firstName: '', lastName: '', email: '', phone: '', yearsAMember: '', lodgeRole: '', message: '' })
@@ -110,6 +115,19 @@ export function NeedLoginDialog({
     // 16px, or iOS zooms the page the moment a field is tapped.
     fontSize: '16px', outline: 'none', borderRadius: 4, boxSizing: 'border-box' as const,
   }
+  const choice: React.CSSProperties = {
+    display: 'block', width: '100%', textAlign: 'left', cursor: 'pointer',
+    background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.25)',
+    borderRadius: 8, padding: '0.95rem 1.05rem', marginBottom: '0.7rem',
+  }
+  const choiceTitle: React.CSSProperties = {
+    display: 'block', fontFamily: 'Cinzel, serif', fontSize: '0.95rem',
+    color: '#F5F0E8', marginBottom: 4,
+  }
+  const choiceBlurb: React.CSSProperties = {
+    display: 'block', fontFamily: 'Crimson Pro, serif', fontSize: '0.9rem',
+    color: '#B8B0A0', lineHeight: 1.5,
+  }
   const label = {
     fontFamily: 'JetBrains Mono, monospace', fontSize: '0.56rem', letterSpacing: '0.16em',
     color: '#C9A84C', textTransform: 'uppercase' as const, marginBottom: 5, display: 'block',
@@ -138,10 +156,10 @@ export function NeedLoginDialog({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.56rem', letterSpacing: '0.24em', color: '#C9A84C' }}>
-              FOR BRETHREN OF THIS LODGE
+              {who === 'asking' && !sent ? 'BEFORE WE BEGIN' : 'FOR BRETHREN OF THIS LODGE'}
             </div>
             <h2 style={{ fontFamily: 'Cinzel, serif', fontSize: '1.25rem', color: '#F5F0E8', margin: '5px 0 0' }}>
-              {sent ? 'Sent to the Secretary' : 'Ask for a login'}
+              {sent ? 'Sent to the Secretary' : who === 'asking' ? 'Which are you?' : 'Ask for a login'}
             </h2>
           </div>
           <button
@@ -154,7 +172,35 @@ export function NeedLoginDialog({
           </button>
         </div>
 
-        {sent ? (
+        {/* THE QUESTION FIRST. A lodge's public site is read by its own
+            brethren AND by Masons from elsewhere; the second kind has
+            nowhere else on this page to say so. */}
+        {!sent && who === 'asking' ? (
+          <div style={{ marginTop: '1.1rem' }}>
+            <p style={{ fontFamily: 'Crimson Pro, serif', fontSize: '0.98rem', color: '#B8B0A0', lineHeight: 1.6, margin: '0 0 1.1rem' }}>
+              These go to two different places.
+            </p>
+
+            <button
+              type="button"
+              onClick={() => setWho('brother')}
+              style={choice}
+            >
+              <span style={choiceTitle}>I am a brother of this lodge</span>
+              <span style={choiceBlurb}>
+                You are on the roster of {lodgeName} and need a login — or the one you were sent
+                never arrived. Your Secretary grants it.
+              </span>
+            </button>
+
+            <a href="/request-access" style={{ ...choice, display: 'block', textDecoration: 'none' }}>
+              <span style={choiceTitle}>I want to enrol my own lodge</span>
+              <span style={choiceBlurb}>
+                You are asking on behalf of a different lodge that would like to use LodgeOS.
+              </span>
+            </a>
+          </div>
+        ) : sent ? (
           <>
             <p style={{ fontFamily: 'Crimson Pro, serif', fontSize: '1rem', color: '#B8B0A0', lineHeight: 1.65, marginTop: '1rem' }}>
               The Secretary of {lodgeName} has been told. He will send you a sign-in link once he has
@@ -223,12 +269,21 @@ export function NeedLoginDialog({
 
             {/* The long form is still there for anyone who would rather
                 have a page — a bookmark, a shared link, a search result. */}
-            <a
-              href={`/${slug}/request-access`}
-              style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.56rem', letterSpacing: '0.12em', color: '#918879', textDecoration: 'none', textAlign: 'center', textTransform: 'uppercase' }}
-            >
-              Open as a full page
-            </a>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => setWho('asking')}
+                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.56rem', letterSpacing: '0.12em', color: '#918879', textTransform: 'uppercase' }}
+              >
+                &larr; Back
+              </button>
+              <a
+                href={`/${slug}/request-access`}
+                style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.56rem', letterSpacing: '0.12em', color: '#918879', textDecoration: 'none', textTransform: 'uppercase' }}
+              >
+                Open as a full page
+              </a>
+            </div>
           </form>
         )}
       </div>

@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { PublicGallery } from '@/components/public/PublicGallery'
 import { NeedLoginDialog } from '@/components/public/NeedLoginDialog'
+import { MobileMenuAutoClose } from '@/components/public/MobileMenuAutoClose'
 import type { Metadata } from 'next'
 import { upcomingSince } from '@/lib/dates'
 import {
@@ -421,17 +422,30 @@ const impact = [
    gold belongs to "Become a Mason" (the public site's one job), the
    outline to Brother Login, and this to the fallback beneath it: a
    quiet line for the man whose login never arrived. */
+/* IT LOOKED LIKE AN AFTERTHOUGHT, because it was styled as one:
+   small, italic, grey and left-aligned in a menu where every other
+   entry is a full-width control. Next to a bordered BROTHER LOGIN it
+   read as a caption belonging to the button above rather than as a
+   thing to press.
+
+   It is still the quietest of the three — no fill, no gold — but it is
+   now the same SHAPE as its neighbours: full width, centred, the same
+   letterspaced caps, with a border faint enough to sit below the
+   login and above nothing. */
 .mobile-menu-quiet {
-  color: #918879 !important;
+  color: #B8B0A0 !important;
   background: transparent !important;
-  border: none !important;
+  border: 1px solid rgba(184,176,160,0.22) !important;
+  border-radius: 2px !important;
   text-align: center !important;
-  margin-top: 0.15rem !important;
-  font-family: Georgia, serif !important;
-  font-size: 0.72rem !important;
-  font-style: italic !important;
-  letter-spacing: 0.02em !important;
-  text-transform: none !important;
+  width: 100% !important;
+  margin-top: 0.5rem !important;
+  padding: 0.7rem 0.65rem !important;
+  font-family: Cinzel, Georgia, serif !important;
+  font-size: 0.7rem !important;
+  font-style: normal !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
 }
 
 .mobile-menu-primary {
@@ -677,6 +691,9 @@ h('img', {
           },
           'Become a Mason'
         ),
+        // Without this the menu stays open over the page you just
+        // navigated to, which reads as the link doing nothing.
+        h(MobileMenuAutoClose, { key: 'menu-autoclose' }),
         h(
           'details',
           {
